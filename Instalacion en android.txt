@@ -1,0 +1,63 @@
+INSTALACION EN ANDROID
+
+ADVERTENCIA: Recuerde tener los datos activados y una buena señal, si esta es inestable o se pierde la coneccion, el bot perdera informacion y por ende
+perdera datos de compra y venta.
+
+Esta guia es para versiones de android 7 en adelante....(Termux no es compatible con version anteriores a android 7)
+Para ejecutar nuestro bot en android es necesario contar con la aplicacion Termux, para ello vamos a descargar la apk de f-droid(la version de Google Play no funciona)
+https://f-droid.org/packages/com.termux/
+
+aca dejo el enlace directo a la ultima version(22/09/2021)
+https://f-droid.org/repo/com.termux_117.apk
+
+una ves descargado lo instalamos, capaz sea necesario habilitar la opcion en android "Fuentes desconocidas"(esto no representa ningun riesgo para el celular)
+Abrir la app instalada y comenzamos actualizando los repositorios, e instalando el paquete necesarios:
+
+pkg update & pkg upgrade 
+pkg install openssh net-tools procps nano wget git python
+
+update (actualiza repositorios)
+upgrade (actualiza paquetes)
+openssh (acceso remoto)
+net-tools (averiguar IP)
+procps (matar procesos)
+nano (para editar archivos)
+wget (para descargar archivos de internet)
+git (para descargar el fork)
+python (lenguaje base del bot)
+
+Iniciar y detener demonio SSH
+Para iniciar el demonio, es decir, escuchar conexiones, se ejecuta(Nota: se escucharán conexiones en el puerto 8022):
+sshd
+
+Para matarlo o detenerlo, se usa:
+pkill sshd
+
+Ya estamos escuchando conexiones SSH, pero todavía no sabemos nuestro usuario, contraseña e IP.
+Averigua tu usuario escribiendo:
+whoami
+
+Ahora ponle una contraseña segura ejecutando:
+passwd
+
+Finalmente mira cuál IP tienes, escribiendo:
+ifconfig
+
+Cuando tengas esos datos ya puedes conectarte desde otro lugar. Si usas linux en el terminal cliente ejecuta:
+ssh USUARIO@TU_IP -p 8022
+
+Desde windows se puede utilizar Putty https://www.putty.org/ o instalar ssh para windows https://www.openssh.com/portable.html
+
+clonaremos el repositorio del bot de la siguiente manera en termux
+git clone https://github.com/pantersxx3/Binance-Bot.git
+
+luego escribimos: 
+cd Binance-Bot
+
+Actulizamos los paquetes necesarios para ejecutar el bot de la siguiente manera
+pip3.9 install --upgrade pip
+pip3.9 install -r requirements.txt
+
+
+Para actualizar periodicamente el bot ejecutamos el comando:
+git pull
