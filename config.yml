@@ -1,5 +1,6 @@
 # These options apply to how the script will operate.
 script_options:
+  LANGUAGE: 'es'
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   TEST_MODE: True
@@ -7,10 +8,10 @@ script_options:
   #TEST_MODE is required to be true.
   OFFLINE_MODE: True
   BOT_TIMEFRAME: "1m"
-  OFFLINE_MODE_TIME_START: "23/05/2023 20:00:00" #%d/%m/%Y %H:%M:%S
-  OFFLINE_MODE_TIME_END: "28/05/2023 00:00:00" #%d/%m/%Y %H:%M:%S
+  OFFLINE_MODE_TIME_START: "01/05/2022 00:00:00" #%d/%m/%Y %H:%M:%S
+  OFFLINE_MODE_TIME_END: "31/05/2022 07:00:00" #%d/%m/%Y %H:%M:%S
   LOG_TRADES: True
-  MICROSECONDS: 3 #0.7
+  MICROSECONDS: 0.3
   USE_SIGNALLING_MODULES: False
   #the MAIN_FILES_PATH will be the folder where the LOG_FILE, HISTORY_LOG_FILE, COIN_BOUGHT and BOT_STATS files will be stored. 
   #By default, if it is empty, these files will be housed in the main folder of the Bot. Not yet implemented
@@ -29,8 +30,8 @@ script_options:
   ENABLE_FUNCTION_NAME: False
   SHOW_FUNCTION_NAME: False
   SHOW_VARIABLES_AND_VALUE: False
-  SAVE_FUNCTION_NAME: False
-  SAVE_VARIABLES_AND_VALUE: False
+  SAVE_FUNCTION_NAME: True
+  SAVE_VARIABLES_AND_VALUE: True
   #all binance requests from our bot will be proxied
   PROXY_HTTP: '' #'http://localhost:8090'
   PROXY_HTTPS: ''
@@ -74,10 +75,10 @@ trading_options:
   CHANGE_IN_PRICE: 100
 
   # define in % when to sell a coin that's not making a profit.
-  STOP_LOSS: 0.1
+  STOP_LOSS: 0.10
 
   # define in % when to take profit on a profitable coin. default 0.25
-  TAKE_PROFIT: 0.1
+  TAKE_PROFIT: 0.10
 
   # Use custom tickers.txt list for filtering pairs.
   # Name of custom tickers list

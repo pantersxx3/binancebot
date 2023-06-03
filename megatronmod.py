@@ -17,6 +17,7 @@ import time
 import threading
 import pandas as pd
 import pandas_ta as ta #pta
+import talib
 import ccxt
 import re
 import json
@@ -44,10 +45,9 @@ from helpers.handle_creds import (
     load_correct_creds, load_discord_creds
     )
 
-global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE, COINS_BOUGHT 
-global EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, OFFLINE_MODE, OFFLINE_MODE_TIME_START, SIGNAL_NAME, access_key, secret_key, client, txcolors
-global bought, timeHold, ACTUAL_POSITION, args
-#global CREATE_BUY_SELL_FILES
+global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
+global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, OFFLINE_MODE, OFFLINE_MODE_TIME_START, SIGNAL_NAME
+global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args, OFFLINE_MODE_TIME_START
 
 class txcolors:
     BUY = '\033[92m'
@@ -73,6 +73,7 @@ client = Client(access_key, secret_key)
 
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
 USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
+OFFLINE_MODE_TIME_START = parsed_config['script_options']['OFFLINE_MODE_TIME_START']
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
 TEST_MODE = parsed_config['script_options']['TEST_MODE']
@@ -126,14 +127,11 @@ def write_log(logline, LOGFILE = LOG_FILE, show = True, time = False):
 def read_position_csv(coin):
     try:
         pos1 = 0
-            #while  not os.path.exists(coin + '.position'):
-                #time.sleep(100/1000)
         if os.path.exists(coin + '.position'):
             f = open(coin + '.position', 'r')
             pos1 = int(f.read().replace(".0", ""))
             f.close()
         else:
-            #print(f'{txcolors.DEFAULT}{SIGNAL_NAME}: Archivo position inexistente..{txcolors.DEFAULT}')
             pos1 = -1
             #os.remove(coin + '.position')
     except Exception as e:
@@ -171,9 +169,7 @@ def predict_crypto(bitcoin_data, time_predict):
         model.fit(X_train, y_train)
         predictions = model.predict(X_test)
         # Realiza una predicción
-        prediction = model.predict(np.array([time_predict]))[0] #model.predict(np.array([[time_predict]]))    
-        #write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red} {prediction }', SIGNAL_NAME + ".log", True, False)
-        #write_log(prediction)
+        prediction = model.predict(np.array([time_predict]))[0]
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: predict_crypto(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + ".log", True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -185,28 +181,21 @@ def get_analysis(tf, p, position1=0, el_profe=False, num_records=1000):
         global OFFLINE_MODE
         c = pd.DataFrame([])
         d = pd.DataFrame([])
+        e = 0
         if OFFLINE_MODE:
             if position1 > 0:
                 d = pd.read_csv(p + '.csv')
                 d.columns = ['time', 'Open', 'High', 'Low', 'Close']
                 d['Close'] = d['Close'].astype(float)
-                d_filtered = d.loc[(d["time"] <= position1)]
-                #c = d.loc[d["time"] < position1].head(num_records)
-                #c = d.query("time < @position1").head(num_records)
-                c = d_filtered.head(num_records)
-                #print("get_analysis: c= \n", c)
-                #print("\n")
+                c = d.query("time < @position1").tail(num_records)
                 inttime = int(position1)/1000            
                 unix = datetime.fromtimestamp(inttime)
                 datt = unix.strftime('%d-%m-%Y %H:%M:%S')
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Actual Position {datt} - {position1}...{txcolors.DEFAULT}')
+                position2 = c['time'].iloc[0]
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{OFFLINE_MODE_TIME_START} - Posicion actual {datt} - {position2} - {position1}...{txcolors.DEFAULT}')
                 
         else:
-            #df = pd.DataFrame([])
-            #start = pd.to_datetime(datetime.now() - timedelta(days = 1))
-            #end = datetime.now()
             klines = client.get_historical_klines(symbol=p, interval=tf, start_str=str(num_records) + 'min ago UTC', limit=num_records)
-            #klines = client.get_historical_klines(str(p), tf, int(datetime.timestamp(start) * 1000), int(datetime.timestamp(end) * 1000), limit=1000)
             c = pd.DataFrame(klines)
             c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteAssetVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore']
             c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
@@ -225,32 +214,18 @@ def get_analysis(tf, p, position1=0, el_profe=False, num_records=1000):
                 maximo = (row['Close'] if row['Close'] > maximo else maximo)
                 c.at[index, 'Minimo'] = minimo
                 c.at[index, 'Maximo'] = maximo
-        #c = c[['Date', 'Close', 'Minimo', 'Maximo', 'SMA_20']]
-            #print(c.tail())
-        # if period == False and OFFLINE_MODE == False and TEST_MODE: #and el_profe == False:
-        #exchange = ccxt.binance()
-        #data = exchange.fetch_ohlcv(p, timeframe=tf, limit=100)
-            #end = datetime.now()
-            #start = pd.to_datetime(end - timedelta(days = 1)) 
-            #data = client.get_historical_klines(str(p), tf, int(datetime.timestamp(start) * 1000), int(datetime.timestamp(end) * 1000), limit=num_records)
-            #data = client.get_historical_klines(symbol=p, interval=tf, start_str=str(360) + 'min ago UTC')
-            #c = pd.DataFrame(data, columns=['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
-            #c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
-            #c['time'] = pd.to_datetime(c['time'], unit='ms')
-            #c['Close'] = c['Close'].astype(float)
-            #c.set_index(pd.DatetimeIndex(c['time']), inplace=True)
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: get_analysis(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + ".log", True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         write_log("Error on line " + str(exc_tb.tb_lineno), SIGNAL_NAME + ".log", True, True) 
     return c
 
-# def bollinger_bands(symbol_df, period):
-    # symbol_df['sma'] = symbol_df['Close'].rolling(period).mean()
-    # symbol_df['std'] = symbol_df['Close'].rolling(period).std()
-    # symbol_df['upper'] = symbol_df['sma']  + (2 * symbol_df['std'])
-    # symbol_df['lower'] = symbol_df['sma']  - (2 * symbol_df['std'])
-    # return round(symbol_df['upper'].iloc[-1], 2), round(symbol_df['lower'].iloc[-1], 2)
+def bollinger_bands(symbol_df, period):
+    symbol_df['sma'] = symbol_df['Close'].rolling(period).mean()
+    symbol_df['std'] = symbol_df['Close'].rolling(period).std()
+    symbol_df['upper'] = symbol_df['sma']  + (2 * symbol_df['std'])
+    symbol_df['lower'] = symbol_df['sma']  - (2 * symbol_df['std'])
+    return round(symbol_df['upper'].iloc[-1], 2), round(symbol_df['lower'].iloc[-1], 2)
     
 def crossunder(arr1, arr2):
     if arr1 != arr2:
@@ -385,162 +360,39 @@ def stochastic_fast(df, n):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         write_log("Error on line " + str(exc_tb.tb_lineno), SIGNAL_NAME + ".log", True, False)
     return fastk, fastd
-
-def vumanchu1(df):
-    v_indicator = []
-    for i in range(len(df) - 1):
-        v_indicator.append((df[i + 1] - df[i]) / df[i])
-    return v_indicator
-    
-def range_size(df1, range_period, range_multiplier):
-    df1 = df1.astype(float)
-    wper = range_period * 2 - 1
-    # last candle is last index, not 0
-    diff1 = df1.diff()
-    abs1 = diff1.abs()
-    average_range = ta.ema(abs1, range_period)
-    AC = ta.ema(average_range, wper) * range_multiplier
-    return AC
-	
-def range_filter(x, r):
-    x = x.astype(float)
-    range_filt = x.copy()
-    hi_band = x.copy()
-    lo_band = x.copy()
-    for i in range(x.size):
-        if i < 1:
-            continue
-        if math.isnan(r[i]):
-            continue
-        if x[i] > nz(range_filt[i - 1]):
-            if x[i] - r[i] < nz(range_filt[i - 1]):
-                range_filt[i] = nz(range_filt[i - 1])
-            else:
-                range_filt[i] = x[i] - r[i]
-        else:
-            if x[i] + r[i] > nz(range_filt[i - 1]):
-                range_filt[i] = nz(range_filt[i - 1])
-            else:
-                range_filt[i] = x[i] + r[i]
-        hi_band[i] = range_filt[i] + r[i]
-        lo_band[i] = range_filt[i] - r[i]
-    return hi_band, lo_band, range_filt
-	
-def nz(x) -> float:
-    x = float(x)
-    res = x
-    if math.isnan(x):
-        res = 0.0
-    return res
-
-def trend_direction(price):
-      fdir = 0.0
-      for i in range(1, len(price)):
-        if price[i] > price[i - 1]:
-          fdir = 1
-        elif price[i] < price[i - 1]:
-          fdir = -1
-        else:
-          fdir = fdir
-
-      #if fdir == 1:
-        #return "upward"
-      #elif fdir == -1:
-        #return "downward"
-  #else:
-    #return "flat"
-    
-      
-def analyze(pairs, buy=True, position2=0):
+     
+def analyze(pairs, buy=True):
     try:
         global OFFLINE_MODE
         signal_coins1 = []
         signal_coins2 = []
-        analysis5MIN = {}
-        #handler5MIN = {}
-        analysis15MIN = {}
-        #handler15MIN = {}
         analysis1MIN = {}
-        #handler1MIN = {}
-        #buyData = {}
-        #dataBuy = {}
-        #dataSell = {}
-        #sellData = {}
-        #Is_Write = False
 
         if TEST_MODE:
             file_prefix = 'test_'
         else:
-            file_prefix = 'live_'
-            
-        # if not OFFLINE_MODE:
-            # for pair in pairs:
-                # handler15MIN[pair] = TA_Handler(
-                    # symbol=pair,
-                    # exchange=EXCHANGE,
-                    # screener=SCREENER,
-                    # interval="15m",
-                    # timeout= 10)
-                    
-                # handler5MIN[pair] = TA_Handler(
-                    # symbol=pair,
-                    # exchange=EXCHANGE,
-                    # screener=SCREENER,
-                    # interval="5m",
-                    # timeout= 10)
-                    
-                # handler1MIN[pair] = TA_Handler(
-                    # symbol=pair,
-                    # exchange=EXCHANGE,
-                    # screener=SCREENER,
-                    # interval="1m",
-                    # timeout= 10)        
+            file_prefix = 'live_'     
             
         print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}')
         for pair in pairs:
-            if position2 == 0:
-                position2 = read_position_csv(pair)
-                #print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}analyze position1: {position2} {datetime.now()}...{txcolors.DEFAULT}')
-                if position2 < 0:
-                    if not os.path.exists(pair + '.csv'): 
-                        print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Whaiting for Download Data...{txcolors.DEFAULT}')
-                        if USE_SIGNALLING_MODULES:
-                            while not os.path.exists(pair + '.csv'):
-                                time.sleep(1/1000) #Wait for download 
-                        else:
-                            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
-                        print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Download Data Completed...{txcolors.DEFAULT}')        
-                #else:
-                    #print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}analyze position1: {position2} read_position_csv NULL DATA {datetime.now()}...{txcolors.DEFAULT}')
-            #else:
-                #print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}analyze position1: {position2} {datetime.now()}...{txcolors.DEFAULT}')
-            #print(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.BUY}Analyzing {pair} ...{txcolors.DEFAULT}')
-            # if not OFFLINE_MODE:
-                # analysis1MIN = handler1MIN[pair].get_analysis()
-                # analysis5MIN = handler5MIN[pair].get_analysis()
-                # analysis15MIN = handler15MIN[pair].get_analysis()
-                # print(analysis1MIN)
-            # else:
+            position2 = read_position_csv(pair)
+            if not os.path.exists(pair + '.csv'): 
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Whaiting for Download Data...{txcolors.DEFAULT}')
+                if USE_SIGNALLING_MODULES:
+                    while not os.path.exists(pair + '.csv'):
+                        time.sleep(1/1000) #Wait for download 
+                else:
+                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
+                        
             analysis1MIN = get_analysis('1m', pair, position2, False)
-                #analysis5MIN = get_analysis('5m', pair)
-                #analysis15MIN = get_analysis('15m', pair)
-            #print("analysis1MIN: ", analysis1MIN)
+            #analysis5MIN = get_analysis('5m', pair)
+            #analysis15MIN = get_analysis('15m', pair)
+
             if analysis1MIN.empty == False:
                 CLOSE = round(float(analysis1MIN['Close'].iloc[-1]),5) 
-                # CLOSE_ANT = round(float(analysis1MIN['Close'].iloc[-2]),5)
-                TIME = analysis1MIN['time'].iloc[-1]            
-                #print(f'{txcolors.SELL_PROFIT}MEGATRONMOD:{txcolors.DEFAULT} Time: {time_1m} Close: {CLOSE}')
-                # range_period = 20
-                # range_multiplier = 3.5
-                # smrng = range_size(analysis1MIN['Close'], range_period, range_multiplier)
-                # lo_band1, hi_band1, range_filt = range_filter(analysis1MIN['Close'], smrng)
-                #VUMANCHU_HIBAND_1M = round(hi_band.iloc[-1],5)
-                #VUMANCHU_LOBAND_1M = round(lo_band.iloc[-1],5)
-                # VUMANCHU_TREND_UPWARD = CLOSE > CLOSE_ANT
-                # VUMANCHU_RANGEF_ACTUAL_1M = round(range_filt.iloc[-1],5)
-                # VUMANCHU_RANGEF_NEXT_1M = round(range_filt.iloc[-2],5)
-                #print("CLOSE: ", CLOSE, "VUMANCHU_RANGEF_ACTUAL_1M: ", VUMANCHU_RANGEF_ACTUAL_1M, "VUMANCHU_RANGEF_NEXT_1M: ",VUMANCHU_RANGEF_NEXT_1M) #, "VUMANCHU_RANGEF_1M: ", VUMANCHU_RANGEF_1M)
-                #VUMANCHU_1M = vumanchu(analysis1MIN['Close'])
+                #CLOSE_ANT = round(float(analysis1MIN['Close'].iloc[-2]),5)
+                #TIME = analysis1MIN['time'].iloc[-1]            
+                # print(f'{txcolors.SELL_PROFIT}MEGATRONMOD:{txcolors.DEFAULT} Time: {time_1m} Close: {CLOSE}')
                 
                 df = pd.DataFrame()
                 df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(analysis1MIN['Close'], length=10, std=2) #nbdevup=2,  nbdevdn=2, timeperiod=10)
@@ -551,7 +403,7 @@ def analyze(pairs, buy=True, position2=0):
                 #tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span = ichimoku_cloud(analysis1MIN['Close'])
                 #ICHIMOKU_SENKOUSPANA_1M = round(senkou_span_a.iloc[-1],5) 
                 #ICHIMOKU_SENKOUSPANB_1M = round(senkou_span_b.iloc[-1],5) 
-                #print(ICHIMOKU_SENKOUSPANA_1M, ICHIMOKU_SENKOUSPANB_1M)
+                #print(ICHIMOKU_SENKOUSPANA_1M, ICHIMOKU_SENKOUSPANB_1M)                
                 
                 # df_close_time = pd.concat([analysis1MIN['time'], analysis1MIN['Close']], axis=1)
                 # preunix =  int(position2)/1000
@@ -635,7 +487,7 @@ def analyze(pairs, buy=True, position2=0):
                 # #SMA200_5MIN = round(pta.sma(analysis5MIN['Close'],length=50).iloc[-1],5) + round(pta.sma(analysis5MIN['Close'],length=50).iloc[-1],5) + round(pta.sma(analysis5MIN['Close'],length=50).iloc[-1],5) + round(pta.sma(analysis5MIN['Close'],length=50).iloc[-1],5) #round(analysis5MIN.indicators['SMA200'],5)
                 # #MACD_5MIN = round(pta.macd(analysis5MIN['Close'],12, 26, 9).iloc[-1],5) #round(analysis1MIN.indicators["MACD.macd"],5)            
                 # STOCH_DIFF_1MIN = round(STOCH_K_1MIN - STOCH_D_1MIN,5)
-                print(f'{txcolors.SELL_PROFIT}MEGATRONMOD:{txcolors.DEFAULT} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN}')
+                #print(f'{txcolors.SELL_PROFIT}MEGATRONMOD:{txcolors.DEFAULT} TIME: {TIME} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN}')
                 
                 #list_variables = {}
                 #all_variables = dir()
@@ -648,7 +500,7 @@ def analyze(pairs, buy=True, position2=0):
                 #print_dic(list_variables_sort)
                 if buy:
                     bought_at, timeHold, coins_bought = load_json(pair)            
-                    if coins_bought < TRADE_SLOTS and bought_at == 0: #and EMA20_1MIN > EMA50_1MIN:
+                    if coins_bought < TRADE_SLOTS and bought_at == 0:
                         # buySignal0 = RSI14_5MIN <= 40 and STOCH_K_5MIN <= 20 and STOCH_D_5MIN <= 20
                         # buySignal1 = (EMA2_1MIN > EMA3_1MIN) and (RSI2_1MIN < 45) and (STOCH_K_5MIN > STOCH_D_5MIN) and (STOCH_K_5MIN < 70 and STOCH_D_5MIN < 70)
                         # buySignal2 = RSI10_1MIN < 50 and RSI5_1MIN < 55 and RSI15_1MIN < 55
@@ -673,54 +525,33 @@ def analyze(pairs, buy=True, position2=0):
                         # buySignal21 = (CLOSE > PREDICT_1MIN)
                         # buySignal22 = ((CLOSE > B2_1MIN) and (RSI6_1MIN > 50))
                         buySignal23 = (CLOSE < B2_1MIN and RSI9_1MIN < 30)
-                        #buySignal24 = CLOSE > ICHIMOKU_SENKOUSPANA_1M and CLOSE > ICHIMOKU_SENKOUSPANB_1M
-                        #buySignal25 = CLOSE > VUMANCHU_RANGEF_ACTUAL_1M and CLOSE > VUMANCHU_RANGEF_NEXT_1M and VUMANCHU_TREND_UPWARD == True or CLOSE > VUMANCHU_RANGEF_ACTUAL_1M and CLOSE < VUMANCHU_RANGEF_NEXT_1M and VUMANCHU_TREND_UPWARD == True
-                        #position = time.mktime(analysis1MIN['time'].iloc[-1].timetuple())
-                        #write_log(f'MEGATRONMOD: position: {position2} B2_1MIN: {B2_1MIN} CLOSE: {CLOSE} buySignal17: {buySignal17}')
-                        #print("buySignal17", buySignal16)
-                        dataBuy = {}
-                        buyM = ""
+                        # buySignal23 = (CLOSE > B2_1MIN and CLOSE < BM_1MIN and RSI9_1MIN < 30)
+                        # buySignal24 = CLOSE > ICHIMOKU_SENKOUSPANA_1M and CLOSE > ICHIMOKU_SENKOUSPANB_1M
+                        #dataBuy = {}
+                        #buyM = ""
                         all_variables = dir()
                         for name in all_variables:
                             if name.startswith("buySignal"):
                                 myvalue = eval(name)
-                                dataBuy.update({name : myvalue})                
-                        for buyM in dataBuy:
-                            if dataBuy.get(buyM):
-                                #analysis1MIN = get_analysis('1m', "BTC" + PAIR_WITH)
-                                #CLOSEBTC1MIN = float(analysis1MIN['Close'].iloc[-1])
-                                # buyData = {'bought_at': CLOSE} #, 'BTC': CLOSEBTC1MIN }
-                                # signal_coins[pair] = pair                            
-                                # if ext_data != "" and buy == True:
-                                    # if os.path.exists(file_prefix + SIGNAL_NAME + ".buy") == False:
-                                        # write_log(f'OrderID,Type,pair,{print_dic(buyData, True, False)},{print_dic(list_variables, True, False)}', SIGNAL_NAME + ".buy", False)
-                                    # if os.path.exists(file_prefix + SIGNAL_NAME + "_buy.signals") == False:    
-                                        # write_log(f'OrderID,Type,pair,{print_dic(dataBuy, True, False)}', SIGNAL_NAME + "_buy.signals", False)
-                                    # write_log(f'{ext_data},BUY,{pair.replace(PAIR_WITH,"")},{print_dic(buyData, False)},{print_dic(list_variables, False)}', SIGNAL_NAME + ".buy", False)
-                                    # write_log(f'{ext_data},BUY,{pair.replace(PAIR_WITH,"")},{print_dic(dataBuy, False)}', SIGNAL_NAME + "_buy.signals", False)
-                                    # Is_Write = True
-                                    # buyData = {}
-                                    # dataBuy = {}
-                                    # break
-                                # else:
-                                signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                                write_log(f'BUY Signal Send {pair} position2: {position2} TIME: {TIME} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN} {datetime.now()}\n {analysis1MIN}', SIGNAL_NAME + ".log", True, True)
-                                if USE_SIGNALLING_MODULES:    
-                                    with open(SIGNAL_FILE_BUY,'a+') as f:
-                                        f.write(pair + '\n') 
-                                    break
-                        
-                    #print(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.BUY}{json.dumps(dataBuy, indent=4)}{txcolors.DEFAULT}')        
-                    #print(json.dumps(buySignal, indent=4))
+                                #dataBuy.update({name : myvalue}) 
+                                if myvalue:
+                                    all_variables = ""
+                        #for buyM in dataBuy:
+                            #if dataBuy.get(buyM):
+                                    signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
+                                    #write_log(f'BUY Signal Send {pair} position2: {position2} TIME: {TIME} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN} {datetime.now()}\n {analysis1MIN}', SIGNAL_NAME + ".log", True, True)
+                                    if USE_SIGNALLING_MODULES:
+                                        with open(SIGNAL_FILE_BUY,'a+') as f:
+                                            f.write(pair + '\n') 
+                                        break
                 
                 if SELL_ON_SIGNAL_ONLY:
-                    #if ext_data != "" or buy == False:
                     bought_at, timeHold, coins_bought = load_json(pair)
-                    if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0: #and EMA20_1MIN > EMA50_1MIN:
+                    if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:
                         SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
                         TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
-                        # sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0)
-                        # sellSignalSL = (float(CLOSE) < float(SL) and float(SL) != 0)
+                        sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0)
+                        sellSignalSL = (float(CLOSE) < float(SL) and float(SL) != 0)
                         # sellSignal0 = (float(RSI14_5MIN) >= 70 and STOCH_K_5MIN >= 80 and STOCH_D_5MIN >= 80 and float(CLOSE) > float(bought_at))
                         # sellSignal1 = (float(RSI10_1MIN) > 50 and RSI5_1MIN > 55 and RSI15_1MIN > 55 and float(CLOSE) > float(bought_at))
                         # sellSignal2 = (float(RSI2_1MIN) > 80 and float(CLOSE) > float(bought_at))
@@ -736,40 +567,27 @@ def analyze(pairs, buy=True, position2=0):
                         # sellSignal112 = (CLOSE > B1_1MIN and float(CLOSE) > float(bought_at))
                         # sellSignal113 = (CLOSE > BM_1MIN and float(CLOSE) > float(bought_at))
                         # sellSignal114 = (CLOSE > B1_1MIN and float(CLOSE) > float(bought_at)) # and RSI14_1MIN >= 60)
-                        # sellSignal115 = (SMA3_1MIN < BM1_1MIN and RSI14_1MIN < 50 and MACD_1MIN < 6) #and CLOSE < B11_1MIN)
+                        # sellSignal115 = (SMA3_1MIN < BM1_1MIN and RSI14_1MIN < 50 and MACD_1MIN < 6 and CLOSE > bought_at) #and CLOSE < B11_1MIN)
                         # sellSignal116 = ((CLOSE > B1_1MIN) and (RSI9_1MIN > 70) and (CLOSE > bought_at))
-                        # sellSignal117 = ((CLOSE < B1_1MIN) and (RSI14_1MIN > 50))
-                        # sellSignal118 = CLOSE < ICHIMOKU_SENKOUSPANA_1M and CLOSE < ICHIMOKU_SENKOUSPANB_1M
-                        # sellSignal119 = CLOSE < VUMANCHU_RANGEF_ACTUAL_1M and CLOSE < VUMANCHU_RANGEF_NEXT_1M and VUMANCHU_TREND_UPWARD == True or CLOSE < VUMANCHU_RANGEF_1M and CLOSE > VUMANCHU_RANGEF_NEXT_1M and VUMANCHU_TREND_UPWARD == True
+                        # sellSignal117 = ((CLOSE < B1_1MIN) and (RSI14_1MIN > 50) and CLOSE > bought_at)
+                        #sellSignal117 = (CLOSE > BM_1MIN and RSI9_1MIN > 70 and CLOSE > bought_at)
+                        # sellSignal118 = CLOSE < ICHIMOKU_SENKOUSPANA_1M and CLOSE < ICHIMOKU_SENKOUSPANB_1M and CLOSE > bought_at
                         # print("sellSignal9", sellSignal9, "sellSignal10", sellSignal10)
                         # write_log(f'MEGATRONMOD: position: {position2} B1_1MIN: {B1_1MIN} CLOSE: {CLOSE} sellSignal112: {sellSignal112}')
-                        dataSell = {}
-                        sellData = {}                    
+                        #dataSell = {}
+                        #sellData = {}                    
                         all_variables = dir()
                         for name in all_variables:
                             if name.startswith("sellSignal"):
                                 myvalue = eval(name)
-                                dataSell.update({name : myvalue})  
-                        if len(dataSell) > 0 or dataSell != {}:
-                            for sellM in dataSell:                            
-                                if dataSell.get(sellM) is not None:                                
-                                    if dataSell.get(sellM) and float(bought_at) != 0:
-                                        #analysis1MIN = get_analysis('1m', "BTC" + PAIR_WITH)
-                                        #CLOSEBTC1MIN = float(analysis1MIN['Close'].iloc[-1])
-                                        # sellData = {'bought_at': bought_at , 'sell_at': CLOSE , 'earned': round(CLOSE - bought_at, 4)} #,'BTC': CLOSEBTC1MIN}                                    
-                                        # if ext_data != "" and buy == False:
-                                            # if os.path.exists(file_prefix + SIGNAL_NAME + ".sell") == False:
-                                                # write_log(f'OrderID,Type,pair,{print_dic(sellData, True, False)},{print_dic(list_variables, True, False)}', SIGNAL_NAME + ".sell", False)           
-                                            # if os.path.exists(file_prefix + SIGNAL_NAME + "_sell.signals") == False:    
-                                                # write_log(f'OrderID,Type,pair,{print_dic(dataSell, True, False)}', SIGNAL_NAME + "_sell.signals", False)                                        
-                                            # write_log(f'{ext_data},SELL,{pair.replace(PAIR_WITH,"")},{print_dic(dataSell, False)}', SIGNAL_NAME + "_sell.signals", False)
-                                            # write_log(f'{ext_data},SELL,{pair.replace(PAIR_WITH,"")},{print_dic(sellData, False)},{print_dic(list_variables, False)}', SIGNAL_NAME + ".sell", False)
-                                            # sellData = {}
-                                            # dataSell = {}
-                                            # Is_Write = True                                        
-                                        # else:
+                                #dataSell.update({name : myvalue})  
+                        #if len(dataSell) > 0 or dataSell != {}:
+                            #for sellM in dataSell:                            
+                                #if dataSell.get(sellM) is not None:
+                                if myvalue and float(bought_at) != 0:
+                                    #if dataSell.get(sellM) and float(bought_at) != 0:
                                         signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                                        write_log(f'SELL Signal Send {pair} TIME: {TIME} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN} {datetime.now()}\n {analysis1MIN}', SIGNAL_NAME + ".log", True, True)
+                                        #write_log(f'SELL Signal Send {pair} TIME: {TIME} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN} {datetime.now()}\n {analysis1MIN}', SIGNAL_NAME + ".log", True, True)
                                         with open(SIGNAL_FILE_SELL,'a+') as f:
                                             f.write(pair + '\n')
                                         break                   
@@ -778,13 +596,13 @@ def analyze(pairs, buy=True, position2=0):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         write_log("Error on line " + str(exc_tb.tb_lineno), SIGNAL_NAME + ".log", True, False)
         pass
-    return signal_coins1, signal_coins2 #, Is_Write
+    return signal_coins1, signal_coins2
 
 def do_work():
     try:
-        signal_coins = []
+        signalcoins1 = []
+        signalcoins2 = []
         pairs = {}
-        #pairs=[line.strip() for line in open(TICKERS)]
         for line in open(TICKERS):
             pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
         while True:
@@ -792,15 +610,12 @@ def do_work():
                 print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
                 if OFFLINE_MODE:
                     while os.path.exists('ok.ok'):
-                        #print(f'{txcolors.SELL_PROFIT}MEGATRONMOD: {txcolors.DEFAULT}Whaiting for Sincronization Data...{txcolors.DEFAULT}')
                         time.sleep(1/1000) #do_work
-                    signal_coins, IsWrite = analyze(pairs)
+                    signalcoins1, signalcoins2 = analyze(pairs)
                     with open('ok.ok','w') as f:
                         f.write("1")
-                    #print(f'MEGATRONMOD: Datos Procesado...')
-                    #write_log(f'MEGATRONMOD: Procesado el registro Recivido')
                 else:
-                    signal_coins, IsWrite = analyze(pairs)
+                    signalcoins1, signalcoins2 = analyze(pairs)
                 time.sleep(MICROSECONDS) #do_work
                 if len(signal_coins) > 0:
                     print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signal_coins)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
