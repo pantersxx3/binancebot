@@ -26,13 +26,13 @@ import traceback
 
 # use for environment variables
 import os
-import shutil
-import operator
+#import shutil
+#import operator
 # use if needed to pass args to external modules
 import sys
 
 #for clear screen console
-from os import system, name
+#from os import system, name
 
 # used for math functions
 import math
@@ -71,7 +71,7 @@ from itertools import count
 import json
 
 #print output tables
-import tabulate
+#import tabulate
 from prettytable import PrettyTable, from_html_one
 #from pretty_html_table import build_table
 
@@ -84,9 +84,6 @@ import csv
 #module external
 #global CREATE_BUY_SELL_FILES
 #CREATE_BUY_SELL_FILES = False
-		
-#for read or write files csv
-import csv
 
 # Load helper modules
 from helpers.parameters import (
@@ -231,6 +228,40 @@ def get_balance_wallet(crypto):
 		pass
 	return balance
 
+def extract_first_record(csv_file):
+    with open(csv_file, "r") as f:
+        reader = csv.reader(f)
+        first_row = next(reader)
+        first_row = next(reader)
+    return first_row[0]
+
+def extract_last_record(csv_file):
+    with open(csv_file, "r") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            pass
+        last_row = row
+    return last_row[0]
+    
+def update_data_coin():
+    
+    if USE_MOST_VOLUME_COINS == True:
+        TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+    else:
+        TICKERS = 'tickers.txt'            
+    for line in open(TICKERS):
+        pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
+		
+    for coin in pairs:
+        filecsv = coin + ".csv"
+        if os.path.exists(filecsv):
+            fr1 = int(extract_first_record(filecsv))/1000
+            os1 = int(time.mktime(datetime.strptime(OFFLINE_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()))
+            lr1 = int(extract_last_record(filecsv))/1000
+            oe1 = int(time.mktime(datetime.strptime(OFFLINE_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()))
+            if fr1 != os1 or lr1 != oe1:
+                os.remove(filecsv)           
+    
 def download_data(coin):
     try:
         print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}{languages_bot.MSG3[LANGUAGE]}...{txcolors.DEFAULT}')
@@ -242,7 +273,7 @@ def download_data(coin):
         c.to_csv(coin + '.csv', index=False)
         show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}MSG3oad_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}download_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
 
@@ -415,14 +446,14 @@ def get_volume_list():
 			today = "volatile_volume_" + str(date.today()) + ".txt"
 			now = datetime.now()
 			now_str = now.strftime("%d/%m/%y %H_%M_%S")
-			dt_string = datetime.strptime(now_str,"%d/%m/%y %H_%M_%S")
+			dt_string = datetime.strptime(now_str,"%Y-%d/%m %H_%M_%S")
 			if VOLATILE_VOLUME == "":
 				volatile_volume_empty = True
 			else:
 				tuple1 = dt_string.timetuple()
 				timestamp1 = time.mktime(tuple1)
 				
-				dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%d/%m/%y %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)               
+				dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%y-%m-%d %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)               
 				tuple2 = dt_string_old.timetuple()
 				timestamp2 = time.mktime(tuple2)                    
 				
@@ -471,7 +502,7 @@ def get_volume_list():
 					sortedVolumeList = sorted(most_volume_coins.items(), key=lambda x: x[1], reverse=True)
 					
 					now = datetime.now()
-					now_str = now.strftime("%d/%m/%y(%H_%M_%S)")
+					now_str = now.strftime("%y-%m-%d(%H_%M_%S)")
 					VOLATILE_VOLUME = "volatile_volume_" + now_str
 					
 					print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Saving {str(c)} coins to {today} ...{txcolors.DEFAULT}')
@@ -557,10 +588,10 @@ def print_table_coins_bought():
 def clear():
 	# for windows
 	if name == 'nt':
-		_ = system('cls')  
+		_ = os.system('cls')  
 	# for mac and linux(here, os.name is 'posix')
 	else:
-		_ = system('clear')
+		_ = os.system('clear')
 
 def balance_report(last_price):
     try:
@@ -614,7 +645,7 @@ def balance_report(last_price):
         my_table.valign = "m"
         my_table.header = True
         my_table.padding_width = 8
-        my_table.add_row([f'{txcolors.DEFAULT}STARTED: {txcolors.SELL_LOSS}{str(bot_started_datetime).split(".")[0]}{txcolors.DEFAULT} | RUNNING FOR: {txcolors.SELL_LOSS}{str(datetime.now() - bot_started_datetime).split(".")[0]}{txcolors.DEFAULT} | BUYING PAUSE: {txcolors.SELL_LOSS}{str(bot_paused)}{txcolors.DEFAULT} | TEST MODE: {txcolors.SELL_LOSS}{TEST_MODE}{txcolors.DEFAULT}'])        
+        my_table.add_row([f'{txcolors.DEFAULT}STARTED: {txcolors.SELL_LOSS}{(datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S")).split(".")[0]}{txcolors.DEFAULT} | RUNNING FOR: {txcolors.SELL_LOSS}{str(datetime.now().timestamp() - bot_started_datetime).split(".")[0]}{txcolors.DEFAULT} | BUYING PAUSE: {txcolors.SELL_LOSS}{str(bot_paused)}{txcolors.DEFAULT} | TEST MODE: {txcolors.SELL_LOSS}{TEST_MODE}{txcolors.DEFAULT}'])        
         my_table.add_row([f'{txcolors.DEFAULT} BINANCE WALLET: {txcolors.SELL_LOSS}{str(round(get_balance_wallet(PAIR_WITH),2))}{txcolors.DEFAULT} | CURRENT HOLDS: {txcolors.SELL_LOSS}{str(len(coins_bought))}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{str(TRADE_SLOTS)} {int(CURRENT_EXPOSURE)}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{int(INVESTMENT_TOTAL)} {txcolors.DEFAULT}{PAIR_WITH}{txcolors.DEFAULT} | {txcolors.DEFAULT}WIN/LOSS: {txcolors.BOT_WINS}{str(trade_wins)}{txcolors.DEFAULT}/{txcolors.BOT_LOSSES}{str(trade_losses)}{txcolors.DEFAULT} | WIN %: {txcolors.SELL_PROFIT if WIN_LOSS_PERCENT > 0. else txcolors.BOT_LOSSES}{float(WIN_LOSS_PERCENT):g}%{txcolors.DEFAULT} | TOTAL TRADES: {txcolors.SELL_LOSS}{trade_wins+trade_losses}{txcolors.DEFAULT}'])
         my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.SELL_PROFIT if session_USDT_EARNED > 0. else txcolors.BOT_LOSSES}{str(format(float(session_USDT_EARNED), ".4f"))} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}LOSS: {txcolors.BOT_LOSSES}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}WON: {txcolors.SELL_PROFIT}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | PROFIT %: {txcolors.SELL_PROFIT if (session_USDT_EARNED * 100)/INVESTMENT_TOTAL > 0. else txcolors.BOT_LOSSES}{round((session_USDT_EARNED * 100)/INVESTMENT_TOTAL,3)}%{txcolors.DEFAULT}'])
         print("\n")
@@ -625,8 +656,8 @@ def balance_report(last_price):
         if MSG_DISCORD:
             #improving reporting messages
             msg1 = str(datetime.now()) + "\n"
-            msg2 = "STARTED         : " + str(bot_started_datetime) + "\n"
-            msg2 = msg2 + "RUNNING FOR     : " + str(datetime.now() - bot_started_datetime) + "\n"
+            msg2 = "STARTED         : " + datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S") + "\n"
+            msg2 = msg2 + "RUNNING FOR     : " + str(datetime.now().timestamp() - bot_started_datetime) + "\n"
             msg2 = msg2 + "TEST_MODE       : " + str(TEST_MODE) + "\n"
             msg2 = msg2 + "CURRENT HOLDS   : " + str(len(coins_bought)) + "(" + str(float(CURRENT_EXPOSURE)) + PAIR_WITH + ")" + "\n"
             msg2 = msg2 + "WIN             : " + str(trade_wins) + "\n"
@@ -669,7 +700,7 @@ def history_log(sess_profit_perc, sess_profit, sess_profit_perc_unreal, sess_pro
         if time_between_insertion.seconds > 60:
             time_now = datetime.now()
             last_history_log_date = time_now
-            timestamp = time_now.strftime("%y-%m-%d %H:%M:%S")
+            timestamp = time_now.strftime("%d/%m/%y %H:%M:%S")
 
             if os.path.exists(file_prefix + HISTORY_LOG_FILE):
                 HISTORY_LOG_TABLE = PrettyTable([])
@@ -754,34 +785,54 @@ def read_log_trades(OrderID):
 	return ret 
 
 def convert_csv_to_html(filecsv):
-	try:
-		filelines = ""
-		headers = ""
-		h = []
-		with open(filecsv, 'r') as file:
-			filelines = file.readlines() 
-			headers = filelines[0] 
-			headers = headers.split(',')        
-			for head in headers:
-				h.append(head)
-			table = PrettyTable(h) #[head[0], head[1],head[2]])
-			table.format = True
-			table.border = True
-			table.align = "c"
-			table.valign = "m"
-			table.hrules = 1
-			table.vrules = 1
-			for i in range(1, len(filelines)) : 
-				rowstr = [c.replace(".", ",") for c in filelines[i].split(',')]
-				#rowstr = filelines[i].split(',')
-				table.add_row(rowstr)
-			htmlCode = table.get_html_string() 
-			with open(filecsv.replace("csv","html"), 'w') as final_htmlFile:
-				final_htmlFile.write(htmlCode)
-	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}convert_csv_to_html(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass
+    try:
+        filelines = ""
+        headers = ""
+        htmlCode1 = ""
+        htmlCode2 = ""
+        h = []
+        if TEST_MODE:
+            file_prefix = 'test_'
+        else:
+            file_prefix = 'live_'
+        bot_stats_file_path = file_prefix + BOT_STATS
+        if os.path.exists(bot_stats_file_path) and os.path.getsize(bot_stats_file_path) > 2:
+            with open(bot_stats_file_path,'r') as f:
+                bot_stats = json.load(f)
+        with open(file_prefix + filecsv, 'r') as file:
+            filelines = file.readlines() 
+            headers = filelines[0] 
+            headers = headers.split(',')        
+            for head in headers:
+                h.append(head)
+            table = PrettyTable(h)
+            table.format = True
+            table.border = True
+            table.align = "c"
+            table.valign = "m"
+            table.hrules = 1
+            table.vrules = 1
+            for i in range(1, len(filelines)) : 
+                rowstr = [c.replace(".", ",") for c in filelines[i].split(',')]
+                table.add_row(rowstr)
+            htmlCode1 = table.get_html_string() 
+            #with open(file_prefix + filecsv.replace("csv","html"), 'a') as final_htmlFile:
+                #final_htmlFile.write(htmlCode)
+        my_table = PrettyTable()
+        my_table.format = True
+        my_table.border = True
+        my_table.align = "c"
+        my_table.valign = "m"
+        my_table.field_names = ["total_capital", "botstart_datetime", "historicProfitIncFees_Percent", "historicProfitIncFees_Total", "tradeWins", "tradeLosses", "session_USDT_EARNED", "session_USDT_LOSS", "session_USDT_WON"]
+        my_table.add_row([bot_stats["total_capital"], datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["historicProfitIncFees_Percent"], bot_stats["historicProfitIncFees_Total"], bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"]])
+        htmlCode2 = my_table.get_html_string() 
+        with open(file_prefix + filecsv.replace("csv","html"), 'w') as final_htmlFile:
+            final_htmlFile.write(htmlCode1)
+            final_htmlFile.write("\n" + htmlCode2)
+    except Exception as e:
+        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}convert_csv_to_html(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
 	
 def write_log_trades(logline):
 	try:
@@ -797,7 +848,6 @@ def write_log_trades(logline):
 				HEADER = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy" + " " + PAIR_WITH, "Sell Price", "Amount of Sell" + " " + PAIR_WITH, "Sell Reason", "Profit $" + " " + PAIR_WITH] #, "Total" + " " + PAIR_WITH]
 				f.write(str(HEADER).replace("'","").replace("[","").replace("]","") + '\n')
 			f.write(str(logline) + '\n')
-		#convert_csv_to_html(file_prefix + TRADES_LOG_FILE)
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}write_log_trades(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1212,7 +1262,7 @@ def buy():
                             last_price[coin]["price"] = float(orders[coin]['avgPrice'])
 							#BuyUSDT = format(BuyUSDT, '.14f')
 							#improving the presentation of the log file
-                            coin = '{0:<9}'.format(coin)
+                            #coin = '{0:<9}'.format(coin)
 							#buyFeeTotal1 = (volumeBuy * last_price_buy) * float(TRADING_FEE/100)
 							#USED_BNB_IN_SESSION = USED_BNB_IN_SESSION + orders[coin]['tradeFeeBNB'] #buyFeeTotal1
 									 #["Datetime",                                 "Type", "Coin", "Volume",              "Buy Price", "Amount of Buy", "Sell Price", "Amount of Sell", "Sell Reason", "Profit $"] "USDTdiff"])
@@ -1740,7 +1790,6 @@ def update_portfolio(orders, last_price, volume):
 
 def update_bot_stats():
 	global TRADE_TOTAL, trade_wins, trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, USED_BNB_IN_SESSION
-	   
 	bot_stats = {
 		'total_capital' : str(TRADE_SLOTS * TRADE_TOTAL),
 		'botstart_datetime' : str(bot_started_datetime),
@@ -1992,7 +2041,9 @@ def load_settings():
     VOLATILE_VOLUME = parsed_config['trading_options']['VOLATILE_VOLUME']
 	#BNB_FEE = parsed_config['trading_options']['BNB_FEE']
 	#TRADING_OTHER_FEE = parsed_config['trading_options']['TRADING_OTHER_FEE']
-
+    
+    update_data_coin()
+    
     if DEBUG_SETTING or args.debug:
         DEBUG = True
     print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}All config loaded...{txcolors.DEFAULT}')
@@ -2003,7 +2054,7 @@ def CheckIfAliveStation(ip_address):
     try:
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         # for windows
-        if name == 'nt':
+        if os.name == 'nt':
             # WARNING - Windows Only
             alive = False
             ping_output = subprocess.run(['ping', '-n', '1', ip_address],shell=True,stdout=subprocess.PIPE)
@@ -2064,12 +2115,12 @@ def renew_list(in_init=False):
 				volatile_volume_empty = True
 			else:
 				now = datetime.now()
-				dt_string = datetime.strptime(now.strftime("%d/%m/%y %H_%M_%S"),"%d/%m/%y %H_%M_%S")
+				dt_string = datetime.strptime(now.strftime("%y-%m-%d %H_%M_%S"),"%y-%m-%y %H_%M_%S")
 				tuple1 = dt_string.timetuple()
 				timestamp1 = time.mktime(tuple1)
 
 				#timestampNOW = now.timestamp()
-				dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%d/%m/%y %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)               
+				dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%y-%m-%d %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)               
 				tuple2 = dt_string_old.timetuple()
 				timestamp2 = time.mktime(tuple2)
 				if timestamp1 > timestamp2:
@@ -2339,7 +2390,7 @@ def menu():
                 LOOP = False
             elif x == 7:
                 print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Converting LOG_TRADES to html...{txcolors.DEFAULT}')
-                convert_csv_to_html(LOG_TRADES)
+                convert_csv_to_html(TRADES_LOG_FILE)
                 LOOP = False
             elif x == 8:
                 stop_signal_threads()
@@ -2482,7 +2533,7 @@ if __name__ == '__main__':
 	#TRADES_LOG_FILE = file_prefix + TRADES_LOG_FILE
 	#HISTORY_LOG_FILE = file_prefix + HISTORY_LOG_FILE
 			
-    bot_started_datetime = datetime.now()
+    bot_started_datetime = datetime.now().timestamp()
     total_capital_config = TRADE_SLOTS * TRADE_TOTAL
 
     if os.path.isfile(bot_stats_file_path) and os.stat(bot_stats_file_path).st_size!= 0:
@@ -2490,11 +2541,12 @@ if __name__ == '__main__':
             bot_stats = json.load(file)
 			# load bot stats:
             try:
-                bot_started_datetime = datetime.strptime(bot_stats['botstart_datetime'], '%d/%m/%y %H:%M:%S')
+                
+                bot_started_datetime = float(bot_stats['botstart_datetime'])
             except Exception as e:
                 write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Exception on reading botstart_datetime from {bot_stats_file_path}. Exception: {e}{txcolors.DEFAULT}')
                 write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-                bot_started_datetime = datetime.now().strftime("%d/%m/%y %H:%M:%S")
+                bot_started_datetime = datetime.now().timestamp()
 				#if continue fails
                 pass
 			

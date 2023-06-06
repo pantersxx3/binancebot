@@ -49,6 +49,7 @@ global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COI
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, OFFLINE_MODE, OFFLINE_MODE_TIME_START, SIGNAL_NAME
 global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args, OFFLINE_MODE_TIME_START
 
+
 class txcolors:
     BUY = '\033[92m'
     WARNING = '\033[93m'
@@ -86,6 +87,7 @@ OFFLINE_MODE = parsed_config['script_options']['OFFLINE_MODE']
 OFFLINE_MODE_TIME_START = parsed_config['script_options']['OFFLINE_MODE_TIME_START']
 MICROSECONDS = 2
 
+conbination = []
 
 if USE_MOST_VOLUME_COINS == True:
     TICKERS = "volatile_volume_" + str(date.today()) + ".txt"
@@ -114,7 +116,7 @@ def write_log(logline, LOGFILE = LOG_FILE, show = True, time = False):
             result = ansi_escape.sub('', logline)
             if show: print(f'{logline}')
             if time:
-                timestamp = datetime.now().strftime("%y-%m-%d %H:%M:%S") + ','                    
+                timestamp = datetime.now().strftime("%Y-%d-%m %H:%M:%S") + ','                    
             else:
                 timestamp = ""
             f.write(timestamp + result + '\n')            
@@ -189,10 +191,10 @@ def get_analysis(tf, p, position1=0, el_profe=False, num_records=1000):
                 d['Close'] = d['Close'].astype(float)
                 c = d.query("time < @position1").tail(num_records)
                 inttime = int(position1)/1000            
-                unix = datetime.fromtimestamp(inttime)
-                datt = unix.strftime('%d-%m-%Y %H:%M:%S')
+                #unix = datetime.fromtimestamp(inttime)
+                #datt = unix.strftime("%d/%m/%y %H:%M:%S")
                 position2 = c['time'].iloc[0]
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{OFFLINE_MODE_TIME_START} - Posicion actual {datt} - {position2} - {position1}...{txcolors.DEFAULT}')
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{OFFLINE_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
                 
         else:
             klines = client.get_historical_klines(symbol=p, interval=tf, start_str=str(num_records) + 'min ago UTC', limit=num_records)
@@ -360,6 +362,12 @@ def stochastic_fast(df, n):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         write_log("Error on line " + str(exc_tb.tb_lineno), SIGNAL_NAME + ".log", True, False)
     return fastk, fastd
+
+#def test_all_strategy(buystrategy, buystrategy_value, sellstrategy, sellstrategy_value):
+#    if buystrategy or sellstrategy in ('buySignal0', 'sellSignalTP', 'sellSignalSL'):
+#        if sellstrategy == 
+ #           conbination[buystrategy + sellstrategy] = [{buystrategy : buystrategy_value, sellstrategy : sellstrategy_value}]
+    
      
 def analyze(pairs, buy=True):
     try:
@@ -408,7 +416,7 @@ def analyze(pairs, buy=True):
                 # df_close_time = pd.concat([analysis1MIN['time'], analysis1MIN['Close']], axis=1)
                 # preunix =  int(position2)/1000
                 # unix = datetime.fromtimestamp(preunix)
-                # datt = unix.strftime('%d-%m-%Y %H:%M:%S')
+                # datt = unix.strftime("%d/%m/%y %H:%M:%S")
                 # pred_fut = preunix + (5*60)
                 # PREDICT_1MIN = predict_crypto(df_close_time, pred_fut)
                 # PREDICT_1MIN = float(PREDICT_1MIN) + ((float(PREDICT_1MIN) * float(TAKE_PROFIT)) / 100)
@@ -525,21 +533,18 @@ def analyze(pairs, buy=True):
                         # buySignal21 = (CLOSE > PREDICT_1MIN)
                         # buySignal22 = ((CLOSE > B2_1MIN) and (RSI6_1MIN > 50))
                         buySignal23 = (CLOSE < B2_1MIN and RSI9_1MIN < 30)
-                        # buySignal23 = (CLOSE > B2_1MIN and CLOSE < BM_1MIN and RSI9_1MIN < 30)
-                        # buySignal24 = CLOSE > ICHIMOKU_SENKOUSPANA_1M and CLOSE > ICHIMOKU_SENKOUSPANB_1M
-                        #dataBuy = {}
+                        # buySignal24 = (CLOSE > B2_1MIN and CLOSE < BM_1MIN and RSI9_1MIN < 30)
+                        # buySignal25 = CLOSE > ICHIMOKU_SENKOUSPANA_1M and CLOSE > ICHIMOKU_SENKOUSPANB_1M
+                        # dataBuy = {}
                         #buyM = ""
                         all_variables = dir()
                         for name in all_variables:
                             if name.startswith("buySignal"):
                                 myvalue = eval(name)
-                                #dataBuy.update({name : myvalue}) 
                                 if myvalue:
                                     all_variables = ""
-                        #for buyM in dataBuy:
-                            #if dataBuy.get(buyM):
                                     signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                                    #write_log(f'BUY Signal Send {pair} position2: {position2} TIME: {TIME} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN} {datetime.now()}\n {analysis1MIN}', SIGNAL_NAME + ".log", True, True)
+                                    write_log(f'BUY Signal Send {pair} CLOSE: {CLOSE} BM_1MIN: {BM_1MIN} RSI9_1MIN: {RSI9_1MIN}', SIGNAL_NAME + ".log", True, True)
                                     if USE_SIGNALLING_MODULES:
                                         with open(SIGNAL_FILE_BUY,'a+') as f:
                                             f.write(pair + '\n') 
@@ -570,24 +575,17 @@ def analyze(pairs, buy=True):
                         # sellSignal115 = (SMA3_1MIN < BM1_1MIN and RSI14_1MIN < 50 and MACD_1MIN < 6 and CLOSE > bought_at) #and CLOSE < B11_1MIN)
                         # sellSignal116 = ((CLOSE > B1_1MIN) and (RSI9_1MIN > 70) and (CLOSE > bought_at))
                         # sellSignal117 = ((CLOSE < B1_1MIN) and (RSI14_1MIN > 50) and CLOSE > bought_at)
-                        #sellSignal117 = (CLOSE > BM_1MIN and RSI9_1MIN > 70 and CLOSE > bought_at)
-                        # sellSignal118 = CLOSE < ICHIMOKU_SENKOUSPANA_1M and CLOSE < ICHIMOKU_SENKOUSPANB_1M and CLOSE > bought_at
+                        # sellSignal118 = (CLOSE > BM_1MIN and RSI9_1MIN > 70 and CLOSE > bought_at)
+                        # sellSignal119 = CLOSE < ICHIMOKU_SENKOUSPANA_1M and CLOSE < ICHIMOKU_SENKOUSPANB_1M and CLOSE > bought_at
                         # print("sellSignal9", sellSignal9, "sellSignal10", sellSignal10)
-                        # write_log(f'MEGATRONMOD: position: {position2} B1_1MIN: {B1_1MIN} CLOSE: {CLOSE} sellSignal112: {sellSignal112}')
-                        #dataSell = {}
-                        #sellData = {}                    
+                        # write_log(f'MEGATRONMOD: position: {position2} B1_1MIN: {B1_1MIN} CLOSE: {CLOSE} sellSignal112: {sellSignal112}')                   
                         all_variables = dir()
                         for name in all_variables:
                             if name.startswith("sellSignal"):
                                 myvalue = eval(name)
-                                #dataSell.update({name : myvalue})  
-                        #if len(dataSell) > 0 or dataSell != {}:
-                            #for sellM in dataSell:                            
-                                #if dataSell.get(sellM) is not None:
                                 if myvalue and float(bought_at) != 0:
-                                    #if dataSell.get(sellM) and float(bought_at) != 0:
                                         signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                                        #write_log(f'SELL Signal Send {pair} TIME: {TIME} CLOSE: {CLOSE} RSI9_1MIN: {RSI9_1MIN} B1_1MIN: {B1_1MIN} B2_1MIN: {B2_1MIN} {datetime.now()}\n {analysis1MIN}', SIGNAL_NAME + ".log", True, True)
+                                        write_log(f'SELL Signal Send {pair} CLOSE: {CLOSE} BM_1MIN: {BM_1MIN} RSI9_1MIN: {RSI9_1MIN}', SIGNAL_NAME + ".log", True, True)
                                         with open(SIGNAL_FILE_SELL,'a+') as f:
                                             f.write(pair + '\n')
                                         break                   
