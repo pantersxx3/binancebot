@@ -154,48 +154,26 @@ def heikin_ashi(df):
     heikin_ashi_df['high'] = heikin_ashi_df.loc[:, ['open', 'close']].join(df['high']).max(axis=1)    
     heikin_ashi_df['low'] = heikin_ashi_df.loc[:, ['open', 'close']].join(df['low']).min(axis=1)    
     return heikin_ashi_df
-
-def predict_crypto(bitcoin_data, time_predict):
-    try:
-        # Prepara los datos
-        #print(bitcoin_data)
-        X = bitcoin_data['time'].values.reshape(-1,1)        
-        y = bitcoin_data['Close'].values
-        # Split the data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
-        # Crea el modelo
-        model = LinearRegression()
-        # Entrena el modelo
-        #model.fit(X, y)
-        # Train the model
-        model.fit(X_train, y_train)
-        predictions = model.predict(X_test)
-        # Realiza una predicción
-        prediction = model.predict(np.array([time_predict]))[0]
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: predict_crypto(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + ".log", True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log("Error on line " + str(exc_tb.tb_lineno), SIGNAL_NAME + ".log", True, False) 
-    return prediction
  
-def get_analysis(tf, p, position1=0, el_profe=False, num_records=1000):
+def get_analysis(d, tf, p, position1=0, el_profe=False, num_records=1000):
     try:
         global OFFLINE_MODE
         c = pd.DataFrame([])
-        d = pd.DataFrame([])
+        #d = pd.DataFrame([])
         e = 0
         if OFFLINE_MODE:
             if position1 > 0:
-                d = pd.read_csv(p + '.csv')
-                d.columns = ['time', 'Open', 'High', 'Low', 'Close']
-                d['Close'] = d['Close'].astype(float)
+                if d.empty:
+                    d = pd.read_csv(p + '.csv')
+                    d.columns = ['time', 'Open', 'High', 'Low', 'Close']
+                    d['Close'] = d['Close'].astype(float)
+                else:
+                    d['Close'] = d['Close'].astype(float)
                 c = d.query("time < @position1").tail(num_records)
                 inttime = int(position1)/1000            
-                #unix = datetime.fromtimestamp(inttime)
-                #datt = unix.strftime("%d/%m/%y %H:%M:%S")
                 position2 = c['time'].iloc[0]
                 print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{OFFLINE_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
-                
+                d = pd.DataFrame([])
         else:
             klines = client.get_historical_klines(symbol=p, interval=tf, start_str=str(num_records) + 'min ago UTC', limit=num_records)
             c = pd.DataFrame(klines)
@@ -363,13 +341,7 @@ def stochastic_fast(df, n):
         write_log("Error on line " + str(exc_tb.tb_lineno), SIGNAL_NAME + ".log", True, False)
     return fastk, fastd
 
-#def test_all_strategy(buystrategy, buystrategy_value, sellstrategy, sellstrategy_value):
-#    if buystrategy or sellstrategy in ('buySignal0', 'sellSignalTP', 'sellSignalSL'):
-#        if sellstrategy == 
- #           conbination[buystrategy + sellstrategy] = [{buystrategy : buystrategy_value, sellstrategy : sellstrategy_value}]
-    
-     
-def analyze(pairs, buy=True):
+def analyze(d, pairs, buy=True):
     try:
         global OFFLINE_MODE
         signal_coins1 = []
@@ -392,7 +364,7 @@ def analyze(pairs, buy=True):
                 else:
                     print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
                         
-            analysis1MIN = get_analysis('1m', pair, position2, False)
+            analysis1MIN = get_analysis(d, '1m', pair, position2, False)
             #analysis5MIN = get_analysis('5m', pair)
             #analysis15MIN = get_analysis('15m', pair)
 
@@ -402,15 +374,15 @@ def analyze(pairs, buy=True):
                 #TIME = analysis1MIN['time'].iloc[-1]            
                 # print(f'{txcolors.SELL_PROFIT}MEGATRONMOD:{txcolors.DEFAULT} Time: {time_1m} Close: {CLOSE}')
                 
-                df = pd.DataFrame()
-                df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(analysis1MIN['Close'], length=10, std=2) #nbdevup=2,  nbdevdn=2, timeperiod=10)
+                # df = pd.DataFrame()
+                # df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(analysis1MIN['Close'], length=10, std=2) #nbdevup=2,  nbdevdn=2, timeperiod=10)
 
-                B1_1MIN = round(df['upper'].iloc[-1], 2)
-                BM_1MIN = round(df['middle'].iloc[-1], 2)
-                B2_1MIN = round(df['lower'].iloc[-1], 2)
-                #tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span = ichimoku_cloud(analysis1MIN['Close'])
-                #ICHIMOKU_SENKOUSPANA_1M = round(senkou_span_a.iloc[-1],5) 
-                #ICHIMOKU_SENKOUSPANB_1M = round(senkou_span_b.iloc[-1],5) 
+                # B1_1MIN = round(df['upper'].iloc[-1], 2)
+                # BM_1MIN = round(df['middle'].iloc[-1], 2)
+                # B2_1MIN = round(df['lower'].iloc[-1], 2)
+                tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span = ichimoku_cloud(analysis1MIN['Close'])
+                ICHIMOKU_SENKOUSPANA_1M = round(senkou_span_a.iloc[-1],5) 
+                ICHIMOKU_SENKOUSPANB_1M = round(senkou_span_b.iloc[-1],5) 
                 #print(ICHIMOKU_SENKOUSPANA_1M, ICHIMOKU_SENKOUSPANB_1M)                
                 
                 # df_close_time = pd.concat([analysis1MIN['time'], analysis1MIN['Close']], axis=1)
@@ -418,8 +390,7 @@ def analyze(pairs, buy=True):
                 # unix = datetime.fromtimestamp(preunix)
                 # datt = unix.strftime("%d/%m/%y %H:%M:%S")
                 # pred_fut = preunix + (5*60)
-                # PREDICT_1MIN = predict_crypto(df_close_time, pred_fut)
-                # PREDICT_1MIN = float(PREDICT_1MIN) + ((float(PREDICT_1MIN) * float(TAKE_PROFIT)) / 100)
+
                 # print(f'CLOSE: {CLOSE} valor futuro en 5 minutos: {PREDICT_1MIN}%')
                 
                 # df1 = pd.DataFrame()
@@ -458,7 +429,7 @@ def analyze(pairs, buy=True):
                 # CCI20_1MIN =  round(analysis1MIN.ta.cci(length=20).iloc[-1],5)
                 # CCI14_1MIN =  round(analysis1MIN.ta.cci(length=14).iloc[-1],5)
                 # RSI6_1MIN = round(ta.rsi(analysis1MIN['Close'], 6).iloc[-1],5)
-                RSI9_1MIN = round(ta.rsi(analysis1MIN['Close'], 9).iloc[-1],5)
+                # RSI9_1MIN = round(ta.rsi(analysis1MIN['Close'], 9).iloc[-1],5)
                 # RSI14_1MIN = round(ta.rsi(analysis1MIN['Close'], 14).iloc[-1],5) #round(analysis1MIN.indicators['RSI'],5)
                 # #RSI_5MIN = round(ta.RSI(analysis5MIN['Close'], 1).iloc[-1],5) #round(analysis5MIN.indicators['RSI'],5)
                 # #RSI1_15MIN = round(ta.RSI(analysis15MIN['Close'], 1).iloc[-1],5) #round(analysis15MIN.indicators['RSI[1]'],5)
@@ -530,11 +501,10 @@ def analyze(pairs, buy=True):
                         # buySignal18 = CLOSE < BM_1MIN
                         # buySignal19 = CLOSE < BM_1MIN  and RSI14_1MIN > 40
                         # buySignal20 = ((SMA3_1MIN > BM1_1MIN) and (RSI14_1MIN > 50) and (MACD_1MIN > 6)) #and CLOSE < B11_1MIN)
-                        # buySignal21 = (CLOSE > PREDICT_1MIN)
-                        # buySignal22 = ((CLOSE > B2_1MIN) and (RSI6_1MIN > 50))
-                        buySignal23 = (CLOSE < B2_1MIN and RSI9_1MIN < 30)
-                        # buySignal24 = (CLOSE > B2_1MIN and CLOSE < BM_1MIN and RSI9_1MIN < 30)
-                        # buySignal25 = CLOSE > ICHIMOKU_SENKOUSPANA_1M and CLOSE > ICHIMOKU_SENKOUSPANB_1M
+                        #buySignal21 = ((CLOSE > B2_1MIN) and (RSI6_1MIN > 50))
+                        #buySignal22 = (CLOSE < B2_1MIN and RSI9_1MIN < 30)
+                        #buySignal23 = (CLOSE > B2_1MIN and CLOSE < BM_1MIN and RSI9_1MIN < 30)
+                        buySignal24 = CLOSE > ICHIMOKU_SENKOUSPANA_1M and CLOSE > ICHIMOKU_SENKOUSPANB_1M
                         # dataBuy = {}
                         #buyM = ""
                         all_variables = dir()
@@ -544,7 +514,7 @@ def analyze(pairs, buy=True):
                                 if myvalue:
                                     all_variables = ""
                                     signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                                    write_log(f'BUY Signal Send {pair} CLOSE: {CLOSE} BM_1MIN: {BM_1MIN} RSI9_1MIN: {RSI9_1MIN}', SIGNAL_NAME + ".log", True, True)
+                                    #write_log(f'BUY Signal Send {pair} CLOSE: {CLOSE} BM_1MIN: {BM_1MIN} RSI9_1MIN: {RSI9_1MIN}', SIGNAL_NAME + ".log", True, True)
                                     if USE_SIGNALLING_MODULES:
                                         with open(SIGNAL_FILE_BUY,'a+') as f:
                                             f.write(pair + '\n') 
@@ -555,7 +525,7 @@ def analyze(pairs, buy=True):
                     if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:
                         SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
                         TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
-                        sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0)
+                        sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0) #and float(CLOSE) > float(bought_at)
                         sellSignalSL = (float(CLOSE) < float(SL) and float(SL) != 0)
                         # sellSignal0 = (float(RSI14_5MIN) >= 70 and STOCH_K_5MIN >= 80 and STOCH_D_5MIN >= 80 and float(CLOSE) > float(bought_at))
                         # sellSignal1 = (float(RSI10_1MIN) > 50 and RSI5_1MIN > 55 and RSI15_1MIN > 55 and float(CLOSE) > float(bought_at))
@@ -585,7 +555,7 @@ def analyze(pairs, buy=True):
                                 myvalue = eval(name)
                                 if myvalue and float(bought_at) != 0:
                                         signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                                        write_log(f'SELL Signal Send {pair} CLOSE: {CLOSE} BM_1MIN: {BM_1MIN} RSI9_1MIN: {RSI9_1MIN}', SIGNAL_NAME + ".log", True, True)
+                                        #write_log(f'SELL Signal Send {pair} CLOSE: {CLOSE} BM_1MIN: {BM_1MIN} RSI9_1MIN: {RSI9_1MIN}', SIGNAL_NAME + ".log", True, True)
                                         with open(SIGNAL_FILE_SELL,'a+') as f:
                                             f.write(pair + '\n')
                                         break                   
@@ -609,17 +579,17 @@ def do_work():
                 if OFFLINE_MODE:
                     while os.path.exists('ok.ok'):
                         time.sleep(1/1000) #do_work
-                    signalcoins1, signalcoins2 = analyze(pairs)
+                    signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
                     with open('ok.ok','w') as f:
                         f.write("1")
                 else:
-                    signalcoins1, signalcoins2 = analyze(pairs)
+                    signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
                 time.sleep(MICROSECONDS) #do_work
-                if len(signal_coins) > 0:
-                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signal_coins)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
+                if len(signalcoins1) > 0:
+                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
                     time.sleep(MICROSECONDS)
                 else:
-                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signal_coins)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
+                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
                     time.sleep(MICROSECONDS)
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: do_work(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + ".log", True, False)

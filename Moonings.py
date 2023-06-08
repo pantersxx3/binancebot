@@ -120,8 +120,12 @@ class txcolors:
 
 import megatronmod
 	
-global session_profit_incfees_perc, session_profit_incfees_total, session_tpsl_override_msg, is_bot_running, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, session_USDT_EARNED_TODAY, parsed_creds, TUP,PUP, TDOWN, PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down,coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection
-global historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, sell_all_coins, bot_started_datetime, client, FLAG_FILE_READ, FLAG_FILE_WRITE
+global session_profit_incfees_perc, session_profit_incfees_total, session_tpsl_override_msg, is_bot_running, session_USDT_EARNED, sell_all_coins
+global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, session_USDT_EARNED_TODAY, parsed_creds, TUP,PUP, TDOWN, c_data
+global PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down, client
+global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection, FLAG_FILE_READ
+global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, bot_started_datetime
+ 
 last_price_global = 0
 session_profit_incfees_perc = 0
 session_profit_incfees_total = 0
@@ -144,6 +148,7 @@ sell_specific_coin = False
 sell_all_coins = False
 lostconnection = False
 signalthreads = []
+c_data = pd.DataFrame([])
 
 try:
 	historic_profit_incfees_perc
@@ -221,7 +226,7 @@ def get_balance_wallet(crypto):
 			if balance < 10 and not TEST_MODE: #or not OFFLINE_MODE:
 				print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}You do not have enough balance to trade on Binance. Minimum amount 10 USDT!{txcolors.DEFAULT}')
 				sys.exit(0)
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_balance_wallet: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -244,7 +249,7 @@ def extract_last_record(csv_file):
     return last_row[0]
     
 def update_data_coin():
-    
+    global c_data
     if USE_MOST_VOLUME_COINS == True:
         TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
     else:
@@ -260,10 +265,12 @@ def update_data_coin():
             lr1 = int(extract_last_record(filecsv))/1000
             oe1 = int(time.mktime(datetime.strptime(OFFLINE_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()))
             if fr1 != os1 or lr1 != oe1:
-                os.remove(filecsv)           
+                os.remove(filecsv)
+                c_data = pd.DataFrame([])                
     
 def download_data(coin):
     try:
+        c = pd.DataFrame([])
         print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}{languages_bot.MSG3[LANGUAGE]}...{txcolors.DEFAULT}')
         end = time.mktime(datetime.strptime(OFFLINE_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()) #datetime.now()
         start = time.mktime(datetime.strptime(OFFLINE_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) #pd.to_datetime(end - timedelta(days = 7))
@@ -271,7 +278,8 @@ def download_data(coin):
         c = pd.DataFrame(data, columns=['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
         c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
         c.to_csv(coin + '.csv', index=False)
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        c = pd.DataFrame([])
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}download_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -282,7 +290,7 @@ def write_position_csv(coin, position):
 		f = open(coin + '.position', 'w')
 		f.write(str(position).replace(".0", ""))
 		f.close()
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -296,7 +304,7 @@ def read_position_csv(coin):
 			r = f.read().replace(".0", "")
 			pos1 = int(r)
 			f.close()
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -305,6 +313,7 @@ def read_position_csv(coin):
 	
 def read_next_row_csv(coin):
     try:
+        global c_data
         pos = 0
         price = 0
         time1 = 0
@@ -316,18 +325,21 @@ def read_next_row_csv(coin):
 			
         if os.path.exists(coin + '.position'):
             pos = read_position_csv(coin) 
-            c = pd.read_csv(coin + '.csv')
-            c.columns = ['time', 'Open', 'High', 'Low', 'Close']
-            c['Close'] = c['Close'].astype(float)
+            if c_data.empty:
+                c_data = pd.read_csv(coin + '.csv')            
+            c = c_data
             for i in range(len(c)):
                 if c.iloc[i]['time'] == pos:
                     if i + 1 == len(c):
                         print(f'{txcolors.WARNING}BOT: {languages_bot.MSG4[LANGUAGE]}{txcolors.DEFAULT}...')
-                        menu()                    
-                    c = c.iloc[i + 1]
-                    time1 = c['time']
-                    price = c['Close']
-                    break      
+                        convert_csv_to_html(TRADES_LOG_FILE)
+                        menu()
+                    else:
+                        c = c.iloc[i + 1]
+                        time1 = c['time']
+                        price = c['Close']
+                        break
+            c = pd.DataFrame([])
             write_position_csv(coin,time1)    
         else:
             c = pd.read_csv(coin + '.csv')
@@ -336,11 +348,12 @@ def read_next_row_csv(coin):
             c = c.loc[999]
             price = float(c['Close'])
             time1 = int(c['time'])
+            c = pd.DataFrame([])
             write_position_csv(coin,str(time1))
 
         if USE_SIGNALLING_MODULES: 
             os.remove("ok.ok")
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}read_next_row_csv: {languages_bot.MSG1[LANGUAGE]} read_next_row_csv(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -363,7 +376,6 @@ def get_all_tickers():
         for coin in pairs:
             if OFFLINE_MODE:
                 file = coin + '.csv'
-                #print("file= ", file)
                 while not os.path.exists(file):
                     download_data(coin)
                 price, time = read_next_row_csv(coin) #get_all_tickers 
@@ -378,7 +390,8 @@ def get_all_tickers():
                 c['time'] = pd.to_datetime(c['time'], unit='ms')
                 c['Close'] = c['Close'].astype(float)
                 coins.append({ 'time': c['time'].iloc[-1], 'symbol': coin, 'price': round(float(c['Close'].iloc[-1]),5)})
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+                c = pd.DataFrame([])
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_all_tickers: {languages_bot.MSG1[LANGUAGE]} get_all_tickers(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -427,7 +440,7 @@ def get_price(add_to_historical=True, prices = []):
             if hsp_head == RECHECK_INTERVAL:
                 hsp_head = 0
             historical_prices[hsp_head] = initial_price
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_price: {languages_bot.MSG1[LANGUAGE]} get_price(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -521,7 +534,7 @@ def get_volume_list():
 				return VOLATILE_VOLUME
 		else:
 			tickers=[line.strip() for line in open(TICKERS_LIST)]
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_volume_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -576,8 +589,9 @@ def print_table_coins_bought():
                 my_table.sortby = SORT_TABLE_BY
                 my_table.reversesort = REVERSE_SORT
                 print(my_table)
+                my_table = PrettyTable()
 				#print("\n")
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}print_table_coins_bought: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -650,6 +664,7 @@ def balance_report(last_price):
         my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.SELL_PROFIT if session_USDT_EARNED > 0. else txcolors.BOT_LOSSES}{str(format(float(session_USDT_EARNED), ".4f"))} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}LOSS: {txcolors.BOT_LOSSES}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}WON: {txcolors.SELL_PROFIT}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | PROFIT %: {txcolors.SELL_PROFIT if (session_USDT_EARNED * 100)/INVESTMENT_TOTAL > 0. else txcolors.BOT_LOSSES}{round((session_USDT_EARNED * 100)/INVESTMENT_TOTAL,3)}%{txcolors.DEFAULT}'])
         print("\n")
         print(my_table)
+        my_table = PrettyTable()
         print_table_coins_bought()
         print("\n")
 		
@@ -679,7 +694,7 @@ def balance_report(last_price):
             msg_discord_balance(msg1, msg2)
         history_log(session_profit_incfees_perc, session_profit_incfees_total, unrealised_session_profit_incfees_perc, unrealised_session_profit_incfees_total, session_profit_incfees_perc + unrealised_session_profit_incfees_perc, session_profit_incfees_total+unrealised_session_profit_incfees_total, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins+trade_losses, trade_wins, trade_losses, WIN_LOSS_PERCENT)
         panic_bot(int(INVESTMENT_TOTAL), trade_losses)
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}balance_report(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -688,54 +703,54 @@ def balance_report(last_price):
     return msg1 + msg2
 
 def history_log(sess_profit_perc, sess_profit, sess_profit_perc_unreal, sess_profit_unreal, sess_profit_perc_total, sess_profit_total, alltime_profit_perc, alltime_profit, total_trades, won_trades, lost_trades, winloss_ratio):
-    if HISTORY_LOG_FILE == '': return
     try:
-        global last_history_log_date    
-        time_between_insertion = datetime.now() - last_history_log_date
-        if TEST_MODE or OFFLINE_MODE:
-            file_prefix = 'test_'
-        else:
-            file_prefix = 'live_'
-		# only log balance to log file once every 60 seconds
-        if time_between_insertion.seconds > 60:
-            time_now = datetime.now()
-            last_history_log_date = time_now
-            timestamp = time_now.strftime("%d/%m/%y %H:%M:%S")
-
-            if os.path.exists(file_prefix + HISTORY_LOG_FILE):
-                HISTORY_LOG_TABLE = PrettyTable([])
-                with open(file_prefix + HISTORY_LOG_FILE, "r") as fp: 
-                    html = fp.read()
-                HISTORY_LOG_TABLE = from_html_one(html)
-                HISTORY_LOG_TABLE.format = True
-                HISTORY_LOG_TABLE.border = True
-                HISTORY_LOG_TABLE.align = "c"
-                HISTORY_LOG_TABLE.valign = "m"
-                HISTORY_LOG_TABLE.hrules = 1
-                HISTORY_LOG_TABLE.vrules = 1
-                HISTORY_LOG_TABLE.add_row([timestamp, len(coins_bought), TRADE_SLOTS, str(bot_paused), str(round(sess_profit_perc,2)), str(round(sess_profit,4)), str(round(sess_profit_perc_unreal,2)), str(round(sess_profit_unreal,4)), str(round(sess_profit_perc_total,2)), str(round(sess_profit_total,4)), str(round(alltime_profit_perc,2)), str(round(alltime_profit,4)), str(total_trades), str(won_trades), str(lost_trades), str(winloss_ratio)])
-                table_txt = HISTORY_LOG_TABLE.get_html_string()
-				#table_txt = HISTORY_LOG_TABLE.get_string()
+        if not HISTORY_LOG_FILE == '':
+            global last_history_log_date    
+            time_between_insertion = datetime.now() - last_history_log_date
+            if TEST_MODE or OFFLINE_MODE:
+                file_prefix = 'test_'
             else:
-                HISTORY_LOG_TABLE = PrettyTable([])
-                HISTORY_LOG_TABLE = PrettyTable(["Datetime", "Coins Holding", "Trade Slots", "Pausebot Active", "Session Profit %", "Session Profit $", "Session Profit Unrealised %", "Session Profit Unrealised $", "Session Profit Total %", "Session Profit Total $", "All Time Profit %", "All Time Profit $", "Total Trades", "Won Trades", "Lost Trades", "Win Loss Ratio"])
-                HISTORY_LOG_TABLE.format = True
-                HISTORY_LOG_TABLE.border = True
-                HISTORY_LOG_TABLE.align = "c"
-                HISTORY_LOG_TABLE.valign = "m"
-                HISTORY_LOG_TABLE.hrules = 1
-                HISTORY_LOG_TABLE.vrules = 1
-			#    with open(HISTORY_LOG_FILE,'a+') as f:
-			#        f.write('Datetime\tCoins Holding\tTrade Slots\tPausebot Active\tSession Profit %\tSession Profit $\tSession Profit Unrealised %\tSession Profit Unrealised $\tSession Profit Total %\tSession Profit Total $\tAll Time Profit %\tAll Time Profit $\tTotal Trades\tWon Trades\tLost Trades\tWin Loss Ratio\n')    
-                HISTORY_LOG_TABLE.add_row([timestamp, len(coins_bought), TRADE_SLOTS, str(bot_paused), str(round(sess_profit_perc,2)), str(round(sess_profit,4)), str(round(sess_profit_perc_unreal,2)), str(round(sess_profit_unreal,4)), str(round(sess_profit_perc_total,2)), str(round(sess_profit_total,4)), str(round(alltime_profit_perc,2)), str(round(alltime_profit,4)), str(total_trades), str(won_trades), str(lost_trades), str(winloss_ratio)])
-                table_txt = HISTORY_LOG_TABLE.get_html_string()
-				#table_txt = HISTORY_LOG_TABLE.get_string()
-            if not table_txt == "":
-                with open(file_prefix + HISTORY_LOG_FILE,'w') as f:
-				#f.write(f'{timestamp}\t{len(coins_bought)}\t{TRADE_SLOTS}\t{str(bot_paused)}\t{str(round(sess_profit_perc,2))}\t{str(round(sess_profit,4))}\t{str(round(sess_profit_perc_unreal,2))}\t{str(round(sess_profit_unreal,4))}\t{str(round(sess_profit_perc_total,2))}\t{str(round(sess_profit_total,4))}\t{str(round(alltime_profit_perc,2))}\t{str(round(alltime_profit,4))}\t{str(total_trades)}\t{str(won_trades)}\t{str(lost_trades)}\t{str(winloss_ratio)}\n')
-                    f.write(table_txt)
-                del HISTORY_LOG_TABLE
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+                file_prefix = 'live_'
+            # only log balance to log file once every 60 seconds
+            if time_between_insertion.seconds > 60:
+                time_now = datetime.now()
+                last_history_log_date = time_now
+                timestamp = time_now.strftime("%d/%m/%y %H:%M:%S")
+
+                if os.path.exists(file_prefix + HISTORY_LOG_FILE):
+                    HISTORY_LOG_TABLE = PrettyTable([])
+                    with open(file_prefix + HISTORY_LOG_FILE, "r") as fp: 
+                        html = fp.read()
+                    HISTORY_LOG_TABLE = from_html_one(html)
+                    HISTORY_LOG_TABLE.format = True
+                    HISTORY_LOG_TABLE.border = True
+                    HISTORY_LOG_TABLE.align = "c"
+                    HISTORY_LOG_TABLE.valign = "m"
+                    HISTORY_LOG_TABLE.hrules = 1
+                    HISTORY_LOG_TABLE.vrules = 1
+                    HISTORY_LOG_TABLE.add_row([timestamp, len(coins_bought), TRADE_SLOTS, str(bot_paused), str(round(sess_profit_perc,2)), str(round(sess_profit,4)), str(round(sess_profit_perc_unreal,2)), str(round(sess_profit_unreal,4)), str(round(sess_profit_perc_total,2)), str(round(sess_profit_total,4)), str(round(alltime_profit_perc,2)), str(round(alltime_profit,4)), str(total_trades), str(won_trades), str(lost_trades), str(winloss_ratio)])
+                    table_txt = HISTORY_LOG_TABLE.get_html_string()
+                    #table_txt = HISTORY_LOG_TABLE.get_string()
+                else:
+                    HISTORY_LOG_TABLE = PrettyTable([])
+                    HISTORY_LOG_TABLE = PrettyTable(["Datetime", "Coins Holding", "Trade Slots", "Pausebot Active", "Session Profit %", "Session Profit $", "Session Profit Unrealised %", "Session Profit Unrealised $", "Session Profit Total %", "Session Profit Total $", "All Time Profit %", "All Time Profit $", "Total Trades", "Won Trades", "Lost Trades", "Win Loss Ratio"])
+                    HISTORY_LOG_TABLE.format = True
+                    HISTORY_LOG_TABLE.border = True
+                    HISTORY_LOG_TABLE.align = "c"
+                    HISTORY_LOG_TABLE.valign = "m"
+                    HISTORY_LOG_TABLE.hrules = 1
+                    HISTORY_LOG_TABLE.vrules = 1
+                #    with open(HISTORY_LOG_FILE,'a+') as f:
+                #        f.write('Datetime\tCoins Holding\tTrade Slots\tPausebot Active\tSession Profit %\tSession Profit $\tSession Profit Unrealised %\tSession Profit Unrealised $\tSession Profit Total %\tSession Profit Total $\tAll Time Profit %\tAll Time Profit $\tTotal Trades\tWon Trades\tLost Trades\tWin Loss Ratio\n')    
+                    HISTORY_LOG_TABLE.add_row([timestamp, len(coins_bought), TRADE_SLOTS, str(bot_paused), str(round(sess_profit_perc,2)), str(round(sess_profit,4)), str(round(sess_profit_perc_unreal,2)), str(round(sess_profit_unreal,4)), str(round(sess_profit_perc_total,2)), str(round(sess_profit_total,4)), str(round(alltime_profit_perc,2)), str(round(alltime_profit,4)), str(total_trades), str(won_trades), str(lost_trades), str(winloss_ratio)])
+                    table_txt = HISTORY_LOG_TABLE.get_html_string()
+                    #table_txt = HISTORY_LOG_TABLE.get_string()
+                if not table_txt == "":
+                    with open(file_prefix + HISTORY_LOG_FILE,'w') as f:
+                    #f.write(f'{timestamp}\t{len(coins_bought)}\t{TRADE_SLOTS}\t{str(bot_paused)}\t{str(round(sess_profit_perc,2))}\t{str(round(sess_profit,4))}\t{str(round(sess_profit_perc_unreal,2))}\t{str(round(sess_profit_unreal,4))}\t{str(round(sess_profit_perc_total,2))}\t{str(round(sess_profit_total,4))}\t{str(round(alltime_profit_perc,2))}\t{str(round(alltime_profit,4))}\t{str(total_trades)}\t{str(won_trades)}\t{str(lost_trades)}\t{str(winloss_ratio)}\n')
+                        f.write(table_txt)
+                    del HISTORY_LOG_TABLE
+            #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}history_log(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         print("Error on line {}".format(sys.exc_info()[-1].tb_lineno))
@@ -816,6 +831,7 @@ def convert_csv_to_html(filecsv):
                 rowstr = [c.replace(".", ",") for c in filelines[i].split(',')]
                 table.add_row(rowstr)
             htmlCode1 = table.get_html_string() 
+            table = PrettyTable(h)
             #with open(file_prefix + filecsv.replace("csv","html"), 'a') as final_htmlFile:
                 #final_htmlFile.write(htmlCode)
         my_table = PrettyTable()
@@ -823,9 +839,10 @@ def convert_csv_to_html(filecsv):
         my_table.border = True
         my_table.align = "c"
         my_table.valign = "m"
-        my_table.field_names = ["total_capital", "botstart_datetime", "historicProfitIncFees_Percent", "historicProfitIncFees_Total", "tradeWins", "tradeLosses", "session_USDT_EARNED", "session_USDT_LOSS", "session_USDT_WON"]
-        my_table.add_row([bot_stats["total_capital"], datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["historicProfitIncFees_Percent"], bot_stats["historicProfitIncFees_Total"], bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"]])
+        my_table.field_names = ["total_capital", "botstart_datetime", "tradeWins", "tradeLosses", "session_USDT_EARNED", "session_USDT_LOSS", "session_USDT_WON"]
+        my_table.add_row([bot_stats["total_capital"], datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"]])
         htmlCode2 = my_table.get_html_string() 
+        my_table = PrettyTable()
         with open(file_prefix + filecsv.replace("csv","html"), 'w') as final_htmlFile:
             final_htmlFile.write(htmlCode1)
             final_htmlFile.write("\n" + htmlCode2)
@@ -872,7 +889,7 @@ def get_balance_test_mode(total=False):
 			value1 = TRADE_TOTAL + value2
 		else:
 			value1 = TRADE_TOTAL
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_balance_test_mode(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -896,7 +913,7 @@ def msg_discord_balance(msg1, msg2):
 
 def msg_discord(msg):
 	message = msg + '\n\n'
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	if MSG_DISCORD:
 		#Webhook of my channel. Click on edit channel --> Webhooks --> Creates webhook
 		mUrl = "https://discordapp.com/api/webhooks/"+DISCORD_WEBHOOK
@@ -976,7 +993,7 @@ def pause_bot():
                 msg = str(datetime.now()) + ' | PAUSEBOT. Resuming buying due to positive market conditions, total sleep time: ' + str(time_elapsed)
                 msg_discord(msg)
                 bot_paused = False
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}pause_bot: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -984,7 +1001,7 @@ def pause_bot():
     return
 	
 def set_config(data, value):
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	file_name = "config.yml"
 	parsed_config = load_config(file_name)
 	with open(file_name, 'r') as file:
@@ -999,7 +1016,7 @@ def set_config(data, value):
 		f.writelines(items)
 
 def set_exparis(pairs):
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	file_name = "config.yml"
 	parsed_config = load_config(file_name)
 	with open(file_name, 'r') as file:
@@ -1045,11 +1062,11 @@ def buy_external_signals():
 			os.remove(filename)
 		except:
 			if DEBUG: print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Could not remove external signalling file{txcolors.DEFAULT}')
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	return external_list
 
 def random_without_repeating():
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	if TEST_MODE: #or OFFLINE_MODE:
 		file_prefix = 'test_'
 	else:
@@ -1103,7 +1120,7 @@ def wait_for_price():
             for pair in pairs:
                 coins1.append(pair)
             #print("wait_for_price: externals1")
-            externals1, externals2 = megatronmod.analyze(coins1, True)#, 0)
+            externals1, externals2 = megatronmod.analyze(c_data, coins1, True)#, 0)
             last_price = get_price(False, externals1)
         
         exnumber = 0
@@ -1116,7 +1133,7 @@ def wait_for_price():
                 print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}External signal received on {excoin}, purchasing ${TRADE_TOTAL} {PAIR_WITH} value of {excoin}!{txcolors.DEFAULT}')
 
         balance_report(last_price)
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}wait_for_price(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1179,7 +1196,7 @@ def convert_volume():
                     volume[coin] = float(volume[coin])
                 else:
                     volume[coin] = truncate(volume[coin], lot_size[coin])
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}convert_volume() exception: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1290,7 +1307,7 @@ def buy():
                         write_signallsell(coin)
             else:
                 print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Signal detected, but there is already an active trade on {coin}{txcolors.DEFAULT}')
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} buy(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1544,7 +1561,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                         #print(f"{txcolors.WARNING}BOT: {txcolors.DEFAULT}Holding: {coins_bought[coin]['volume']} of {coin} | {LastPrice} - {BuyPrice} | Profit: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}{PriceChangeIncFees_Perc:.4f}% Est: ({((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_Perc)/100:.{decimals()}f} {PAIR_WITH}){txcolors.DEFAULT}")         
             #if hsp_head == 1 and len(coins_bought) == 0: if not SCREEN_MODE == 2: print(f"No trade slots are currently in use")
             # if tpsl_override: is_bot_running = False 
-            show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+            #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}sell_coins(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1557,7 +1574,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
 	
 def sell_all(msgreason, session_tspl_ovr = False):
     global sell_all_coins
-    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     msg_discord(f'{str(datetime.now())} | SELL ALL COINS: {msgreason}')
 
 	# stop external signals so no buying/selling/pausing etc can occur
@@ -1575,11 +1592,11 @@ def sell_all(msgreason, session_tspl_ovr = False):
     discordmsg = balance_report(last_price)
     msg_discord(discordmsg)
     sell_all_coins = False
-    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 #extracted from the code of OlorinSledge
 def sell_coin(coin):
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	global sell_specific_coin
 	#print(f'{str(datetime.now())} | SELL SPECIFIC COIN: {coin}')
 	msg_discord(f'{str(datetime.now())} | SELL SPECIFIC COIN: {coin}')
@@ -1588,13 +1605,13 @@ def sell_coin(coin):
 	coins_sold = sell_coins(False, coin)
 	remove_from_portfolio(coins_sold)
 	sell_specific_coin = False
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def sell_external_signals():
     external_list = {}
     signals1 = []
     signals2 = []
-    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     if USE_SIGNALLING_MODULES:
         # check directory and load pairs from files into external_list
         signals = glob.glob("signals/*.sell")
@@ -1619,17 +1636,17 @@ def sell_external_signals():
         for pair in pairs:
             coins1.append(pair)
 
-        signals1, signals2 = megatronmod.analyze(coins1, False)#, 0)
+        signals1, signals2 = megatronmod.analyze(c_data, coins1, False)#, 0)
         #print("sell_external_signals: ", signals2)
         #for signal in signals2:
         #    external_list[signal] = signal
-    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     return signals2 #external_list
 
 def extract_order_data(order_details):
 	try:
 		global TRADING_FEE, STOP_LOSS, TAKE_PROFIT
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 		transactionInfo = {}
 		# This code is from GoranJovic - thank you!
 		#
@@ -1702,7 +1719,7 @@ def extract_order_data(order_details):
 			'tradeFeeBNB': float(FILLS_FEE),
 			'tradeFeeUnit': tradeFeeApprox,
 		}
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}extract_order_data(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1738,7 +1755,7 @@ def check_total_session_profit(coins_bought, last_price):
 	if allsession_profits_perc <= float(SESSION_STOP_LOSS):
 		session_tpsl_override_msg = "Session SL Override target of " + str(SESSION_STOP_LOSS) + "% met. Sell all coins now!"
 		is_bot_running = False   
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def update_portfolio(orders, last_price, volume):
 	'''add every coin bought to our portfolio for tracking/selling later'''
@@ -1786,7 +1803,7 @@ def update_portfolio(orders, last_price, volume):
 		# save the coins in a json file in the same directory
 		with open(coins_bought_file_path, 'w') as file:
 			json.dump(coins_bought, file, indent=4)
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 def update_bot_stats():
 	global TRADE_TOTAL, trade_wins, trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, USED_BNB_IN_SESSION
@@ -1806,7 +1823,7 @@ def update_bot_stats():
 	#save session info for through session portability
 	with open(bot_stats_file_path, 'w') as file:
 		json.dump(bot_stats, file, indent=4)
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 
 def remove_from_portfolio(coins_sold):
@@ -1820,12 +1837,12 @@ def remove_from_portfolio(coins_sold):
 		os.remove('signalsell_tickers.txt')
 		for coin in coins_bought:
 			write_signallsell(coin.removesuffix(PAIR_WITH))
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def write_signallsell(symbol):
 	with open('signalsell_tickers.txt','a+') as f:
 		f.write(f'{symbol}\n')
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 def remove_external_signals(fileext):
 	signals = glob.glob(f'signals/*.{fileext}')
@@ -1837,7 +1854,7 @@ def remove_external_signals(fileext):
 				#os.remove(filename)
 			#except:
 				#if DEBUG: write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} remove_external_signals(): Could not remove external signalling file {filename}{txcolors.DEFAULT}')
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def load_signal_threads():
 	try:
@@ -1850,8 +1867,8 @@ def load_signal_threads():
 					if os.path.exists(module+'.py'):
 						print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Starting {module}{txcolors.DEFAULT}')
 						mymodule[module] = importlib.import_module(module)
-						# t = threading.Thread(target=mymodule[module].do_work, args=())
-						t = multiprocessing.Process(target=mymodule[module].do_work, args=())
+						t = threading.Thread(target=mymodule[module].do_work, args=())
+						#t = multiprocessing.Process(target=mymodule[module].do_work, args=())
 						t.name = module
 						t.daemon = True
 						t.start()
@@ -1862,7 +1879,7 @@ def load_signal_threads():
 						write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Module {module} does not exist... continuing to load other modules{txcolors.DEFAULT}')
 			else:
 				write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}{"load_signal_threads"}: No modules to load {SIGNALLING_MODULES}{txcolors.DEFAULT}')
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}load_signal_threads(): Loading external signals exception: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1876,7 +1893,7 @@ def stop_signal_threads():
 				print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Terminating thread {str(signalthread.name)}{txcolors.DEFAULT}')
 				signalthread.terminate()
 				signalthread.kill()
-		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}stop_signal_threads(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1900,7 +1917,7 @@ def truncate(number, decimals=0):
 	return math.trunc(number * factor) / factor
 
 def load_settings():
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	# set to false at Start
     global bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds
     bot_paused = False
@@ -2048,11 +2065,11 @@ def load_settings():
         DEBUG = True
     print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}All config loaded...{txcolors.DEFAULT}')
     access_key, secret_key = load_correct_creds(parsed_creds)
-    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def CheckIfAliveStation(ip_address):
     try:
-        #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        ##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         # for windows
         if os.name == 'nt':
             # WARNING - Windows Only
@@ -2074,7 +2091,7 @@ def CheckIfAliveStation(ip_address):
     return alive
 	
 def lost_connection(error, origin):
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	global lostconnection
 	if "HTTPSConnectionPool" in str(error) or "Connection aborted" in str(error):
 		#print(f"HTTPSConnectionPool - {origin}")
@@ -2105,7 +2122,7 @@ def lost_connection(error, origin):
 
 def renew_list(in_init=False):
 	try:
-		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 		global tickers, VOLATILE_VOLUME, FLAG_PAUSE, COINS_MAX_VOLUME, COINS_MIN_VOLUME
 		volatile_volume_empty = False
 		volatile_volume_time = False
@@ -2217,7 +2234,7 @@ def renew_list(in_init=False):
 		
 def remove_by_extension(extension):
 	try:
-		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 		files = [item for sublist in [glob.glob(ext) for ext in [os.path.dirname(__file__) + extension]] for item in sublist]
 		#print("files: ", files)
 		for file in files:
@@ -2232,7 +2249,7 @@ def remove_by_extension(extension):
 
 def remove_by_file_name(name):
 	try:
-		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 		file1 = os.path.dirname(__file__) + "\.".replace(".","") + name
 		#print("file: ", file)
 		file_exists1 = os.path.exists(file1)
@@ -2246,7 +2263,7 @@ def remove_by_file_name(name):
 		pass        
 
 def new_or_continue():
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	if TEST_MODE: #or OFFLINE_MODE:
 		file_prefix = 'test_'
 	else:
@@ -2304,7 +2321,7 @@ def new_or_continue():
 		
 def menu():
     try:
-		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         global COINS_MAX_VOLUME, COINS_MIN_VOLUME
         global SCREEN_MODE, PAUSEBOT_MANUAL, BUY_PAUSED, TRADE_TOTAL
         END = False
@@ -2399,7 +2416,7 @@ def menu():
             else:
                 print(f'wrong choice')
                 LOOP = True
-		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} Exception in menu(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2411,7 +2428,7 @@ def menu():
 def print_banner():
 	PRINT_BANNER = False
 	if PRINT_BANNER:
-	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 		__header__='''
 		\033[92m   ___ _                        __   __   _      _   _ _ _ _          _____            _ _             ___     _   
 		\033[92m  | _ (_)_ _  __ _ _ _  __ ___  \ \ / ___| |__ _| |_(_| (_| |_ _  _  |_   __ _ __ _ __| (_)_ _  __ _  | _ )___| |_ 
@@ -2608,7 +2625,7 @@ if __name__ == '__main__':
     while is_bot_running:
         try:
             coins_sold = {}
-            show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+            #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
             time_init = datetime.now()
             orders, last_price, volume = buy()
 
