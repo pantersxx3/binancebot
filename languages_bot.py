@@ -17,3 +17,258 @@ MSG4 = {
     "es" : "Proceso Finalizado",
     "en" : "Ended process"
     }
+    
+MSG5 = {
+    "es" : "BOT",
+    "en" : "BOT"
+    }
+
+MSG6 = {
+    "es" : "Fecha de inicio",
+    "en" : "Start date"
+    }
+
+MSG7 = {
+    "es" : "Posicion actual",
+    "en" : "Actual position"
+    }
+
+MSG8 = {
+    "es" : "se establecieron a partir de monedas específicas",
+    "en" : "were set from specific currencies"
+    }
+
+MSG9 = {
+    "es" : "No se puede continuar porque no hay monedas en el rango seleccionado, cambie la configuración y vuelva a iniciar el bot",
+    "en" : "Cannot continue because there are no coins in the selected range, change the settings and start the bot again"
+    }
+    
+MSG10 = {
+    "es" : "Guardando",
+    "en" : "Saving"
+    }
+    
+MSG11 = {
+    "es" : "monedas a",
+    "en" : "coins to"
+    }
+    
+MSG12 = {
+    "es" : "Ya existe una lista creada recientemente, si desea crear una nueva lista, detenga el bot y elimine la anterior.",
+    "en" : "There is already a recently created list, if you want to create a new list, stop the bot and delete the previous one."
+    }
+
+MSG13 = {
+    "es" : "si crea una nueva lista al continuar una sesión anterior, puede que no coincida con la anterior y dé errores",
+    "en" : "if you create a new list when continuing a previous session, it may not coincide with the previous one and give errors"
+    }
+    
+MSG14 = {
+    "es" : "REMEMBER",
+    "en" : "RECUERDA"
+    }
+
+MSG15 = {
+    "es" : "Simbolos",
+    "en" : "Symbol"
+    }
+
+MSG16 = {
+    "es" : "Comprado a",
+    "en" : "Bought At"
+    }
+
+MSG17 = {
+    "es" : "Ahora en",
+    "en" : "Now At"
+    }
+
+MSG18 = {
+    "es" : "Cambio",
+    "en" : "Change"
+    }
+
+MSG19 = {
+    "es" : "Ganancia",
+    "en" : "Profit"
+    }
+
+MSG20 = {
+    "es" : "Tiempo de Espera",
+    "en" : "Time Held"
+    }
+
+MSG21 = {
+    "es" : "Volumen",
+    "en" : "Volume"
+    }
+
+MSG22 = {
+    "es" : "COMIENZO",
+    "en" : "STARTED"
+    }
+
+MSG23 = {
+    "es" : "CORRIENDO POR",
+    "en" : "RUNNING FOR"
+    }
+
+MSG24 = {
+    "es" : "COMPRAS PAUSADAS",
+    "en" : "BUYING PAUSE"
+    }
+
+MSG25 = {
+    "es" : "MODO TEST",
+    "en" : "TEST MODE"
+    }
+
+MSG26 = {
+    "es" : "MODO BACKTEST",
+    "en" : "BACKTEST MODE"
+    }
+
+MSG27 = {
+    "es" : "BILLETERA BINANCE",
+    "en" : "BINANCE WALLET"
+    }
+
+MSG28 = {
+    "es" : "RETENCIONES ACTUALES",
+    "en" : "CURRENT HOLDS"
+    }
+
+MSG29 = {
+    "es" : "GANO",
+    "en" : "WIN"
+    }
+
+MSG30 = {
+    "es" : "TRANSACCIONES TOTALES",
+    "en" : "TOTAL TRADES"
+    }
+
+MSG31 = {
+    "es" : "PERDIO",
+    "en" : "LOSS"
+    }
+
+MSG32 = {
+    "es" : "GANADO",
+    "en" : "WON"
+    }
+
+MSG33 = {
+    "es" : "PENDIENTE",
+    "en" : "PENDING"
+    }
+
+MSG34 = {
+    "es" : "No tiene saldo suficiente para operar en Binance. Importe mínimo 10 USDT!",
+    "en" : "You do not have enough balance to trade on Binance. Minimum amount 10 USDT!"
+    }
+
+MSG35 = {
+    "es" : "Creando lista volátil, espera un momento (3 minutos aproximadamente)",
+    "en" : "Creating volatile list, wait a moment(3 minutes approximately)"
+    }
+
+MSG36 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG37 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG38 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG39 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG40 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG41 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG41 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG41 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG42 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG43 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG44 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG45 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG46 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG47 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG48 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG49 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG50 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG51 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG52 = {
+    "es" : "",
+    "en" : ""
+    }
+
+MSG53 = {
+    "es" : "",
+    "en" : ""
+    }
