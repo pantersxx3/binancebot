@@ -21,18 +21,15 @@ Notes:
 
 """
 import languages_bot
+
 #use for debug
 import traceback
 
 # use for environment variables
 import os
-#import shutil
-#import operator
+
 # use if needed to pass args to external modules
 import sys
-
-#for clear screen console
-#from os import system, name
 
 # used for math functions
 import math
@@ -71,9 +68,7 @@ from itertools import count
 import json
 
 #print output tables
-#import tabulate
 from prettytable import PrettyTable, from_html_one
-#from pretty_html_table import build_table
 
 #for regex
 import re
@@ -81,9 +76,12 @@ import re
 #read csv files
 import csv
 
-#module external
-#global CREATE_BUY_SELL_FILES
-#CREATE_BUY_SELL_FILES = False
+#pandas library
+import pandas as pd
+
+import megatronmod
+
+import atexit
 
 # Load helper modules
 from helpers.parameters import (
@@ -95,9 +93,6 @@ from helpers.handle_creds import (
 	load_correct_creds, test_api_key,
 	load_discord_creds
 )
-
-#pandas library
-import pandas as pd
 
 # for colourful logging to the console
 class txcolors:
@@ -117,8 +112,6 @@ class txcolors:
 	#Magenta = '\033[95m'
 	#Grey = '\033[90m'
 	#Black = '\033[90m'
-
-import megatronmod
 	
 global session_profit_incfees_perc, session_profit_incfees_total, session_tpsl_override_msg, is_bot_running, session_USDT_EARNED, sell_all_coins
 global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, session_USDT_EARNED_TODAY, parsed_creds, TUP,PUP, TDOWN, c_data
@@ -180,9 +173,9 @@ def show_func_name(function_name, items):
                     for name, myvalue in items:
 						#if not name.startswith('__'):
                         #myvalue = eval(name)
-                        print(f'{txcolors.WARNING}BOT: {txcolors.RED}{function_name} = {name}: {myvalue} {sys.getsizeof(name)}')
+                        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}{function_name} = {name}: {myvalue} {sys.getsizeof(name)}')
                 else:
-                    print(f'{txcolors.WARNING}BOT: {txcolors.RED}{function_name} {varnames}{txcolors.DEFAULT}')
+                    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}{function_name} {varnames}{txcolors.DEFAULT}')
             if SAVE_FUNCTION_NAME:
                 if SAVE_VARIABLES_AND_VALUE:
                     #all_variables = dir()
@@ -194,7 +187,7 @@ def show_func_name(function_name, items):
                 else:
                     write_log(fn, False, False, "list_functions.txt")
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}func_name: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}func_name: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass       
 	#return fn
@@ -221,14 +214,14 @@ def decimals():
 def get_balance_wallet(crypto):   
 	try:
 		balance = 0.0        
-		if not TEST_MODE: #or not OFFLINE_MODE:
+		if not TEST_MODE: #or not BACKTESTING_MODE:
 			balance = float(client.get_asset_balance(asset=crypto)['free'])
-			if balance < 10 and not TEST_MODE: #or not OFFLINE_MODE:
-				print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}You do not have enough balance to trade on Binance. Minimum amount 10 USDT!{txcolors.DEFAULT}')
+			if balance < 10 and not TEST_MODE: #or not BACKTESTING_MODE:
+				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{languages_bot.MSG34[LANGUAGE]}{txcolors.DEFAULT}')
 				sys.exit(0)
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_balance_wallet: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}get_balance_wallet: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 	return balance
@@ -261,9 +254,9 @@ def update_data_coin():
         filecsv = coin + ".csv"
         if os.path.exists(filecsv):
             fr1 = int(extract_first_record(filecsv))/1000
-            os1 = int(time.mktime(datetime.strptime(OFFLINE_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()))
+            os1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()))
             lr1 = int(extract_last_record(filecsv))/1000
-            oe1 = int(time.mktime(datetime.strptime(OFFLINE_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()))
+            oe1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()))
             if fr1 != os1 or lr1 != oe1:
                 os.remove(filecsv)
                 c_data = pd.DataFrame([])                
@@ -271,9 +264,10 @@ def update_data_coin():
 def download_data(coin):
     try:
         c = pd.DataFrame([])
-        print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}{languages_bot.MSG3[LANGUAGE]}...{txcolors.DEFAULT}')
-        end = time.mktime(datetime.strptime(OFFLINE_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()) #datetime.now()
-        start = time.mktime(datetime.strptime(OFFLINE_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) #pd.to_datetime(end - timedelta(days = 7))
+        create_conection_binance(True)
+        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG3[LANGUAGE]}...{txcolors.DEFAULT}')
+        end = time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()) #datetime.now()
+        start = time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) #pd.to_datetime(end - timedelta(days = 7))
         data = client.get_historical_klines(str(coin), Client.KLINE_INTERVAL_1MINUTE, int(start) * 1000, int(end) * 1000)
         c = pd.DataFrame(data, columns=['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
         c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
@@ -281,7 +275,7 @@ def download_data(coin):
         c = pd.DataFrame([])
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}download_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}download_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
 
@@ -292,7 +286,7 @@ def write_position_csv(coin, position):
 		f.close()
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 
@@ -306,7 +300,7 @@ def read_position_csv(coin):
 			f.close()
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 	return pos1
@@ -331,9 +325,10 @@ def read_next_row_csv(coin):
             for i in range(len(c)):
                 if c.iloc[i]['time'] == pos:
                     if i + 1 == len(c):
-                        print(f'{txcolors.WARNING}BOT: {languages_bot.MSG4[LANGUAGE]}{txcolors.DEFAULT}...')
-                        convert_csv_to_html(TRADES_LOG_FILE)
-                        menu()
+                        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {languages_bot.MSG4[LANGUAGE]}{txcolors.DEFAULT}...')
+                        #convert_csv_to_html(TRADES_LOG_FILE)
+                        #menu()
+                        sys.exit(0)
                     else:
                         c = c.iloc[i + 1]
                         time1 = c['time']
@@ -355,7 +350,7 @@ def read_next_row_csv(coin):
             os.remove("ok.ok")
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}read_next_row_csv: {languages_bot.MSG1[LANGUAGE]} read_next_row_csv(): {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}read_next_row_csv: {languages_bot.MSG1[LANGUAGE]} read_next_row_csv(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
     return price, time1            
@@ -374,12 +369,14 @@ def get_all_tickers():
             pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
 		
         for coin in pairs:
-            if OFFLINE_MODE:
+            if BACKTESTING_MODE:
                 file = coin + '.csv'
                 while not os.path.exists(file):
                     download_data(coin)
-                price, time = read_next_row_csv(coin) #get_all_tickers 
-                print(f'{txcolors.WARNING}BOT: Fecha de inicio {OFFLINE_MODE_TIME_START} - {txcolors.DEFAULT}Posicion actual: {time} {datetime.fromtimestamp(time/1000).strftime("%d/%m/%y %H:%M:%S")}{txcolors.DEFAULT}')
+                #sys.exit(1)
+                #price, time = csv_bot.read_next_row_csv(coin) #get_all_tickers 
+                price, time = read_next_row_csv(coin)
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {languages_bot.MSG6[LANGUAGE]} {BACKTESTING_MODE_TIME_START} - {txcolors.DEFAULT}{languages_bot.MSG7[LANGUAGE]}: {time} {datetime.fromtimestamp(time/1000).strftime("%d/%m/%y %H:%M:%S")}{txcolors.DEFAULT}')
                 coins.append({ 'time': time, 'symbol': coin, 'price': price})
             else:
                 c = pd.DataFrame([])
@@ -393,7 +390,7 @@ def get_all_tickers():
                 c = pd.DataFrame([])
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_all_tickers: {languages_bot.MSG1[LANGUAGE]} get_all_tickers(): {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}get_all_tickers: {languages_bot.MSG1[LANGUAGE]} get_all_tickers(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass        
     return coins
@@ -403,6 +400,7 @@ def get_price(add_to_historical=True, prices = []):
         '''Return the current price for all coins on binance'''
         global historical_prices, hsp_head
 		
+        prices = []
         data = {}
         initial_price = {}
 
@@ -412,18 +410,11 @@ def get_price(add_to_historical=True, prices = []):
         renew_list()
 
         for coin in prices:
-            #print("get_price: coin= ", coin, datetime.now())
             if CUSTOM_LIST and USE_MOST_VOLUME_COINS == False:
-				# intickers = False
-				# inex_pairs = False
                 tickers=[line.strip() for line in open(TICKERS_LIST)]
                 for item1 in tickers:
-                    #print("get_price: coin=", coin['symbol'], "price= ", coin['price'], "time= ", coin['time'], datetime.now())
                     if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EX_PAIRS:
-						#if OFFLINE_MODE:
-							#initial_price[coin['symbol']] = { 'price': coin['price'], 'time': coin['time']} 
-						#else:
-                        if OFFLINE_MODE:
+                        if BACKTESTING_MODE:
                             initial_price[coin['symbol']] = { 'price': coin['price'], 'time': coin['time']}
                         else:
                             initial_price[coin['symbol']] = { 'price': coin['price'], 'time': datetime.now()} 
@@ -442,7 +433,7 @@ def get_price(add_to_historical=True, prices = []):
             historical_prices[hsp_head] = initial_price
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_price: {languages_bot.MSG1[LANGUAGE]} get_price(): {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}get_price: {languages_bot.MSG1[LANGUAGE]} get_price(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
 	#except KeyboardInterrupt as ki:
@@ -488,14 +479,14 @@ def get_volume_list():
 				c = 0
 				if os.path.exists(VOLATILE_VOLUME + ".txt") == False:
 					load_settings()            
-					print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Creating volatile list, wait a moment(3 minutes approximately)...')
+					print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG35[LANGUAGE]}...')
 					if COINS_MAX_VOLUME.isnumeric() == False and COINS_MIN_VOLUME.isnumeric() == False:
 						infocoinMax = client.get_ticker(symbol=COINS_MAX_VOLUME + PAIR_WITH)
 						infocoinMin = client.get_ticker(symbol=COINS_MIN_VOLUME + PAIR_WITH)
 						COINS_MAX_VOLUME1 = float(infocoinMax['quoteVolume']) #math.ceil(float(infocoinMax['quoteVolume']))
 						COINS_MIN_VOLUME1 = float(infocoinMin['quoteVolume'])
 						most_volume_coins.update({COINS_MAX_VOLUME : COINS_MAX_VOLUME1})
-						print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}COINS_MAX_VOLUME {round(COINS_MAX_VOLUME1)} and COINS_MIN_VOLUME {round(COINS_MIN_VOLUME1)} were set from specific currencies...{txcolors.DEFAULT}')
+						print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}COINS_MAX_VOLUME {round(COINS_MAX_VOLUME1)} - COINS_MIN_VOLUME {round(COINS_MIN_VOLUME1)} {languages_bot.MSG8[LANGUAGE]}...{txcolors.DEFAULT}')
 					
 					for coin in tickers_all:
 						#try:
@@ -509,7 +500,7 @@ def get_volume_list():
 							# continue
 							
 					if c <= 0: 
-						print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Cannot continue because there are no coins in the selected range, change the settings and start the bot again...')
+						print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG9[LANGUAGE]}...')
 						sys.exit()
 						
 					sortedVolumeList = sorted(most_volume_coins.items(), key=lambda x: x[1], reverse=True)
@@ -518,7 +509,7 @@ def get_volume_list():
 					now_str = now.strftime("%y-%m-%d(%H_%M_%S)")
 					VOLATILE_VOLUME = "volatile_volume_" + now_str
 					
-					print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Saving {str(c)} coins to {today} ...{txcolors.DEFAULT}')
+					print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG10[LANGUAGE]} {str(c)} {languages_bot.MSG11[LANGUAGE]} {today} ...{txcolors.DEFAULT}')
 					
 					for coin in sortedVolumeList:
 						with open(today,'a+') as f:
@@ -527,8 +518,8 @@ def get_volume_list():
 					set_config("VOLATILE_VOLUME", VOLATILE_VOLUME)
 				else:
 					if ALWAYS_OVERWRITE == False:
-						print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}There is already a recently created list, if you want to create a new list, stop the bot and delete the previous one.')
-						print(f'{txcolors.WARNING}REMEMBER: {txcolors.DEFAULT}if you create a new list when continuing a previous session, it may not coincide with the previous one and give errors...')
+						print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG12[LANGUAGE]}')
+						print(f'{txcolors.WARNING}{languages_bot.MSG14[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG13[LANGUAGE]}...')
 			else:    
 				VOLATILE_VOLUME = "volatile_volume_" + dt_string
 				return VOLATILE_VOLUME
@@ -536,7 +527,7 @@ def get_volume_list():
 			tickers=[line.strip() for line in open(TICKERS_LIST)]
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_volume_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}get_volume_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		print("COIN_ERROR: ", coin + PAIR_WITH)
 		exit(1)
@@ -553,9 +544,8 @@ def print_table_coins_bought():
                 my_table.valign = "m"
                 my_table.left_padding_width = 1
                 my_table. right_padding_width = 1
-                my_table.field_names = ["Symbol", "Volume", "Bought At", "Now At", "TP %", "SL %", "Change %", "Profit $", "Time Held"]
-                last_price = get_price(False) #print_table_coins_bought
-                #print("print_table_coins_bought: last_price= ", last_price, datetime.now())
+                my_table.field_names = [languages_bot.MSG15[LANGUAGE], languages_bot.MSG21[LANGUAGE], languages_bot.MSG16[LANGUAGE], languages_bot.MSG17[LANGUAGE], "TP %", "SL %", languages_bot.MSG18[LANGUAGE] + " %", languages_bot.MSG19[LANGUAGE] + " $", languages_bot.MSG20[LANGUAGE]]
+                last_price = get_price(False)
                 for coin in list(coins_bought):
                     LastPriceT = float(last_price[coin]['price'])#,8)
                     sellFeeT = (LastPriceT * (TRADING_FEE/100))
@@ -586,14 +576,13 @@ def print_table_coins_bought():
                         my_table.add_row([f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{BuyPriceT:.6f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{LastPriceT:.6f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{PriceChangeIncFees_PercT:.2f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_PercT)/100:.2f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
                     else:
                         my_table.add_row([f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{BuyPriceT:.6f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{LastPriceT:.6f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{coins_bought[coin]['take_profit']:.2f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{coins_bought[coin]['stop_loss']:.2f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{PriceChangeIncFees_PercT:.2f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_PercT)/100:.2f}{txcolors.DEFAULT}", f"{txcolors.SELL_PROFIT if PriceChangeIncFees_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
-                my_table.sortby = SORT_TABLE_BY
-                my_table.reversesort = REVERSE_SORT
+                #my_table.sortby = SORT_TABLE_BY
+                #my_table.reversesort = REVERSE_SORT
                 print(my_table)
                 my_table = PrettyTable()
-				#print("\n")
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}print_table_coins_bought: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}print_table_coins_bought: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         lost_connection(e, "print_table_coins_bought")
         pass
@@ -609,8 +598,9 @@ def clear():
 
 def balance_report(last_price):
     try:
-        global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total, last_price_global, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL, session_USDT_LOSS
-        global TRADE_TOTAL
+        global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total, last_price_global
+        global session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL, session_USDT_LOSS
+
         unrealised_session_profit_incfees_perc = 0
         unrealised_session_profit_incfees_total = 0
         msg1 = ""
@@ -658,10 +648,10 @@ def balance_report(last_price):
         my_table.align = "c"
         my_table.valign = "m"
         my_table.header = True
-        my_table.padding_width = 8
-        my_table.add_row([f'{txcolors.DEFAULT}STARTED: {txcolors.SELL_LOSS}{(datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S")).split(".")[0]}{txcolors.DEFAULT} | RUNNING FOR: {txcolors.SELL_LOSS}{str(datetime.now().timestamp() - bot_started_datetime).split(".")[0]}{txcolors.DEFAULT} | BUYING PAUSE: {txcolors.SELL_LOSS}{str(bot_paused)}{txcolors.DEFAULT} | TEST MODE: {txcolors.SELL_LOSS}{TEST_MODE}{txcolors.DEFAULT}'])        
-        my_table.add_row([f'{txcolors.DEFAULT} BINANCE WALLET: {txcolors.SELL_LOSS}{str(round(get_balance_wallet(PAIR_WITH),2))}{txcolors.DEFAULT} | CURRENT HOLDS: {txcolors.SELL_LOSS}{str(len(coins_bought))}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{str(TRADE_SLOTS)} {int(CURRENT_EXPOSURE)}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{int(INVESTMENT_TOTAL)} {txcolors.DEFAULT}{PAIR_WITH}{txcolors.DEFAULT} | {txcolors.DEFAULT}WIN/LOSS: {txcolors.BOT_WINS}{str(trade_wins)}{txcolors.DEFAULT}/{txcolors.BOT_LOSSES}{str(trade_losses)}{txcolors.DEFAULT} | WIN %: {txcolors.SELL_PROFIT if WIN_LOSS_PERCENT > 0. else txcolors.BOT_LOSSES}{float(WIN_LOSS_PERCENT):g}%{txcolors.DEFAULT} | TOTAL TRADES: {txcolors.SELL_LOSS}{trade_wins+trade_losses}{txcolors.DEFAULT}'])
-        my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.SELL_PROFIT if session_USDT_EARNED > 0. else txcolors.BOT_LOSSES}{str(format(float(session_USDT_EARNED), ".4f"))} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}LOSS: {txcolors.BOT_LOSSES}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}WON: {txcolors.SELL_PROFIT}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | PROFIT %: {txcolors.SELL_PROFIT if (session_USDT_EARNED * 100)/INVESTMENT_TOTAL > 0. else txcolors.BOT_LOSSES}{round((session_USDT_EARNED * 100)/INVESTMENT_TOTAL,3)}%{txcolors.DEFAULT}'])
+        my_table.padding_width = 3
+        my_table.add_row([f'{txcolors.DEFAULT}{languages_bot.MSG22[LANGUAGE]}: {txcolors.SELL_LOSS}{(datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S")).split(".")[0]}{txcolors.DEFAULT} | {languages_bot.MSG23[LANGUAGE]}: {txcolors.SELL_LOSS}{str(datetime.now().timestamp() - bot_started_datetime).split(".")[0]}{txcolors.DEFAULT} | {languages_bot.MSG24[LANGUAGE]}: {txcolors.SELL_LOSS}{str(bot_paused)}{txcolors.DEFAULT} | {languages_bot.MSG25[LANGUAGE]}: {txcolors.SELL_LOSS}{TEST_MODE}{txcolors.DEFAULT} | {languages_bot.MSG26[LANGUAGE]}: {txcolors.SELL_LOSS}{BACKTESTING_MODE}{txcolors.DEFAULT}'])        
+        my_table.add_row([f'{txcolors.DEFAULT} {languages_bot.MSG27[LANGUAGE]}: {txcolors.SELL_LOSS}{str(round(get_balance_wallet(PAIR_WITH),2))}{txcolors.DEFAULT} | {languages_bot.MSG28[LANGUAGE]}: {txcolors.SELL_LOSS}{str(len(coins_bought))}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{str(TRADE_SLOTS)} {int(CURRENT_EXPOSURE)}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{int(INVESTMENT_TOTAL)} {txcolors.DEFAULT}{PAIR_WITH}{txcolors.DEFAULT} | {txcolors.DEFAULT}{languages_bot.MSG29[LANGUAGE]}/{languages_bot.MSG31[LANGUAGE]}: {txcolors.BOT_WINS}{str(trade_wins)}{txcolors.DEFAULT}/{txcolors.BOT_LOSSES}{str(trade_losses)}{txcolors.DEFAULT} | {languages_bot.MSG29[LANGUAGE]} %: {txcolors.SELL_PROFIT if WIN_LOSS_PERCENT > 0. else txcolors.BOT_LOSSES}{float(WIN_LOSS_PERCENT):g}%{txcolors.DEFAULT} | {languages_bot.MSG30[LANGUAGE]}: {txcolors.SELL_LOSS}{trade_wins+trade_losses}{txcolors.DEFAULT}'])
+        my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.SELL_PROFIT if session_USDT_EARNED > 0. else txcolors.BOT_LOSSES}{str(format(float(session_USDT_EARNED), ".4f"))} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG31[LANGUAGE]}: {txcolors.BOT_LOSSES}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG32[LANGUAGE]}: {txcolors.SELL_PROFIT}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {languages_bot.MSG19[LANGUAGE].upper()} %: {txcolors.SELL_PROFIT if (session_USDT_EARNED * 100)/INVESTMENT_TOTAL > 0. else txcolors.BOT_LOSSES}{round((session_USDT_EARNED * 100)/INVESTMENT_TOTAL,3)}%{txcolors.DEFAULT}'])
         print("\n")
         print(my_table)
         my_table = PrettyTable()
@@ -671,98 +661,39 @@ def balance_report(last_price):
         if MSG_DISCORD:
             #improving reporting messages
             msg1 = str(datetime.now()) + "\n"
-            msg2 = "STARTED         : " + datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S") + "\n"
-            msg2 = msg2 + "RUNNING FOR     : " + str(datetime.now().timestamp() - bot_started_datetime) + "\n"
-            msg2 = msg2 + "TEST_MODE       : " + str(TEST_MODE) + "\n"
-            msg2 = msg2 + "CURRENT HOLDS   : " + str(len(coins_bought)) + "(" + str(float(CURRENT_EXPOSURE)) + PAIR_WITH + ")" + "\n"
-            msg2 = msg2 + "WIN             : " + str(trade_wins) + "\n"
-            msg2 = msg2 + "LOST            : " + str(trade_losses) + "\n"
-            msg2 = msg2 + "PENDING         : " + str(round(unrealised_session_profit_incfees_total,3))
-            msg2 = msg2 + "BUYING PAUSED   : " + str(bot_paused) + "\n"
-            msg2 = msg2 + PAIR_WITH + " EARNED     : " + str(session_USDT_EARNED) + "\n"
-            msg2 = msg2 + "PROFIT %:" + str((session_USDT_EARNED * 100)/INVESTMENT_TOTAL) + "\n"
+            msg2 = languages_bot.MSG22[LANGUAGE] + "         : " + datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S") + "\n"
+            msg2 = msg2 + languages_bot.MSG23[LANGUAGE] + "     : " + str(datetime.now().timestamp() - bot_started_datetime) + "\n"
+            msg2 = msg2 + languages_bot.MSG25[LANGUAGE] + "       : " + str(TEST_MODE) + "\n"
+            msg2 = msg2 + languages_bot.MSG28[LANGUAGE] + "   : " + str(len(coins_bought)) + "(" + str(float(CURRENT_EXPOSURE)) + PAIR_WITH + ")" + "\n"
+            msg2 = msg2 + languages_bot.MSG29[LANGUAGE] + "             : " + str(trade_wins) + "\n"
+            msg2 = msg2 + languages_bot.MSG31[LANGUAGE] + "            : " + str(trade_losses) + "\n"
+            msg2 = msg2 + languages_bot.MSG33[LANGUAGE] + "         : " + str(round(unrealised_session_profit_incfees_total,3))
+            msg2 = msg2 + languages_bot.MSG24[LANGUAGE] + "   : " + str(bot_paused) + "\n"
+            msg2 = msg2 + PAIR_WITH + languages_bot.MSG32[LANGUAGE] + "     : " + str(session_USDT_EARNED) + "\n"
+            msg2 = msg2 + languages_bot.MSG19[LANGUAGE].upper() + " %:" + str((session_USDT_EARNED * 100)/INVESTMENT_TOTAL) + "\n"
             msg2 = msg2 + "-------------------"
-
-            #msg1 = str(datetime.now())
-            #msg2 = " | " + str(len(coins_bought)) + "/" + str(TRADE_SLOTS) + " | PBOT: " + str(bot_paused)
-            #msg2 = msg2 + ' SPR%: ' + str(round(session_profit_incfees_perc,2)) + ' SPR$: ' + str(round(session_profit_incfees_total,4))
-            #msg2 = msg2 + ' SPU%: ' + str(round(unrealised_session_profit_incfees_perc,2)) + ' SPU$: ' + str(round(unrealised_session_profit_incfees_total,4))
-            #msg2 = msg2 + ' SPT%: ' + str(round(session_profit_incfees_perc + unrealised_session_profit_incfees_perc,2)) + ' SPT$: ' + str(round(session_profit_incfees_total+unrealised_session_profit_incfees_total,4))
-            #msg2 = msg2 + ' ATP%: ' + str(round(historic_profit_incfees_perc,2)) + ' ATP$: ' + str(round(historic_profit_incfees_total,4))
-            #msg2 = msg2 + ' CTT: ' + str(trade_wins+trade_losses) + ' CTW: ' + str(trade_wins) + ' CTL: ' + str(trade_losses) + ' CTWR%: ' + str(round(WIN_LOSS_PERCENT,2))
-
             msg_discord_balance(msg1, msg2)
-        history_log(session_profit_incfees_perc, session_profit_incfees_total, unrealised_session_profit_incfees_perc, unrealised_session_profit_incfees_total, session_profit_incfees_perc + unrealised_session_profit_incfees_perc, session_profit_incfees_total+unrealised_session_profit_incfees_total, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins+trade_losses, trade_wins, trade_losses, WIN_LOSS_PERCENT)
+        
         panic_bot(int(INVESTMENT_TOTAL), trade_losses)
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}balance_report(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}balance_report(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
 	
     return msg1 + msg2
 
-def history_log(sess_profit_perc, sess_profit, sess_profit_perc_unreal, sess_profit_unreal, sess_profit_perc_total, sess_profit_total, alltime_profit_perc, alltime_profit, total_trades, won_trades, lost_trades, winloss_ratio):
-    try:
-        if not HISTORY_LOG_FILE == '':
-            global last_history_log_date    
-            time_between_insertion = datetime.now() - last_history_log_date
-            if TEST_MODE or OFFLINE_MODE:
-                file_prefix = 'test_'
-            else:
-                file_prefix = 'live_'
-            # only log balance to log file once every 60 seconds
-            if time_between_insertion.seconds > 60:
-                time_now = datetime.now()
-                last_history_log_date = time_now
-                timestamp = time_now.strftime("%d/%m/%y %H:%M:%S")
-
-                if os.path.exists(file_prefix + HISTORY_LOG_FILE):
-                    HISTORY_LOG_TABLE = PrettyTable([])
-                    with open(file_prefix + HISTORY_LOG_FILE, "r") as fp: 
-                        html = fp.read()
-                    HISTORY_LOG_TABLE = from_html_one(html)
-                    HISTORY_LOG_TABLE.format = True
-                    HISTORY_LOG_TABLE.border = True
-                    HISTORY_LOG_TABLE.align = "c"
-                    HISTORY_LOG_TABLE.valign = "m"
-                    HISTORY_LOG_TABLE.hrules = 1
-                    HISTORY_LOG_TABLE.vrules = 1
-                    HISTORY_LOG_TABLE.add_row([timestamp, len(coins_bought), TRADE_SLOTS, str(bot_paused), str(round(sess_profit_perc,2)), str(round(sess_profit,4)), str(round(sess_profit_perc_unreal,2)), str(round(sess_profit_unreal,4)), str(round(sess_profit_perc_total,2)), str(round(sess_profit_total,4)), str(round(alltime_profit_perc,2)), str(round(alltime_profit,4)), str(total_trades), str(won_trades), str(lost_trades), str(winloss_ratio)])
-                    table_txt = HISTORY_LOG_TABLE.get_html_string()
-                    #table_txt = HISTORY_LOG_TABLE.get_string()
-                else:
-                    HISTORY_LOG_TABLE = PrettyTable([])
-                    HISTORY_LOG_TABLE = PrettyTable(["Datetime", "Coins Holding", "Trade Slots", "Pausebot Active", "Session Profit %", "Session Profit $", "Session Profit Unrealised %", "Session Profit Unrealised $", "Session Profit Total %", "Session Profit Total $", "All Time Profit %", "All Time Profit $", "Total Trades", "Won Trades", "Lost Trades", "Win Loss Ratio"])
-                    HISTORY_LOG_TABLE.format = True
-                    HISTORY_LOG_TABLE.border = True
-                    HISTORY_LOG_TABLE.align = "c"
-                    HISTORY_LOG_TABLE.valign = "m"
-                    HISTORY_LOG_TABLE.hrules = 1
-                    HISTORY_LOG_TABLE.vrules = 1
-                #    with open(HISTORY_LOG_FILE,'a+') as f:
-                #        f.write('Datetime\tCoins Holding\tTrade Slots\tPausebot Active\tSession Profit %\tSession Profit $\tSession Profit Unrealised %\tSession Profit Unrealised $\tSession Profit Total %\tSession Profit Total $\tAll Time Profit %\tAll Time Profit $\tTotal Trades\tWon Trades\tLost Trades\tWin Loss Ratio\n')    
-                    HISTORY_LOG_TABLE.add_row([timestamp, len(coins_bought), TRADE_SLOTS, str(bot_paused), str(round(sess_profit_perc,2)), str(round(sess_profit,4)), str(round(sess_profit_perc_unreal,2)), str(round(sess_profit_unreal,4)), str(round(sess_profit_perc_total,2)), str(round(sess_profit_total,4)), str(round(alltime_profit_perc,2)), str(round(alltime_profit,4)), str(total_trades), str(won_trades), str(lost_trades), str(winloss_ratio)])
-                    table_txt = HISTORY_LOG_TABLE.get_html_string()
-                    #table_txt = HISTORY_LOG_TABLE.get_string()
-                if not table_txt == "":
-                    with open(file_prefix + HISTORY_LOG_FILE,'w') as f:
-                    #f.write(f'{timestamp}\t{len(coins_bought)}\t{TRADE_SLOTS}\t{str(bot_paused)}\t{str(round(sess_profit_perc,2))}\t{str(round(sess_profit,4))}\t{str(round(sess_profit_perc_unreal,2))}\t{str(round(sess_profit_unreal,4))}\t{str(round(sess_profit_perc_total,2))}\t{str(round(sess_profit_total,4))}\t{str(round(alltime_profit_perc,2))}\t{str(round(alltime_profit,4))}\t{str(total_trades)}\t{str(won_trades)}\t{str(lost_trades)}\t{str(winloss_ratio)}\n')
-                        f.write(table_txt)
-                    del HISTORY_LOG_TABLE
-            #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-    except Exception as e:
-        print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}history_log(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
-        print("Error on line {}".format(sys.exc_info()[-1].tb_lineno))
-
-
+def prefix_type():
+    if TEST_MODE:
+        fileprefix = 'test_'
+    else:
+        fileprefix = 'live_'
+    return fileprefix
+    
 def write_log(logline, show=True, showtime=False, LOGFILE=""):
 	try:
 		timestamp = datetime.now().strftime("%d/%m/%y %H:%M:%S")
-		if TEST_MODE: #or OFFLINE_MODE:
-			file_prefix = 'test_'
-		else:
-			file_prefix = 'live_'
+		file_prefix = prefix_type()
 		 
 		if LOGFILE == "": 
 			LOGFILE = LOG_FILE
@@ -776,17 +707,14 @@ def write_log(logline, show=True, showtime=False, LOGFILE=""):
 		if show:
 			print(f'{logline}')
 	except Exception as e:
-		print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}write_log(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}write_log(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		print("Error on line {}".format(sys.exc_info()[-1].tb_lineno))
 		exit(1)
 		
 def read_log_trades(OrderID):
 	try:
 		ret = ""
-		if TEST_MODE:
-			file_prefix = 'test_'
-		else:
-			file_prefix = 'live_'
+		file_prefix = prefix_type()
 
 		with open(file_prefix + TRADES_LOG_FILE, "r") as fp: 
 			csv_readed = csv.reader(fp)
@@ -794,7 +722,7 @@ def read_log_trades(OrderID):
 				if row[1] == OrderID:
 						ret = row[6]
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}read_log_trades(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}read_log_trades(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 	return ret 
@@ -847,17 +775,14 @@ def convert_csv_to_html(filecsv):
             final_htmlFile.write(htmlCode1)
             final_htmlFile.write("\n" + htmlCode2)
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}convert_csv_to_html(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}convert_csv_to_html(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
 	
 def write_log_trades(logline):
 	try:
 		#timestamp = datetime.now().strftime("%d/%m/%y %H:%M:%S")
-		if TEST_MODE: #or OFFLINE_MODE:
-			file_prefix = 'test_'
-		else:
-			file_prefix = 'live_'
+		file_prefix = prefix_type()
 		logline = str(logline).replace("'","").replace("[","").replace("]","")
 		with open(file_prefix + TRADES_LOG_FILE,'a') as f:
 			file_stats = os.stat(file_prefix + TRADES_LOG_FILE)
@@ -866,7 +791,7 @@ def write_log_trades(logline):
 				f.write(str(HEADER).replace("'","").replace("[","").replace("]","") + '\n')
 			f.write(str(logline) + '\n')
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}write_log_trades(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}write_log_trades(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 		
@@ -874,10 +799,7 @@ def get_balance_test_mode(total=False):
 	try:
 		value1 = 0.0
 		value2 = 0.0
-		if TEST_MODE: #or OFFLINE_MODE:
-			file_prefix = 'test_'
-		else:
-			file_prefix = 'live_'
+		file_prefix = prefix_type()
 		bot_stats_file_path = file_prefix + BOT_STATS
 		if os.path.exists(bot_stats_file_path) and os.path.getsize(bot_stats_file_path) > 2:
 			with open(bot_stats_file_path,'r') as f:
@@ -891,7 +813,7 @@ def get_balance_test_mode(total=False):
 			value1 = TRADE_TOTAL
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}get_balance_test_mode(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}get_balance_test_mode(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
    
 	return float(value1)
@@ -927,9 +849,9 @@ def panic_bot(invest, lost):
 		lost_percent = (lost*invest)/100
 		print(f'invest= {invest} lost= {lost} lost_percent= {lost_percent}')
 		if lost_percent >= PANIC_STOP and PANIC_STOP != 0:
-			printf(f'{txcolors.WARNING}BOT: {txcolors.WARNING}PANIC_STOP activated.{txcolors.DEFAULT}')
+			printf(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}PANIC_STOP activated.{txcolors.DEFAULT}')
 			stop_signal_threads()
-			printf(f'{txcolors.WARNING}BOT: {txcolors.WARNING}The percentage of losses is greater than or equal to the established one. Bot Stopped.{txcolors.DEFAULT}')
+			printf(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}The percentage of losses is greater than or equal to the established one. Bot Stopped.{txcolors.DEFAULT}')
 			exit(1)
 
 def chek_files_paused():
@@ -954,17 +876,17 @@ def pause_bot():
         start_time = time.perf_counter()
 		#coins_sold = {}
 
-        while chek_files_paused() or PAUSEBOT_MANUAL or BUY_PAUSED: #os.path.exists("signals/pausebot.pause") or PAUSEBOT_MANUAL:
+        while chek_files_paused() or PAUSEBOT_MANUAL or BUY_PAUSED: #os.path.exists("signals/pausebot.pause") or PAUSE{languages_bot.MSG5[LANGUAGE]}_MANUAL:
 			# do NOT accept any external signals to buy while in pausebot mode
             remove_external_signals('buy')
 
             if bot_paused == False:
                 if PAUSEBOT_MANUAL:
-                    print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Purchase paused manually, stop loss and take profit will continue to work...{txcolors.DEFAULT}')
-                    msg = str(datetime.now()) + ' | PAUSEBOT.Purchase paused manually, stop loss and take profit will continue to work...'
+                    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Purchase paused manually, stop loss and take profit will continue to work...{txcolors.DEFAULT}')
+                    msg = str(datetime.now()) + ' | PAUSE{languages_bot.MSG5[LANGUAGE]}.Purchase paused manually, stop loss and take profit will continue to work...'
                 else:
-                    print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Buying paused due to negative market conditions, stop loss and take profit will continue to work...{txcolors.DEFAULT}')
-                    msg = str(datetime.now()) + ' | PAUSEBOT. Buying paused due to negative market conditions, stop loss and take profit will continue to work.'
+                    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Buying paused due to negative market conditions, stop loss and take profit will continue to work...{txcolors.DEFAULT}')
+                    msg = str(datetime.now()) + ' | PAUSE{languages_bot.MSG5[LANGUAGE]}. Buying paused due to negative market conditions, stop loss and take profit will continue to work.'
                 msg_discord(msg)
 
                 bot_paused = True
@@ -989,13 +911,13 @@ def pause_bot():
 
 			# resume the bot and ser pause_bot to False
             if bot_paused == True:
-                print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Resuming buying due to positive market conditions, total sleep time: {time_elapsed}{txcolors.DEFAULT}')
-                msg = str(datetime.now()) + ' | PAUSEBOT. Resuming buying due to positive market conditions, total sleep time: ' + str(time_elapsed)
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Resuming buying due to positive market conditions, total sleep time: {time_elapsed}{txcolors.DEFAULT}')
+                msg = str(datetime.now()) + ' | PAUSE{languages_bot.MSG5[LANGUAGE]}. Resuming buying due to positive market conditions, total sleep time: ' + str(time_elapsed)
                 msg_discord(msg)
                 bot_paused = False
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}pause_bot: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}pause_bot: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
     return
@@ -1061,13 +983,13 @@ def buy_external_signals():
 		try:
 			os.remove(filename)
 		except:
-			if DEBUG: print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Could not remove external signalling file{txcolors.DEFAULT}')
+			if DEBUG: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Could not remove external signalling file{txcolors.DEFAULT}')
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	return external_list
 
 def random_without_repeating():
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	if TEST_MODE: #or OFFLINE_MODE:
+	if TEST_MODE:
 		file_prefix = 'test_'
 	else:
 		file_prefix = 'live_'
@@ -1091,7 +1013,7 @@ def wait_for_price():
     try:
         '''calls the initial price and ensures the correct amount of time has passed before reading the current price again'''
 
-        global historical_prices, hsp_head, volatility_cooloff, coins_up,coins_down,coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD
+        global historical_prices, hsp_head, coins_up,coins_down,coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD
 		
         volatile_coins = {}
         externals1 = []
@@ -1130,17 +1052,25 @@ def wait_for_price():
                 #(len(coins_bought) + exnumber + len(volatile_coins)) < TRADE_SLOTS:
                 volatile_coins[excoin] = 1
                 exnumber +=1               
-                print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}External signal received on {excoin}, purchasing ${TRADE_TOTAL} {PAIR_WITH} value of {excoin}!{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}External signal received on {excoin}, purchasing ${TRADE_TOTAL} {PAIR_WITH} value of {excoin}!{txcolors.DEFAULT}')
 
         balance_report(last_price)
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}wait_for_price(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}wait_for_price(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         lost_connection(e, "wait_for_price")        
         pass
     return volatile_coins, len(volatile_coins), last_price #historical_prices[hsp_head]
 
+def get_symbol_info(coin1):
+    ret = {}
+    if coin1 == "BTCUSDT" and BACKTESTING_MODE:
+        ret = {'symbol': 'BTCUSDT', 'status': 'TRADING', 'baseAsset': 'BTC', 'baseAssetPrecision': 8, 'quoteAsset': 'USDT', 'quotePrecision': 8, 'quoteAssetPrecision': 8, 'baseCommissionPrecision': 8, 'quoteCommissionPrecision': 8, 'orderTypes': ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'], 'icebergAllowed': True, 'ocoAllowed': True, 'quoteOrderQtyMarketAllowed': True, 'allowTrailingStop': True, 'cancelReplaceAllowed': True, 'isSpotTradingAllowed': True, 'isMarginTradingAllowed': True, 'filters': [{'filterType': 'PRICE_FILTER', 'minPrice': '0.01000000', 'maxPrice': '1000000.00000000', 'tickSize': '0.01000000'}, {'filterType': 'LOT_SIZE', 'minQty': '0.00001000', 'maxQty': '9000.00000000', 'stepSize': '0.00001000'}, {'filterType': 'ICEBERG_PARTS', 'limit': 10}, {'filterType': 'MARKET_LOT_SIZE', 'minQty': '0.00000000', 'maxQty': '149.41382295', 'stepSize': '0.00000000'}, {'filterType': 'TRAILING_DELTA', 'minTrailingAboveDelta': 10, 'maxTrailingAboveDelta': 2000, 'minTrailingBelowDelta': 10, 'maxTrailingBelowDelta': 2000}, {'filterType': 'PERCENT_PRICE_BY_SIDE', 'bidMultiplierUp': '5', 'bidMultiplierDown': '0.2', 'askMultiplierUp': '5', 'askMultiplierDown': '0.2', 'avgPriceMins': 5}, {'filterType': 'NOTIONAL', 'minNotional': '10.00000000', 'applyMinToMarket': True, 'maxNotional': '9000000.00000000', 'applyMaxToMarket': False, 'avgPriceMins': 5}, {'filterType': 'MAX_NUM_ORDERS', 'maxNumOrders': 200}, {'filterType': 'MAX_NUM_ALGO_ORDERS', 'maxNumAlgoOrders': 5}], 'permissions': ['SPOT', 'MARGIN', 'TRD_GRP_004', 'TRD_GRP_005', 'TRD_GRP_006'], 'defaultSelfTradePreventionMode': 'NONE', 'allowedSelfTradePreventionModes': ['NONE', 'EXPIRE_TAKER', 'EXPIRE_MAKER', 'EXPIRE_{languages_bot.MSG5[LANGUAGE]}H']}
+    if not BACKTESTING_MODE:
+        ret = client.get_symbol_info(coin1)
+    return ret
+    
 def convert_volume():
     try:
         '''Converts the volume given in TRADE_TOTAL from "USDT"(or coin selected) to the each coin's volume'''
@@ -1157,8 +1087,9 @@ def convert_volume():
 			# max accuracy for BTC for example is 6 decimal points
 			# while XRP is only 1
 			#try:
-			
-            info = client.get_symbol_info(coin)
+            info = get_symbol_info(coin)
+            
+            #print(info)
 
 			#step_size = info['filterType'][1]['stepSize']
 			#step_size = float(info['filters'][2]['stepSize'])
@@ -1175,13 +1106,13 @@ def convert_volume():
 			# calculate the volume in coin from TRADE_TOTAL in PAIR_WITH (default)
 				
             if COMPOUND_INTEREST and TRADE_SLOTS == 1:
-                if TEST_MODE: #or OFFLINE_MODE:
+                if TEST_MODE: 
                     TRADE_TOTAL = get_balance_test_mode(True) #convert_volume
                 else:
                     TRADE_TOTAL = get_balance_wallet(PAIR_WITH) #convert_volume
 
             volume[coin] = float(TRADE_TOTAL / float(last_price[coin]['price']))
-            if TEST_MODE: #or OFFLINE_MODE:
+            if TEST_MODE: 
                 TRADE_TOTAL = get_balance_test_mode() #convert_volume
 			#print("volume[coin]: ", volume[coin], "TRADE_TOTAL: ", TRADE_TOTAL, "float(last_price[coin]['price']): ", float(last_price[coin]['price']))
 
@@ -1198,7 +1129,7 @@ def convert_volume():
                     volume[coin] = truncate(volume[coin], lot_size[coin])
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}convert_volume() exception: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}convert_volume() exception: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         lost_connection(e, "convert_volume")        
         pass
@@ -1214,12 +1145,12 @@ def buy():
 		#global USED_BNB_IN_SESSION
         for coin in volume:
             if coin not in coins_bought and coin.replace(PAIR_WITH,'') not in EX_PAIRS:
-				#if not SCREEN_MODE == 2: print(f"{txcolors.WARNING}BOT: {txcolors.BUY}Preparing to buy {volume[coin]} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
+				#if not SCREEN_MODE == 2: print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.BUY}Preparing to buy {volume[coin]} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
                 coins = {}
                 coins[coin] = coin + PAIR_WITH
 				#msg1 = str(datetime.now()) + ' | BUY: ' + coin + '. V:' +  str(volume[coin]) + ' P$:' + str(last_price[coin]['price']) + ' ' + PAIR_WITH + ' invested:' + str(float(volume[coin])*float(last_price[coin]['price']))
 				#msg_discord(msg1)
-                if TEST_MODE: #or OFFLINE_MODE:
+                if TEST_MODE: 
                     RandOrderId = random_without_repeating()
                     orders[coin] = [{
                         'symbol': coin,
@@ -1232,7 +1163,7 @@ def buy():
                     last_price_buy = last_price[coin]['price']
                     #coin = '{0:<9}'.format(coin)
 													#"Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy", "Sell Price", "Amount of Sell", "Sell Reason", "Profit $")
-                    if OFFLINE_MODE:
+                    if BACKTESTING_MODE:
                         write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), RandOrderId, "Buy", coin.replace(PAIR_WITH,""), round(float(volumeBuy),8), str(round(float(last_price_buy),8)), str(round(float(BuyUSDT),8)), 0, 0, "-", 0])                
                     else:
                         write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), RandOrderId, "Buy", coin.replace(PAIR_WITH,""), round(float(volumeBuy),8), str(round(float(last_price_buy),8)), str(round(float(BuyUSDT),8)), 0, 0, "-", 0])                
@@ -1253,7 +1184,7 @@ def buy():
 
 			# error handling here in case position cannot be placed
                 except Exception as e:
-                    write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} buy(): In create_order exception({coin}): {e}{txcolors.DEFAULT}')
+                    write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} buy(): In create_order exception({coin}): {e}{txcolors.DEFAULT}')
                     write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
                     pass
 
@@ -1263,13 +1194,13 @@ def buy():
 
 				# binance sometimes returns an empty list, the code will wait here until binance returns the order
                     while orders[coin] == []:
-                        write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT} Binance is being slow in returning the order, calling the API again...{txcolors.DEFAULT}')
+                        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT} Binance is being slow in returning the order, calling the API again...{txcolors.DEFAULT}')
                         orders[coin] = client.get_all_orders(symbol=coin, limit=1)
                         time.sleep(1) #wait for buy
 
                     else:
-                        print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Order returned, saving order to file')
-                        if not TEST_MODE: #or not OFFLINE_MODE:
+                        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order returned, saving order to file')
+                        if not TEST_MODE: #or not BACKTESTING_MODE:
                             orders[coin] = extract_order_data(order_details)
 							#adding the price in USDT
                             BuyUSDT = str(orders[coin]['volume'] * orders[coin]['avgPrice']) #format(orders[coin]['volume'] * orders[coin]['avgPrice'], '.14f')).zfill(4)
@@ -1283,7 +1214,7 @@ def buy():
 							#buyFeeTotal1 = (volumeBuy * last_price_buy) * float(TRADING_FEE/100)
 							#USED_BNB_IN_SESSION = USED_BNB_IN_SESSION + orders[coin]['tradeFeeBNB'] #buyFeeTotal1
 									 #["Datetime",                                 "Type", "Coin", "Volume",              "Buy Price", "Amount of Buy", "Sell Price", "Amount of Sell", "Sell Reason", "Profit $"] "USDTdiff"])
-                            if OFFLINE_MODE:
+                            if BACKTESTING_MODE:
                                 write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(orders[coin]['orderId']), "Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price_buy),8)), str(round(float(BuyUSDT),8)) , "0", "0", "-", "0"])
                             else:
                                 write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(orders[coin]['orderId']), "Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price_buy),8)), str(round(float(BuyUSDT),8)) , "0", "0", "-", "0"])
@@ -1300,16 +1231,16 @@ def buy():
                             buyFeeTotal1 = (volumeBuy * last_price_buy) * float(TRADING_FEE/100)
 							#USED_BNB_IN_SESSION = USED_BNB_IN_SESSION + buyFeeTotal1
 									#(["Datetime", "Type", "Coin", "Volume", "Buy Price", "Sell Price", "Sell Reason", "Profit $"]) "USDTdiff"])
-                            if OFFLINE_MODE:
+                            if BACKTESTING_MODE:
                                 write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(RandOrderId),"Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price[coin]['price']),8)), str(round(float(BuyUSDT),8)), "0", "0", "-", "0"])
                             else:
                                 write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(RandOrderId),"Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price[coin]['price']),8)), str(round(float(BuyUSDT),8)), "0", "0", "-", "0"])
                         write_signallsell(coin)
             else:
-                print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Signal detected, but there is already an active trade on {coin}{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Signal detected, but there is already an active trade on {coin}{txcolors.DEFAULT}')
         #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} buy(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} buy(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         lost_connection(e, "buy")
         pass
@@ -1386,8 +1317,8 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     #coins_bought[coin]['stop_loss'] = coins_bought[coin]['take_profit'] - TRAILING_STOP_LOSS
                     #coins_bought[coin]['take_profit'] = PriceChange_Perc + TRAILING_TAKE_PROFIT
                     # if DEBUG: print(f"{coin} TP reached, adjusting TP {coins_bought[coin]['take_profit']:.2f}  and SL {coins_bought[coin]['stop_loss']:.2f} accordingly to lock-in profit")
-                    #if DEBUG: print(f"{txcolors.WARNING}BOT: {txcolors.DEFAULT}{coin} TP reached, adjusting TP {coins_bought[coin]['take_profit']:.{decimals()}f} and SL {coins_bought[coin]['stop_loss']:.{decimals()}f} accordingly to lock-in profit")
-                    #if DEBUG: print(f"{txcolors.WARNING}BOT: {txcolors.DEFAULT}{coin} TP reached, adjusting TP {str(round(TP,2))} and SL {str(round(SL,2))} accordingly to lock-in profit")
+                    #if DEBUG: print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{coin} TP reached, adjusting TP {coins_bought[coin]['take_profit']:.{decimals()}f} and SL {coins_bought[coin]['stop_loss']:.{decimals()}f} accordingly to lock-in profit")
+                    #if DEBUG: print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{coin} TP reached, adjusting TP {str(round(TP,2))} and SL {str(round(SL,2))} accordingly to lock-in profit")
                     continue
                 # check that the price is below the stop loss or above take profit (if trailing stop loss not used) and sell if this is the case
                 sellCoin = False
@@ -1432,14 +1363,14 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     sell_reason = 'Session TPSL Override reached'
 
                 if sellCoin:
-                    print(f"{txcolors.WARNING}BOT: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}Sell: {coins_bought[coin]['volume']} of {coin} | {sell_reason} | ${float(LastPrice):g} - ${float(BuyPrice):g}{txcolors.DEFAULT}")
-                    print(f"{txcolors.WARNING}BOT: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}Profit: {PriceChangeIncFees_Perc:.2f}% Est: {((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_Perc)/100:.{decimals()}f} {PAIR_WITH} (Inc Fees) {PAIR_WITH} earned: {(float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))}{txcolors.DEFAULT}")
+                    print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}Sell: {coins_bought[coin]['volume']} of {coin} | {sell_reason} | ${float(LastPrice):g} - ${float(BuyPrice):g}{txcolors.DEFAULT}")
+                    print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}Profit: {PriceChangeIncFees_Perc:.2f}% Est: {((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_Perc)/100:.{decimals()}f} {PAIR_WITH} (Inc Fees) {PAIR_WITH} earned: {(float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))}{txcolors.DEFAULT}")
                     #msg1 = str(datetime.now()) + '| SELL: ' + coin + '. R:' +  sell_reason + ' P%:' + str(round(PriceChangeIncFees_Perc,2)) + ' P$:' + str(round(((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_Perc)/100,4)) + ' ' + PAIR_WITH + ' earned:' + str(float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))
                     #msg_discord(msg1)
 
                     # try to create a real order          
                     try:
-                        if not TEST_MODE: #or not OFFLINE_MODE:
+                        if not TEST_MODE: #or not BACKTESTING_MODE:
                             #lot_size = coins_bought[coin]['step_size']
                             #if lot_size == 0:
                             #    lot_size = 1
@@ -1457,12 +1388,12 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     # error handling here in case position cannot be placed
                     except Exception as e:
                         #if repr(e).upper() == "APIERROR(CODE=-1111): PRECISION IS OVER THE MAXIMUM DEFINED FOR THIS ASSET.":
-                        write_log(f"{txcolors.WARNING}BOT: {txcolors.DEFAULT}sell_coins(): Exception occured on selling the coin, Coin: {coin}\nSell Volume coins_bought: {coins_bought[coin]['volume']}\nPrice:{LastPrice}\nException: {e}{txcolors.DEFAULT}")
+                        write_log(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}sell_coins(): Exception occured on selling the coin, Coin: {coin}\nSell Volume coins_bought: {coins_bought[coin]['volume']}\nPrice:{LastPrice}\nException: {e}{txcolors.DEFAULT}")
                         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
                         pass
                     # run the else block if coin has been sold and create a dict for each coin sold
                     else:
-                        if not TEST_MODE: #or not OFFLINE_MODE:
+                        if not TEST_MODE: #or not BACKTESTING_MODE:
                             coins_sold[coin] = extract_order_data(order_details)
                             LastPrice = coins_sold[coin]['avgPrice']
                             sellFee = coins_sold[coin]['tradeFeeUnit']
@@ -1475,16 +1406,13 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                             coins = {}
                             coins[coin] = coin + PAIR_WITH						
                             OrderID = coins_bought[coin]['orderid']
-      
-                        # prevent system from buying this coin for the next TIME_DIFFERENCE minutes
-                        #volatility_cooloff[coin] = datetime.now()
                         
                         time_held = (timedelta(seconds=datetime.now().timestamp()-int(str(coins_bought[coin]['timestamp'])[:10])).total_seconds())/3600
                         
                         if int(MAX_HOLDING_TIME) != 0: 
                             if time_held >= int(MAX_HOLDING_TIME): set_exparis(coin)
 
-                        print(f"{txcolors.WARNING}BOT: {txcolors.DEFAULT}sell_coins() | Coin: {coin} | Sell Volume: {coins_bought[coin]['volume']} | Price:{LastPrice}")
+                        print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}sell_coins() | Coin: {coin} | Sell Volume: {coins_bought[coin]['volume']} | Price:{LastPrice}")
                         
                         # Log trade
                         #BB profit = ((LastPrice - BuyPrice) * coins_sold[coin]['volume']) * (1-(buyFee + sellFeeTotal))  
@@ -1513,7 +1441,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                         #BuyUSDT = (BuyPrice * coins_sold[coin]['volume']) 
                         #last_price[coin]['price']
                                         #["Datetime",                                              "OrderID",            "Type",          "Coin",                        "Volume",                  "Buy Price",      "Amount of Buy", "Sell Price",    "Amount of Sell",                            "Sell Reason",          "Profit $"] "USDTdiff"])
-                        if OFFLINE_MODE:
+                        if BACKTESTING_MODE:
                             write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(OrderID), "Sell", coin.replace(PAIR_WITH, ""), str(round(float(VolumeSell),8)), str(round(float(BuyPrice),8)), read_log_trades(str(OrderID)), str(round(float(LastPrice),8)), str(round(float(SellUSDT),8)), sell_reason, str(round(float(USDTdiff),8))])
                         else:
                             write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(OrderID), "Sell", coin.replace(PAIR_WITH, ""), str(round(float(VolumeSell),8)), str(round(float(BuyPrice),8)), read_log_trades(str(OrderID)), str(round(float(LastPrice),8)), str(round(float(SellUSDT),8)), sell_reason, str(round(float(USDTdiff),8))])
@@ -1558,12 +1486,12 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                 #if hsp_head == 1:
                     #if len(coins_bought) > 0:
                         #if not SCREEN_MODE == 2: print(f"Holding: {coins_bought[coin]['volume']} of {coin} | {LastPrice} - {BuyPrice} | Profit: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}{PriceChangeIncFees_Perc:.4f}% Est: ({(TRADE_TOTAL*PriceChangeIncFees_Perc)/100:.{decimals()}f} {PAIR_WITH}){txcolors.DEFAULT}")
-                        #print(f"{txcolors.WARNING}BOT: {txcolors.DEFAULT}Holding: {coins_bought[coin]['volume']} of {coin} | {LastPrice} - {BuyPrice} | Profit: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}{PriceChangeIncFees_Perc:.4f}% Est: ({((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_Perc)/100:.{decimals()}f} {PAIR_WITH}){txcolors.DEFAULT}")         
+                        #print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Holding: {coins_bought[coin]['volume']} of {coin} | {LastPrice} - {BuyPrice} | Profit: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}{PriceChangeIncFees_Perc:.4f}% Est: ({((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_Perc)/100:.{decimals()}f} {PAIR_WITH}){txcolors.DEFAULT}")         
             #if hsp_head == 1 and len(coins_bought) == 0: if not SCREEN_MODE == 2: print(f"No trade slots are currently in use")
             # if tpsl_override: is_bot_running = False 
             #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}sell_coins(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}sell_coins(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         lost_connection(e, "sell_coins")
         pass
@@ -1623,7 +1551,7 @@ def sell_external_signals():
             try:
                 os.remove(filename)
             except:
-                if DEBUG: write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} {"sell_external_signals()"}: Could not remove external SELL signalling file{txcolors.DEFAULT}')
+                if DEBUG: write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} {"sell_external_signals()"}: Could not remove external SELL signalling file{txcolors.DEFAULT}')
     else:
         coins1 = []
         TICKERS = ''
@@ -1684,7 +1612,7 @@ def extract_order_data(order_details):
 
 		# the volume size is sometimes outside of precision, correct it
 		try:
-			info = client.get_symbol_info(order_details['symbol'])
+			info = get_symbol_info(order_details['symbol']) #client.get_symbol_info(order_details['symbol'])
 			#step_size = 0.0
 
 			#step_size1 = float(info['filterType'][1]['stepSize'])
@@ -1706,7 +1634,7 @@ def extract_order_data(order_details):
 			else:
 				FILLS_QTY = truncate(FILLS_QTY, lot_size)
 		except Exception as e:
-			write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}extract_order_data(internal): Exception getting coin {order_details["symbol"]} step size! Exception: {e}{txcolors.DEFAULT}')
+			write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}extract_order_data(internal): Exception getting coin {order_details["symbol"]} step size! Exception: {e}{txcolors.DEFAULT}')
 			write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 			pass
 		# create object with received data from Binance
@@ -1721,7 +1649,7 @@ def extract_order_data(order_details):
 		}
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}extract_order_data(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}extract_order_data(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 	return transactionInfo
@@ -1770,7 +1698,7 @@ def update_portfolio(orders, last_price, volume):
 			coin_step_size = .1
 			pass
 
-		if not TEST_MODE: #or not OFFLINE_MODE:
+		if not TEST_MODE: #or not BACKTESTING_MODE:
 			coins_bought[coin] = {
 			   'symbol': orders[coin]['symbol'],
 			   'orderid': orders[coin]['orderId'],
@@ -1785,7 +1713,7 @@ def update_portfolio(orders, last_price, volume):
 			   'step_size': float(coin_step_size),
 			   }
 
-			if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+			if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
 		else:
 			coins_bought[coin] = {
 				'symbol': orders[coin][0]['symbol'],
@@ -1798,7 +1726,7 @@ def update_portfolio(orders, last_price, volume):
 				'step_size': float(coin_step_size),
 				}
 
-			if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+			if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
 
 		# save the coins in a json file in the same directory
 		with open(coins_bought_file_path, 'w') as file:
@@ -1853,7 +1781,7 @@ def remove_external_signals(fileext):
 			#try:
 				#os.remove(filename)
 			#except:
-				#if DEBUG: write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} remove_external_signals(): Could not remove external signalling file {filename}{txcolors.DEFAULT}')
+				#if DEBUG: write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} remove_external_signals(): Could not remove external signalling file {filename}{txcolors.DEFAULT}')
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def load_signal_threads():
@@ -1865,23 +1793,22 @@ def load_signal_threads():
 			if len(SIGNALLING_MODULES) > 0:
 				for module in SIGNALLING_MODULES:
 					if os.path.exists(module+'.py'):
-						print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Starting {module}{txcolors.DEFAULT}')
+						print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Starting {module}{txcolors.DEFAULT}')
 						mymodule[module] = importlib.import_module(module)
 						t = threading.Thread(target=mymodule[module].do_work, args=())
 						#t = multiprocessing.Process(target=mymodule[module].do_work, args=())
 						t.name = module
 						t.daemon = True
 						t.start()
-						# add process to a list. This is so the thread can be terminated at a later time
 						signalthreads.append(t)
 						time.sleep(2000/1000) #wait for load_signal_threads
 					else:
-						write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Module {module} does not exist... continuing to load other modules{txcolors.DEFAULT}')
+						write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Module {module} does not exist... continuing to load other modules{txcolors.DEFAULT}')
 			else:
-				write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}{"load_signal_threads"}: No modules to load {SIGNALLING_MODULES}{txcolors.DEFAULT}')
+				write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{"load_signal_threads"}: No modules to load {SIGNALLING_MODULES}{txcolors.DEFAULT}')
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}load_signal_threads(): Loading external signals exception: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}load_signal_threads(): Loading external signals exception: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 
@@ -1890,12 +1817,12 @@ def stop_signal_threads():
 		global signalthreads
 		if len(signalthreads) > 0:
 			for signalthread in signalthreads:
-				print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Terminating thread {str(signalthread.name)}{txcolors.DEFAULT}')
+				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Terminating thread {str(signalthread.name)}{txcolors.DEFAULT}')
 				signalthread.terminate()
 				signalthread.kill()
 		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}stop_signal_threads(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}stop_signal_threads(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 	except KeyboardInterrupt as ki:
@@ -1932,15 +1859,15 @@ def load_settings():
 
 	# Default no debugging
     global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE
-    global TEST_MODE, OFFLINE_MODE, OFFLINE_MODE_TIME_START, OFFLINE_MODE_TIME_END, BOT_TIMEFRAME, LOG_TRADES, TRADES_LOG_FILE
+    global TEST_MODE, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, BACKTESTING_MODE_TIME_END, BOT_TIMEFRAME, LOG_TRADES, TRADES_LOG_FILE
     global DEBUG_SETTING, AMERICAN_USER, PAIR_WITH, QUANTITY, MAX_COINS, FIATS, TIME_DIFFERENCE, RECHECK_INTERVAL, CHANGE_IN_PRICE
     global STOP_LOSS, TAKE_PROFIT, CUSTOM_LIST, TICKERS_LIST, USE_TRAILING_STOP_LOSS, TRAILING_STOP_LOSS, TRAILING_TAKE_PROFIT, TRADING_FEE
     global SIGNALLING_MODULES, SCREEN_MODE, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
-    global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, MAIN_FILES_PATH, LANGUAGE
-    global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, USE_VOLATILE_METOD
+    global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, MAIN_FILES_PATH, USE_VOLATILE_METOD
+    global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE
     global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
     global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE
-    global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS
+    global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
 
 	# Default no debugging
     DEBUG = False
@@ -1948,19 +1875,17 @@ def load_settings():
 	# Load system vars
     TEST_MODE = parsed_config['script_options']['TEST_MODE']
     LANGUAGE = parsed_config['script_options']['LANGUAGE']
-    OFFLINE_MODE = parsed_config['script_options']['OFFLINE_MODE']
-    OFFLINE_MODE_TIME_START = parsed_config['script_options']['OFFLINE_MODE_TIME_START']
+    BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
+    BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
     BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
-    OFFLINE_MODE_TIME_END = parsed_config['script_options']['OFFLINE_MODE_TIME_END']
+    BACKTESTING_MODE_TIME_END = parsed_config['script_options']['BACKTESTING_MODE_TIME_END']
     USE_VOLATILE_METOD = parsed_config['script_options']['USE_VOLATILE_METOD']
     USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
 	#REINVEST_MODE = parsed_config['script_options']['REINVEST_MODE']
 	#     LOG_TRADES = parsed_config['script_options'].get('LOG_TRADES')
     MAIN_FILES_PATH = parsed_config['script_options'].get('MAIN_FILES_PATH')
     TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
-    HISTORY_LOG_FILE = parsed_config['script_options'].get('HISTORY_LOG_FILE')
     LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
-	#HISTORY_LOG_FILE = "history.html"
     COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
     BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
     DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
@@ -2063,7 +1988,7 @@ def load_settings():
     
     if DEBUG_SETTING or args.debug:
         DEBUG = True
-    print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}All config loaded...{txcolors.DEFAULT}')
+    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}All config loaded...{txcolors.DEFAULT}')
     access_key, secret_key = load_correct_creds(parsed_creds)
     #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
@@ -2085,7 +2010,7 @@ def CheckIfAliveStation(ip_address):
             if ("PING" in p):
                 alive = True
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}CheckIfAliveStation(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}CheckIfAliveStation(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
     return alive
@@ -2099,7 +2024,7 @@ def lost_connection(error, origin):
 		if lostconnection == False:
 			lostconnection = True
 			#print(f"lostconnection: {lostconnection} - {origin}")
-			write_log(f'{txcolors.WARNING}BOT: {origin} - Lost connection, waiting until it is restored...{txcolors.DEFAULT}')
+			write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {origin} - Lost connection, waiting until it is restored...{txcolors.DEFAULT}')
 			while lostconnection:
 				lostconnection = True
 				#if "HTTPSConnectionPool" in error:
@@ -2107,17 +2032,17 @@ def lost_connection(error, origin):
 				response = CheckIfAliveStation("google.com")
 				#print(f"response: {response}")
 				if response == True:
-					write_log(f'{txcolors.BUY}BOT: The connection has been reestablished, continuing...{txcolors.DEFAULT}')
+					write_log(f'{txcolors.BUY}{languages_bot.MSG5[LANGUAGE]}: The connection has been reestablished, continuing...{txcolors.DEFAULT}')
 					lostconnection = False
 					load_signal_threads()
 					return
 				else:
-					#print(f'{txcolors.WARNING}BOT: {origin} Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}') 
+					#print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {origin} Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}') 
 					lostconnection = True
 					time.sleep(5) #lostconnection
 		else:
 			while lostconnection:
-				#print(f'{txcolors.WARNING}BOT: Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}')
+				#print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}')
 				time.sleep(5) #lostconnection
 
 def renew_list(in_init=False):
@@ -2144,10 +2069,10 @@ def renew_list(in_init=False):
 					volatile_volume_time = True
 
 			if volatile_volume_time or volatile_volume_empty or os.path.exists(today) == False:
-				print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}A new Volatily Volume list will be created...{txcolors.DEFAULT}')
+				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}A new Volatily Volume list will be created...{txcolors.DEFAULT}')
 				stop_signal_threads()
 				FLAG_PAUSE = True
-				if TEST_MODE: #or OFFLINE_MODE:
+				if TEST_MODE: 
 					jsonfile = "test_" + COINS_BOUGHT
 				else: 
 					jsonfile = "live_" + COINS_BOUGHT
@@ -2182,7 +2107,7 @@ def renew_list(in_init=False):
 					with open(today,'w') as f:
 						f.writelines(lines_today)
 
-					print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}A new Volatily Volume list has been created, {len(list(coins_bought_list))} coin(s) added...{txcolors.DEFAULT}')
+					print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}A new Volatily Volume list has been created, {len(list(coins_bought_list))} coin(s) added...{txcolors.DEFAULT}')
 					FLAG_PAUSE = False
 					#renew_list()
 					load_signal_threads()     
@@ -2193,7 +2118,7 @@ def renew_list(in_init=False):
 				
 				FLAG_PAUSE = True
 				
-				if TEST_MODE: #or OFFLINE_MODE:
+				if TEST_MODE: 
 					jsonfile = "test_" + COINS_BOUGHT
 				else: 
 					jsonfile = "live_" + COINS_BOUGHT
@@ -2228,7 +2153,7 @@ def renew_list(in_init=False):
 					
 			tickers=[line.strip() for line in open(TICKERS_LIST)]
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}renew_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}renew_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 		
@@ -2240,10 +2165,10 @@ def remove_by_extension(extension):
 		for file in files:
 			#if file.endswith(extension):
 			if os.path.exists(file): 
-				print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Remove {file}{txcolors.DEFAULT}')
+				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Remove {file}{txcolors.DEFAULT}')
 				os.remove(file)
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass  
 
@@ -2255,16 +2180,16 @@ def remove_by_file_name(name):
 		file_exists1 = os.path.exists(file1)
 		#print("file: ", file1, "file_exists: ", file_exists1)
 		if file_exists1: 
-			print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Remove {file1}{txcolors.DEFAULT}')
+			print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Remove {file1}{txcolors.DEFAULT}')
 			os.remove(file1)
 	except Exception as e:
-		write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass        
 
 def new_or_continue():
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	if TEST_MODE: #or OFFLINE_MODE:
+	if TEST_MODE: 
 		file_prefix = 'test_'
 	else:
 		file_prefix = 'live_'      
@@ -2274,10 +2199,10 @@ def new_or_continue():
 		END = False
 		while LOOP:
 			if ALWAYS_OVERWRITE and ALWAYS_CONTINUE or ALWAYS_OVERWRITE == False and ALWAYS_CONTINUE == False:
-				print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}The configuration is incorrect, ALWAYS_OVERWRITE and ALWAYS_CONTINUE cannot be true or both can be false{txcolors.DEFAULT}')
+				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}The configuration is incorrect, ALWAYS_OVERWRITE and ALWAYS_CONTINUE cannot be true or both can be false{txcolors.DEFAULT}')
 				exit(1)
 			if ASK_ME:
-				print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Do you want to continue previous session?[y/n]{txcolors.DEFAULT}')
+				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Do you want to continue previous session?[y/n]{txcolors.DEFAULT}')
 				x = input("#: ")
 			else:
 				if ALWAYS_OVERWRITE:
@@ -2287,11 +2212,11 @@ def new_or_continue():
 
 			if x == "y" or x == "n":
 				if x == "y":
-					print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Continuing with the session started ...{txcolors.DEFAULT}')
+					print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Continuing with the session started ...{txcolors.DEFAULT}')
 					LOOP = False
 					END = True
 				else:
-					print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Deleting previous sessions ...')
+					print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Deleting previous sessions ...')
 					if USE_MOST_VOLUME_COINS == False:
 						if os.path.exists(TICKERS_LIST.replace(".txt",".backup")):
 							with open(TICKERS_LIST.replace(".txt",".backup") ,'r') as f:
@@ -2311,14 +2236,24 @@ def new_or_continue():
 					remove_by_extension("/*.sell")
 					remove_by_extension("/*.position")
 
-					print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Session deleted, continuing ...{txcolors.DEFAULT}')
+					print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Session deleted, continuing ...{txcolors.DEFAULT}')
 					LOOP = False
 					END = True
 			else:
-				print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Press the y key or the or key ...{txcolors.DEFAULT}')
+				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Press the y key or the or key ...{txcolors.DEFAULT}')
 				LOOP = True
 		return END
-		
+
+@atexit.register
+def end_bot():
+    try:
+        convert_csv_to_html(TRADES_LOG_FILE)
+        menu()
+    except Exception as e:
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} Exception in end_bot(): {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
+        
 def menu():
     try:
 		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
@@ -2333,14 +2268,14 @@ def menu():
             print(f'{txcolors.MENUOPTION}[1]{txcolors.WARNING}Reload Configuration{txcolors.DEFAULT}')
             print(f'{txcolors.MENUOPTION}[2]{txcolors.WARNING}Reload modules{txcolors.DEFAULT}')
             print(f'{txcolors.MENUOPTION}[3]{txcolors.WARNING}Reload Volatily Volume List{txcolors.DEFAULT}')
-            if BUY_PAUSED == False: #PAUSEBOT_MANUAL == False or 
+            if BUY_PAUSED == False: #PAUSE{languages_bot.MSG5[LANGUAGE]}_MANUAL == False or 
                 print(f'{txcolors.MENUOPTION}[4]{txcolors.WARNING}Stop Purchases{txcolors.DEFAULT}')
             else:
                 print(f'{txcolors.MENUOPTION}[4]{txcolors.WARNING}Start Purchases{txcolors.DEFAULT}')
             print(f'{txcolors.MENUOPTION}[5]{txcolors.WARNING}Sell Specific Coin{txcolors.DEFAULT}')
             print(f'{txcolors.MENUOPTION}[6]{txcolors.WARNING}Sell All Coins{txcolors.DEFAULT}')
             print(f'{txcolors.MENUOPTION}[7]{txcolors.WARNING}Convert {TRADES_LOG_FILE} to html{txcolors.DEFAULT}')
-            print(f'{txcolors.MENUOPTION}[8]{txcolors.WARNING}Exit BOT{txcolors.DEFAULT}')
+            print(f'{txcolors.MENUOPTION}[8]{txcolors.WARNING}Exit {languages_bot.MSG5[LANGUAGE]}{txcolors.DEFAULT}')
             x = input('Please enter your choice: ')
             x = int(x)
             print(f'\n \n')
@@ -2349,11 +2284,11 @@ def menu():
                 renew_list()
                 LOOP = False
                 load_signal_threads()
-                print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Reaload Completed{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Reaload Completed{txcolors.DEFAULT}')
             elif x == 2:
                 stop_signal_threads()
                 load_signal_threads()
-                print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Modules Realoaded Completed{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Modules Realoaded Completed{txcolors.DEFAULT}')
                 LOOP = False
             elif x == 3:
                 stop_signal_threads()
@@ -2364,9 +2299,9 @@ def menu():
                     VOLATILE_VOLUME = get_volume_list()
                     renew_list()
                 else:
-                    print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}USE_MOST_VOLUME_COINS must be true in config.yml{txcolors.DEFAULT}')
+                    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}USE_MOST_VOLUME_COINS must be true in config.yml{txcolors.DEFAULT}')
                     LOOP = False
-                print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}VOLATILE_VOLUME Realoaded Completed{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}VOLATILE_VOLUME Realoaded Completed{txcolors.DEFAULT}')
                 load_signal_threads()
                 LOOP = False
             elif x == 4:
@@ -2390,7 +2325,7 @@ def menu():
                 while not x == "n":
 					#last_price = get_price() #menu
                     print_table_coins_bought()
-                    print(f'{txcolors.WARNING}\nType in the Symbol you wish to sell. [n] to continue BOT.{txcolors.DEFAULT}')
+                    print(f'{txcolors.WARNING}\nType in the Symbol you wish to sell. [n] to continue {languages_bot.MSG5[LANGUAGE]}.{txcolors.DEFAULT}')
                     x = input("#: ")
                     if x == "":
                         break
@@ -2399,26 +2334,26 @@ def menu():
                 LOOP = False				
             elif x == 6:
                 stop_signal_threads()
-                print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Do you want to sell all coins?[y/n]{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Do you want to sell all coins?[y/n]{txcolors.DEFAULT}')
                 sellall = input("#: ")
                 if sellall.upper() == "Y":
                     sell_all('Sell all, manual choice!')
                 load_signal_threads()
                 LOOP = False
             elif x == 7:
-                print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Converting LOG_TRADES to html...{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Converting LOG_TRADES to html...{txcolors.DEFAULT}')
                 convert_csv_to_html(TRADES_LOG_FILE)
                 LOOP = False
             elif x == 8:
                 stop_signal_threads()
-                print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Program execution ended by user!{txcolors.DEFAULT}')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Program execution ended by user!{txcolors.DEFAULT}')
                 sys.exit(0)
             else:
                 print(f'wrong choice')
                 LOOP = True
 		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} Exception in menu(): {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} Exception in menu(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
     except KeyboardInterrupt as ki:
@@ -2437,7 +2372,38 @@ def print_banner():
 		\033[92m                                                                |__/                            |___/ by Pantersxx3'''
 		print(f'{__header__}')
 		print(f'{txcolors.DEFAULT}')
-	
+
+def create_conection_binance(force=False):
+    global BACKTESTING_MODE, AMERICAN_USER, PROXY_HTTP, PROXY_HTTPS, client
+    if not BACKTESTING_MODE or force:
+        # Authenticate with the client, Ensure API key is good before continuing
+        if AMERICAN_USER:
+            if PROXY_HTTP != '' or PROXY_HTTPS != '': 
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT} Using proxy ...')
+                proxies = {
+                        'http': PROXY_HTTP,
+                        'https': PROXY_HTTPS
+                }
+                client = Client(access_key, secret_key, {'proxies': proxies}, tld='us')
+            else:
+                client = Client(access_key, secret_key, tld='us')
+        else:
+            if PROXY_HTTP != '' or PROXY_HTTPS != '': 
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT} Using proxy ...')
+                proxies = {
+                        'http': PROXY_HTTP,
+                        'https': PROXY_HTTPS
+                }
+                client = Client(access_key, secret_key, {'proxies': proxies})
+            else:
+                client = Client(access_key, secret_key)
+
+        # If the users has a bad / incorrect API key.
+        # this will stop the script from starting, and display a helpful error.
+        api_ready, msg = test_api_key(client, BinanceAPIException)
+        if api_ready is not True:
+            exit(f'{txcolors.SELL_LOSS}{msg}{txcolors.DEFAULT}')
+                
 if __name__ == '__main__':
     req_version = (3,9)
     if sys.version_info[:2] < req_version: 
@@ -2451,12 +2417,12 @@ if __name__ == '__main__':
     print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Initializing, wait a moment...{txcolors.DEFAULT}')
     discord_msg_balance_data = ""
     last_msg_discord_balance_date = datetime.now()
-    last_history_log_date = datetime.now()
     global client
-    if not CheckIfAliveStation("google.com"):
-        print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}You not have internet, Exit...{txcolors.DEFAULT}')
-        sys.exit(0)
     load_settings()
+    if not BACKTESTING_MODE:
+        if not CheckIfAliveStation("google.com"):
+            print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}You not have internet, Exit...{txcolors.DEFAULT}')
+            sys.exit(0)    
  
     if not DISABLE_TIMESTAMPS:
 		# print with timestamps
@@ -2482,8 +2448,8 @@ if __name__ == '__main__':
 			
 	# Load creds for correct environment
     if DEBUG:
-        if SHOW_INITIAL_CONFIG == True: print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Loaded config below\n{json.dumps(parsed_config, indent=4)}{txcolors.DEFAULT}')
-        if SHOW_INITIAL_CONFIG == True: print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Your credentials have been loaded from {creds_file}{txcolors.DEFAULT}')
+        if SHOW_INITIAL_CONFIG == True: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Loaded config below\n{json.dumps(parsed_config, indent=4)}{txcolors.DEFAULT}')
+        if SHOW_INITIAL_CONFIG == True: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Your credentials have been loaded from {creds_file}{txcolors.DEFAULT}')
 		
     if MSG_DISCORD:
         DISCORD_WEBHOOK = load_discord_creds(parsed_creds)
@@ -2493,37 +2459,8 @@ if __name__ == '__main__':
 
     sell_all_coins = False
     sell_specific_coin = False
-
-	# Authenticate with the client, Ensure API key is good before continuing
-    if AMERICAN_USER:
-        if PROXY_HTTP != '' or PROXY_HTTPS != '': 
-            print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT} Using proxy ...')
-            proxies = {
-                    'http': PROXY_HTTP,
-                    'https': PROXY_HTTPS
-            }
-            client = Client(access_key, secret_key, {'proxies': proxies}, tld='us')
-        else:
-            client = Client(access_key, secret_key, tld='us')
-    else:
-        if PROXY_HTTP != '' or PROXY_HTTPS != '': 
-            print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT} Using proxy ...')
-            proxies = {
-                    'http': PROXY_HTTP,
-                    'https': PROXY_HTTPS
-            }
-            client = Client(access_key, secret_key, {'proxies': proxies})
-        else:
-            client = Client(access_key, secret_key)
-
-	# If the users has a bad / incorrect API key.
-	# this will stop the script from starting, and display a helpful error.
-    api_ready, msg = test_api_key(client, BinanceAPIException)
-    if api_ready is not True:
-        exit(f'{txcolors.SELL_LOSS}{msg}{txcolors.DEFAULT}')
-	
-	#global VOLATILE_VOLUME
-	#if USE_MOST_VOLUME_COINS == True: VOLATILE_VOLUME = get_volume_list()
+    
+    create_conection_binance()
 	
     new_or_continue()
 	
@@ -2534,7 +2471,7 @@ if __name__ == '__main__':
 	# try to load all the coins bought by the bot if the file exists and is not empty
     coins_bought = {}
 
-    if TEST_MODE: #or OFFLINE_MODE:
+    if TEST_MODE: 
         file_prefix = 'test_'
     else:
         file_prefix = 'live_'
@@ -2561,7 +2498,7 @@ if __name__ == '__main__':
                 
                 bot_started_datetime = float(bot_stats['botstart_datetime'])
             except Exception as e:
-                write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Exception on reading botstart_datetime from {bot_stats_file_path}. Exception: {e}{txcolors.DEFAULT}')
+                write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Exception on reading botstart_datetime from {bot_stats_file_path}. Exception: {e}{txcolors.DEFAULT}')
                 write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
                 bot_started_datetime = datetime.now().timestamp()
 				#if continue fails
@@ -2570,7 +2507,7 @@ if __name__ == '__main__':
             try:
                 total_capital = bot_stats['total_capital']
             except Exception as e:
-                write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Exception on reading total_capital from {bot_stats_file_path}. Exception: {e}{txcolors.DEFAULT}')
+                write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Exception on reading total_capital from {bot_stats_file_path}. Exception: {e}{txcolors.DEFAULT}')
                 write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
                 total_capital = TRADE_SLOTS * TRADE_TOTAL
                 pass
@@ -2590,20 +2527,17 @@ if __name__ == '__main__':
     historical_prices = [None] * (TIME_DIFFERENCE * RECHECK_INTERVAL)
     hsp_head = -1
 
-	# prevent including a coin in volatile_coins if it has already appeared there less than TIME_DIFFERENCE minutes ago
-    #volatility_cooloff = {}
-
 	# if saved coins_bought json file exists and it's not empty then load it
     if os.path.isfile(coins_bought_file_path) and os.stat(coins_bought_file_path).st_size!= 0:
         with open(coins_bought_file_path) as file:
             coins_bought = json.load(file)
 
-    print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Press Ctrl-C to stop the script. {txcolors.DEFAULT}')
+    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Press Ctrl-C to stop the script. {txcolors.DEFAULT}')
 
     if not TEST_MODE:
         if not args.notimeout: # if notimeout skip this (fast for dev tests)
-            write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}WARNING: Test mode is disabled in the configuration, you are using _LIVE_ funds.{txcolors.DEFAULT}')
-            print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}WARNING: Waiting 10 seconds before live trading as a security measure!{txcolors.DEFAULT}')
+            write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}WARNING: Test mode is disabled in the configuration, you are using _LIVE_ funds.{txcolors.DEFAULT}')
+            print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}WARNING: Waiting 10 seconds before live trading as a security measure!{txcolors.DEFAULT}')
             time.sleep(10) #Waiting 10 seconds before live trading
 
 	#remove_external_signals('buy')
@@ -2640,7 +2574,7 @@ if __name__ == '__main__':
 			
             time_end = datetime.now()
             time_speed = time_end - time_init 
-            print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Time speed: {time_speed.total_seconds()} seconds{txcolors.DEFAULT}')
+            print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Time speed: {time_speed.total_seconds()} seconds{txcolors.DEFAULT}')
 			#coins_sold = sell_coins()
 			#remove_from_portfolio(coins_sold)
 			#update_bot_stats()
@@ -2651,16 +2585,16 @@ if __name__ == '__main__':
                     stop_signal_threads()
                     load_signal_threads()
                     thehour = datetime.now().hour
-                    print(f'{txcolors.WARNING}BOT: {txcolors.WARNING}Modules Realoaded Completed{txcolors.DEFAULT}')
+                    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Modules Realoaded Completed{txcolors.DEFAULT}')
         except ReadTimeout as rt:
             TIMEOUT_COUNT += 1
-            write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}We got a timeout error from Binance. Re-loop. Connection Timeouts so far: {TIMEOUT_COUNT}{txcolors.DEFAULT}')
+            write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}We got a timeout error from Binance. Re-loop. Connection Timeouts so far: {TIMEOUT_COUNT}{txcolors.DEFAULT}')
         except ConnectionError as ce:
             READ_CONNECTERR_COUNT += 1
-            write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}We got a connection error from Binance. Re-loop. Connection Errors so far: {READ_CONNECTERR_COUNT}{txcolors.DEFAULT}')
+            write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}We got a connection error from Binance. Re-loop. Connection Errors so far: {READ_CONNECTERR_COUNT}{txcolors.DEFAULT}')
         except BinanceAPIException as bapie:
             BINANCE_API_EXCEPTION += 1
-            write_log(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}We got an API error from Binance. Re-loop. API Errors so far: {BINANCE_API_EXCEPTION}.\nException:\n{bapie}{txcolors.DEFAULT}')											
+            write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}We got an API error from Binance. Re-loop. API Errors so far: {BINANCE_API_EXCEPTION}.\nException:\n{bapie}{txcolors.DEFAULT}')											
         except KeyboardInterrupt as ki:
             if menu() == True: sys.exit(0)
     try:
@@ -2670,9 +2604,9 @@ if __name__ == '__main__':
                 sell_all(session_tpsl_override_msg, True)
                 sys.exit(0)
             else:
-                print(f'\n \n{txcolors.WARNING}BOT: {txcolors.DEFAULT}Bot terminated for some reason.{txcolors.DEFAULT}')
+                print(f'\n \n{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Bot terminated for some reason.{txcolors.DEFAULT}')
     except Exception as e:
-        write_log(f'{txcolors.WARNING}BOT: {txcolors.WARNING} Exception in main(): {e}{txcolors.DEFAULT}')
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} Exception in main(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
     except KeyboardInterrupt as ki:

@@ -6,20 +6,20 @@ script_options:
   TEST_MODE: True
   #In this mode, the price information of a cryptocurrency will be downloaded during a given period of time. 
   #TEST_MODE is required to be true.
-  OFFLINE_MODE: False
+  BACKTESTING_MODE: True #Backtest mode
   BOT_TIMEFRAME: "1m"
-  OFFLINE_MODE_TIME_START: "01/06/23 00:00:00"
-  OFFLINE_MODE_TIME_END: "06/06/23 07:00:00"
+  BACKTESTING_MODE_TIME_START: "01/05/22 00:00:00" #"01/06/23 00:00:00"
+  BACKTESTING_MODE_TIME_END: "10/05/22 00:00:00" #"06/06/23 07:00:00"
   LOG_TRADES: True
   MICROSECONDS: 0.3
-  USE_SIGNALLING_MODULES: True #if OFFLINE_MODE use USE_SIGNALLING_MODULES: True
+  USE_SIGNALLING_MODULES: False #if BACKTESTING_MODE use USE_SIGNALLING_MODULES: True
   #the MAIN_FILES_PATH will be the folder where the LOG_FILE, HISTORY_LOG_FILE, COIN_BOUGHT and BOT_STATS files will be stored. 
   #By default, if it is empty, these files will be housed in the main folder of the Bot. Not yet implemented
   MAIN_FILES_PATH: ""
   LOG_FILE: 'log.txt'
   TRADES_LOG_FILE: 'trades.csv'
   #if it is empty no information will be saved
-  HISTORY_LOG_FILE: '' #'history.html'
+  #HISTORY_LOG_FILE: '' #'history.html'
   COINS_BOUGHT: 'coins_bought.json'
   BOT_STATS: 'bot_stats.json'
   USE_VOLATILE_METOD: False
@@ -75,7 +75,7 @@ trading_options:
   CHANGE_IN_PRICE: 100
 
   # define in % when to sell a coin that's not making a profit.
-  STOP_LOSS: 0.20
+  STOP_LOSS: 0.10
 
   # define in % when to take profit on a profitable coin. default 0.25
   TAKE_PROFIT: 0.15
