@@ -304,14 +304,13 @@ def read_position_csv(coin):
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
 	return pos1
-	
+
 def read_next_row_csv(coin):
     try:
         global c_data
         pos = 0
         price = 0
         time1 = 0
-        c = pd.DataFrame([])
 
         if USE_SIGNALLING_MODULES:
             while not os.path.exists('ok.ok'):
@@ -321,20 +320,15 @@ def read_next_row_csv(coin):
             pos = read_position_csv(coin) 
             if c_data.empty:
                 c_data = pd.read_csv(coin + '.csv')            
-            c = c_data
-            for i in range(len(c)):
-                if c.iloc[i]['time'] == pos:
-                    if i + 1 == len(c):
-                        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {languages_bot.MSG4[LANGUAGE]}{txcolors.DEFAULT}...')
-                        #convert_csv_to_html(TRADES_LOG_FILE)
-                        #menu()
-                        sys.exit(0)
-                    else:
-                        c = c.iloc[i + 1]
-                        time1 = c['time']
-                        price = c['Close']
-                        break
-            c = pd.DataFrame([])
+            locate = False
+            for row in c_data.itertuples(index=False):
+                if locate:
+                    time1 = row.time
+                    price = row.Close
+                    break
+                if row.time == pos:
+                    locate = True
+            if not locate: sys.exit(0)
             write_position_csv(coin,time1)    
         else:
             c = pd.read_csv(coin + '.csv')
