@@ -343,6 +343,7 @@ def analyze(d, pairs, buy=True):
                 TIME_1M = analysis1MIN['time'].iloc[-1]
                 time = int(TIME_1M)/1000
                 time_1MIN = datetime.fromtimestamp(int(time)).strftime("%d/%m/%y %H:%M:%S")
+                
                 #OverBought = 80
                 #OverSold = 20
                 # k = ta.sma(ta.stoch(analysis1MIN['Close'], analysis1MIN['High'], analysis1MIN['Low'], 14, 3, 3)['STOCHk_14_3_3'], 3)
@@ -352,12 +353,17 @@ def analyze(d, pairs, buy=True):
                 # co = crossover(k,d)
                 # cu = crossunder(k,d)
                 
-                # df = pd.DataFrame()
+                df = pd.DataFrame()
                 # df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(analysis1MIN['Close'], length=10, std=2)
 
-                # B1_1MIN = round(df['upper'].iloc[-1], 2)
-                # BM_1MIN = round(df['middle'].iloc[-1], 2)
-                # B2_1MIN = round(df['lower'].iloc[-1], 2)
+                # B1_10_1MIN = round(df['upper'].iloc[-1], 2)
+                # BM_10_1MIN = round(df['middle'].iloc[-1], 2)
+                # B2_10_1MIN = round(df['lower'].iloc[-1], 2)
+                
+                df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(analysis1MIN['Close'], length=100, std=2)
+                B1_100_1MIN = round(df['upper'].iloc[-1], 2)
+                BM_100_1MIN = round(df['middle'].iloc[-1], 2)
+                B2_100_1MIN = round(df['lower'].iloc[-1], 2)
                 
                 # tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span = ichimoku_cloud(analysis1MIN['Close'])
                 # ICHIMOKU_SENKOUSPANA_1MIN = round(senkou_span_a.iloc[-1],5) 
@@ -379,7 +385,7 @@ def analyze(d, pairs, buy=True):
                      
                 # EMA2_1MIN = round(ta.ema(analysis1MIN['Close'], length=2).iloc[-1],5)
                 # EMA3_1MIN = round(ta.ema(analysis1MIN['Close'], length=3).iloc[-1],5)
-                EMA9_1MIN = round(ta.ema(analysis1MIN['Close'], length=9).iloc[-1],5)
+                # EMA9_1MIN = round(ta.ema(analysis1MIN['Close'], length=9).iloc[-1],5)
                 # EMA10_1MIN = round(ta.ema(analysis1MIN['Close'], length=10).iloc[-1],5)
                 # EMA18_1MIN = round(ta.ema(analysis1MIN['Close'], length=18).iloc[-1],5)
                 # EMA20_1MIN = round(ta.ema(analysis1MIN['Close'], length=20).iloc[-1],5)
@@ -399,7 +405,7 @@ def analyze(d, pairs, buy=True):
                 # CCI14_1MIN =  round(analysis1MIN.ta.cci(length=14).iloc[-1],5)
                 
                 # RSI2_1MIN = round(ta.rsi(analysis1MIN['Close'], 2).iloc[-1],5)
-                # RSI6_1MIN = round(ta.rsi(analysis1MIN['Close'], 6).iloc[-1],5)
+                RSI6_1MIN = round(ta.rsi(analysis1MIN['Close'], 6).iloc[-1],5)
                 # RSI9_1MIN = round(ta.rsi(analysis1MIN['Close'], 9).iloc[-1],5)
                 # RSI10_1MIN = round(ta.rsi(analysis1MIN['Close'], 10).iloc[-1],5)
                 # RSI12_1MIN = round(ta.rsi(analysis1MIN['Close'], 12).iloc[-1],5)
@@ -429,7 +435,7 @@ def analyze(d, pairs, buy=True):
                 # SMA10_1MIN = round(ta.sma(analysis1MIN['Close'],length=10).iloc[-1],5)           
                 # SMA20_1MIN = round(ta.sma(analysis1MIN['Close'],length=20).iloc[-1],5)   
                 # SMA50_1MIN = round(ta.sma(analysis1MIN['Close'],length=50).iloc[-1],5)  
-                SMA70_1MIN = round(ta.sma(analysis1MIN['Close'],length=70).iloc[-1],5)
+                # SMA70_1MIN = round(ta.sma(analysis1MIN['Close'],length=70).iloc[-1],5)
                 # SMA100_1MIN = round(ta.sma(analysis1MIN['Close'],length=100).iloc[-1],5)
                 # SMA200_1MIN = round(ta.sma(analysis1MIN['Close'],length=200).iloc[-1],5)
                 
@@ -472,21 +478,22 @@ def analyze(d, pairs, buy=True):
                         # buySignal14 = float(EMA50_1MIN) >= float(EMA100_1MIN) #89/121 0.0356 tp.15 sl.10
                         # buySignal15 = float(SMA9_1MIN) >= float(SMA29_1MIN) #53/82 0.4046 tp.15 sl.10
                         # buySignal17 = CLOSE_1MIN > B220_1MIN #84/114 -2.5941 tp.15 sl.10 # 0 0.0 sellSignal12 #57/33 3.2534 sellSignal13
-                        # buySignal18 = CLOSE_1MIN < BM_1MIN #86/115 -2.9523 tp.15 sl.10
-                        # buySignal19 = CLOSE_1MIN < BM_1MIN  and RSI14_1MIN > 40 #88/125 -3.8354 tp.15 sl.10
+                        # buySignal18 = CLOSE_1MIN < BM_10_1MIN #86/115 -2.9523 tp.15 sl.10
+                        # buySignal19 = CLOSE_1MIN < BM_10_1MIN  and RSI14_1MIN > 40 #88/125 -3.8354 tp.15 sl.10
                         # buySignal20 = ((SMA3_1MIN > BM1_1MIN) and (RSI14_1MIN > 50) and (MACD_1MIN > 6)) #and CLOSE_1MIN < B11_1MIN) #83/122 -1.7671 tp.15 sl.10
-                        # buySignal21 = ((CLOSE_1MIN > B2_1MIN) and (RSI6_1MIN > 50)) #84/116 -2.2345 tp.15 sl.10
-                        # buySignal22 = (CLOSE_1MIN < B2_1MIN and RSI9_1MIN < 30) #76/123 -2.7466 tp.15 sl.10
-                        # buySignal23 = (CLOSE_1MIN > B2_1MIN and CLOSE_1MIN < BM_1MIN and RSI9_1MIN < 30) #94/121 -1.2078 tp.15 sl.10
+                        # buySignal21 = ((CLOSE_1MIN > B2_10_1MIN) and (RSI6_1MIN > 50)) #84/116 -2.2345 tp.15 sl.10
+                        # buySignal22 = (CLOSE_1MIN < B2_10_1MIN and RSI9_1MIN < 30) #76/123 -2.7466 tp.15 sl.10
+                        # buySignal23 = (CLOSE_1MIN > B2_10_1MIN and CLOSE_1MIN < BM_10_1MIN and RSI9_1MIN < 30) #94/121 -1.2078 tp.15 sl.10
                         # buySignal24 = CLOSE_1MIN > ICHIMOKU_SENKOUSPANA_1M and CLOSE_1MIN > ICHIMOKU_SENKOUSPANB_1M #83/129 -3.9073 sl.10 tp.15
                         # buySignal25 = RSI9_1MIN < 30 and CLOSE_1MIN < SUPERTRENDDOWN_1M #82/114 0.3323 sl.10 tp.15
                         # buySignal26 = crossover(RSI14_1MIN, ta.sma(RSI14_1MIN_DATA, 14).iloc[-1]) and crossover(MACD_1MIN, MACDSIG_1MIN) and crossover(STOCH14K_1M, ta.sma(STOCH14K_1M_DATA['STOCHk_14_3_3'], 14).iloc[-1]) #114/119 -0.5414 #95/94 -0.6949
                         # buySignal27 = STOCH10K_1M < 50 and RSI5_1MIN >= 20 #86/124 0.4797 tp.15 sl.10
                         # buySignal28 = CLOSE_1MIN > SMA5_1MIN and RSI5_1MIN < 50
-                        # buySignal29 = OPEN < B2_1MIN and CLOSE_1MIN > B2_1MIN
+                        # buySignal29 = OPEN < B2_10_1MIN and CLOSE_1MIN > B2_10_1MIN
                         # buySignal29 = random.choice([True, False])
                         # buySignal30 = EMA9_1MIN > EMA18_1MIN and MACD_1MIN > MACDSIG_1MIN and CLOSE_1MIN > SUPERTREND_1M #52/66 1.8395 tp.15 sl.10
-                        buySignal31 = CLOSE_1MIN < EMA9_1MIN and CLOSE_1MIN > SMA70_1MIN #37/45 0.3560 tp.15 sl.10 SMA50 #32/41 0.6267 tp.15 sl.10 SMA100 #36/42 0.8262 tp.15 sl.10 SMA70_1MIN #35/46 0.5585 tp.15 sl.10 SMA200 
+                        # buySignal31 = CLOSE_1MIN < EMA9_1MIN and CLOSE_1MIN > SMA70_1MIN #37/45 0.3560 tp.15 sl.10 SMA50 #32/41 0.6267 tp.15 sl.10 SMA100 #36/42 0.8262 tp.15 sl.10 SMA70_1MIN #35/46 0.5585 tp.15 sl.10 SMA200 
+                        buySignal32 = RSI6_1MIN < 50 and CLOSE_1MIN < B2_100_1MIN #36/40 1.4141 tp.15 sl.10
                         
                         all_variables = dir()
                         for name in all_variables:
@@ -523,11 +530,11 @@ def analyze(d, pairs, buy=True):
                         # sellSignal11 = cu and d > 80 and k > 80 and CLOSE_1MIN > SMA200_1MIN and float(CLOSE_1MIN) > float(bought_at)
                         # sellSignal12 = (CLOSE_1MIN > B120_1MIN and float(CLOSE_1MIN) > float(bought_at))
                         # sellSignal13 = (CLOSE_1MIN > BM20_1MIN and float(CLOSE_1MIN) > float(bought_at))
-                        # sellSignal14 = (CLOSE_1MIN > B1_1MIN and float(CLOSE_1MIN) > float(bought_at)) # and RSI14_1MIN >= 60)
+                        # sellSignal14 = (CLOSE_1MIN > B1_10_1MIN and float(CLOSE_1MIN) > float(bought_at)) # and RSI14_1MIN >= 60)
                         # sellSignal15 = (SMA3_1MIN < BM1_1MIN and RSI14_1MIN < 50 and MACD_1MIN < 6 and CLOSE_1MIN > bought_at) #and CLOSE_1MIN < B11_1MIN)
-                        # sellSignal16 = ((CLOSE_1MIN > B1_1MIN) and (RSI9_1MIN > 70) and (CLOSE_1MIN > bought_at))
-                        # sellSignal17 = ((CLOSE_1MIN < B1_1MIN) and (RSI14_1MIN > 50) and CLOSE_1MIN > bought_at)
-                        # sellSignal18 = (CLOSE_1MIN > BM_1MIN and RSI9_1MIN > 70 and CLOSE_1MIN > bought_at)
+                        # sellSignal16 = ((CLOSE_1MIN > B1_10_1MIN) and (RSI9_1MIN > 70) and (CLOSE_1MIN > bought_at))
+                        # sellSignal17 = ((CLOSE_1MIN < B1_10_1MIN) and (RSI14_1MIN > 50) and CLOSE_1MIN > bought_at)
+                        # sellSignal18 = (CLOSE_1MIN > BM_10_1MIN and RSI9_1MIN > 70 and CLOSE_1MIN > bought_at)
                         # sellSignal19 = CLOSE_1MIN < ICHIMOKU_SENKOUSPANA_1M and CLOSE_1MIN < ICHIMOKU_SENKOUSPANB_1M and CLOSE_1MIN > bought_at
                         # sellSignal20 = crossover(RSI14_1MIN, ta.sma(RSI14_1MIN_DATA, 14).iloc[-1]) and crossover(MACD_1MIN, MACDSIG_1MIN) and not crossover(STOCH14K_1M, ta.sma(STOCH14K_1M_DATA['STOCHk_14_3_3'], 14).iloc[-1])
                         # sellSignal21 = (MACD_1MIN > 0) and (RSI14_1MIN > 50) and CLOSE_1MIN > bought_at
@@ -535,10 +542,11 @@ def analyze(d, pairs, buy=True):
                         # sellSignal22 = CLOSE_1MIN > SMA5_1MIN and RSI5_1MIN > 50 and CLOSE_1MIN > bought_at #53/39 2.2178 # 41/10 3.6789 buySignal28 buySignal11 #176/93 1.1840 sl.10 buySignal11 buySignal28 #84/42 1.4573 buySignal11 sl.10
                         # sellSignal23 = CLOSE_1MIN > SMA200_1MIN and CLOSE_1MIN > SMA5_1MIN and RSI2_1MIN > 90
                         # sellSignal24 = random.choice([True, False])
-                        # sellSignal25 = OPEN > B1_1MIN and CLOSE_1MIN < B1_1MIN and CLOSE_1MIN > bought_at
+                        # sellSignal25 = OPEN > B1_10_1MIN and CLOSE_1MIN < B1_10_1MIN and CLOSE_1MIN > bought_at
                         # sellSignal26 = EMA9_1MIN < EMA18_1MIN and MACDSIG_1MIN < MACDSIG_1MIN and CLOSE_1MIN < SUPERTREND_1M
                         # sellSignal27 = CLOSE_1MIN > EMA9_1MIN #288/163 2.6908 buySignal31
-
+                        # sellSignal27 = RSI6_1MIN > 50 and CLOSE_1MIN > B1_100_1MIN
+                        
                         all_variables = dir()
                         for name in all_variables:
                             if name.startswith('sellSignal'):

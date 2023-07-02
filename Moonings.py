@@ -947,8 +947,8 @@ def pause_bot():
                 else:
                     print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Buying paused due to negative market conditions, stop loss and take profit will continue to work...{txcolors.DEFAULT}')
                     msg = str(datetime.now()) + ' | PAUSE{languages_bot.MSG5[LANGUAGE]}. Buying paused due to negative market conditions, stop loss and take profit will continue to work.'
+                
                 msg_discord(msg)
-
                 bot_paused = True
 
 			# Sell function needs to work even while paused
@@ -956,11 +956,10 @@ def pause_bot():
             coins_sold = sell_coins()
             remove_from_portfolio(coins_sold)
             last_price = get_price(True) #pause_bot
-            print("pause_bot: last_price= ", last_price)
             
 			# pausing here
             if hsp_head == 1: 
-				balance_report(last_price) 
+                balance_report(last_price) 
             time.sleep((TIME_DIFFERENCE * 10) / RECHECK_INTERVAL) #wait for pause_bot
 			
         else:
@@ -983,18 +982,18 @@ def pause_bot():
 	
 def set_config(data, value):
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	file_name = "config.yml"
-	parsed_config = load_config(file_name)
-	with open(file_name, 'r') as file:
-		items = file.readlines()
-	c = 0
-	for line in items:
-		c = c + 1
-		if data in line:
-			break
-	items[c-1] = "  " + data + ": " + str(value) + "\n"
-	with open(file_name, 'w') as f:
-		f.writelines(items)
+    file_name = "config.yml"
+    parsed_config = load_config(file_name)
+    with open(file_name, 'r') as file:
+        items = file.readlines()
+    c = 0
+    for line in items:
+        c = c + 1
+        if data in line:
+            break
+    items[c-1] = "  " + data + ": " + str(value) + "\n"
+    with open(file_name, 'w') as f:
+        f.writelines(items)
 
 def set_exparis(pairs):
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
