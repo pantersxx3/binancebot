@@ -352,12 +352,12 @@ def analyze(d, pairs, buy=True):
                 # co = crossover(k,d)
                 # cu = crossunder(k,d)
                 
-                df = pd.DataFrame()
-                df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(analysis1MIN['Close'], length=10, std=2)
+                # df = pd.DataFrame()
+                # df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(analysis1MIN['Close'], length=10, std=2)
 
-                B1_1MIN = round(df['upper'].iloc[-1], 2)
+                # B1_1MIN = round(df['upper'].iloc[-1], 2)
                 # BM_1MIN = round(df['middle'].iloc[-1], 2)
-                B2_1MIN = round(df['lower'].iloc[-1], 2)
+                # B2_1MIN = round(df['lower'].iloc[-1], 2)
                 
                 # tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span = ichimoku_cloud(analysis1MIN['Close'])
                 # ICHIMOKU_SENKOUSPANA_1MIN = round(senkou_span_a.iloc[-1],5) 
@@ -440,33 +440,18 @@ def analyze(d, pairs, buy=True):
                 if os.path.exists(json_indicators):
                     with open(json_indicators) as json_file:
                         data_indicators = defaultdict_from_dict(json.load(json_file))
-                #print('data: ', data_indicators, type(data_indicators))
+
                 for name in all_variables:
                     if name.endswith('1MIN') and not 'analysis' in name and not "CLOSE" in name:
                         myvalue = str(eval(name)).strip()
                         if not myvalue == 'nan' or not myvalue == 'NaN' or not pd.isnan(myvalue):
-                            # locate = False
-                            # for datastr in data_indicators:
-                                # if datastr == name:
-                                    # locate = True
-                                    # break
-                            # if locate:
-                                #data_indicators[name].extend(myvalue)
                             if not 'nan' in myvalue:  
                                 if not 'NaN' in myvalue:
                                     data_indicators[name].append(myvalue)
                                     
-                                #data_indicators.setdefault(name, []).append(myvalue)
-                                #data_indicators.update({name:myvalue})
-                            #else:
-                                #if not myvalue == 'nan' or not myvalue == 'NaN':
-                                    # #print('else: ', name, 'data_indicators.init: ', data_indicators, '\n')
-                                    #data_indicators[name] = myvalue
-                                    # data_indicators[name].append(myvalue)
-                                    
                 with open(json_indicators, 'w') as fp:
                     json.dump(data_indicators, fp, indent=4)
-                #print('\n update:', data_indicators)
+
                 if buy:
                     bought_at, timeHold, coins_bought = load_json(pair)            
                     if coins_bought < TRADE_SLOTS and bought_at == 0:
