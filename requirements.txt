@@ -26,3 +26,5 @@ numpy==1.24.1
 prettytable==2.2.1
 pandas-ta==0.3.14b
 ta-lib==0.4.25
+kaleido
+plotly==5.15.0
