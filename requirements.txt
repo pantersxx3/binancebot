@@ -1,5 +1,7 @@
-aiohttp==3.7.4.post0
-async-timeout==3.0.1
+requests
+pyproject-toml
+aiohttp==3.8.5
+async-timeout==4.0.2
 attrs==21.2.0
 certifi==2021.5.30
 chardet==4.0.0
@@ -11,7 +13,7 @@ multidict==5.1.0
 python-binance==1.0.12
 python-dateutil==2.8.2
 pytz==2021.1
-PyYAML==5.4.1
+PyYAML
 regex==2021.7.6
 requests==2.26.0
 six==1.16.0
@@ -25,6 +27,7 @@ yarl==1.8.2
 numpy==1.24.1
 prettytable==2.2.1
 pandas-ta==0.3.14b
-ta-lib==0.4.25
 kaleido
 plotly==5.15.0
+ccxt==4.0.55
+TA-Lib
