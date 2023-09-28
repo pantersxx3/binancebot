@@ -174,18 +174,18 @@ MSG35 = {
     }
 
 MSG36 = {
-    "es" : "",
-    "en" : ""
+    "es" : "sesión",
+    "en" : "session"
     }
 
 MSG37 = {
-    "es" : "",
-    "en" : ""
+    "es" : "perdido en esta ",
+    "en" : "won in this "
     }
 
 MSG38 = {
-    "es" : "",
-    "en" : ""
+    "es" : "ganado en esta sesion",
+    "en" : "loss in this session"
     }
 
 MSG39 = {

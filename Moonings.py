@@ -90,6 +90,9 @@ import matplotlib.pyplot as plt
 
 from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
 from collections import defaultdict
 
 # Load helper modules
@@ -730,63 +733,83 @@ def make_graphics():
         transaction_buy = []
         transaction_sell = []
         prefix = prefix_type()
-        
-        if USE_MOST_VOLUME_COINS == True:
-            TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
-        else:
-            TICKERS = 'tickers.txt'            
-            for line in open(TICKERS):
-                pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
-            
-        for coin in pairs:
-            with open(prefix + TRADES_LOG_FILE, "r") as f:
-                for line in f:
-                    Datetime, OrderID, Type, Coin, Volume, BuyPrice, AmountofBuyUSDT, SellPrice, AmountofSellUSDT, SellReason, ProfitUSDT = line.split(",")
-                    if Type.strip() == "Buy" and Coin.strip() == coin.replace(PAIR_WITH, ""):
-                        transaction_buy.append({'time' : Datetime, "price": float(BuyPrice)})
-                    if Type.strip() == "Sell" and Coin.strip() == coin.replace(PAIR_WITH, ""):
-                        transaction_sell.append({'time' : Datetime, "price" : float(SellPrice)})
-          
-            with open(coin + ".csv", "r") as f:
-                for line in f:
-                    time, Open, High, Low, Close = line.split(",")
-                    if Close != 'Close\n':
-                        date_value.append(round(float(Close),2))
-                        time = int(time)/1000
-                        time = datetime.fromtimestamp(int(time)).strftime("%d/%m/%y %H:%M:%S")
-                        date_time.append(time)
-                        
-            json_indicators = prefix + TRADES_INDICATORS
-            data_indicators = {}
-            if os.path.exists(json_indicators):
-                    with open(json_indicators) as json_file:
-                        data_indicators = defaultdict_from_dict(json.load(json_file))
-            
-            df1 = pd.DataFrame({"date_time": date_time, "date_value": date_value})
-            df = pd.DataFrame(data_indicators)
-            
-            fig = px.line(df1, "date_time", "date_value")
-            fig.update_traces(line_color='black', name=coin+PAIR_WITH)
-            
-            column_headers = list(df.columns.values)
-            
-            for cn in column_headers:
-                if not 'CLOSE' in cn:
-                    if not 'time' in cn:
-                        fig.add_scatter(x=df['time_1MIN'], y=df[cn], mode='lines', name=cn)  
+        if TEST_MODE:
+            if USE_MOST_VOLUME_COINS == True:
+                TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+            else:
+                TICKERS = 'tickers.txt'            
+                for line in open(TICKERS):
+                    pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
                 
-            fig.update_layout(
-                xaxis_title="Date",
-                yaxis_title="Price",
-            )
+            for coin in pairs:
+                with open(prefix + TRADES_LOG_FILE, "r") as f:
+                    for line in f:
+                        Datetime, OrderID, Type, Coin, Volume, BuyPrice, AmountofBuyUSDT, SellPrice, AmountofSellUSDT, SellReason, ProfitUSDT = line.split(",")
+                        if Type.strip() == "Buy" and Coin.strip() == coin.replace(PAIR_WITH, ""):
+                            transaction_buy.append({'time' : Datetime, "price": float(BuyPrice)})
+                        if Type.strip() == "Sell" and Coin.strip() == coin.replace(PAIR_WITH, ""):
+                            transaction_sell.append({'time' : Datetime, "price" : float(SellPrice)})
+              
+                with open(coin + ".csv", "r") as f:
+                    for line in f:
+                        time, Open, High, Low, Close = line.split(",")
+                        if Close != 'Close\n':
+                            date_value.append(round(float(Close),2))
+                            time = int(time)/1000
+                            time = datetime.fromtimestamp(int(time)).strftime("%d/%m/%y %H:%M:%S")
+                            date_time.append(time)
+                            
+                json_indicators = prefix + TRADES_INDICATORS
+                data_indicators = {}
+                if os.path.exists(json_indicators):
+                        with open(json_indicators) as json_file:
+                            data_indicators = json.load(json_file)
+                
+                df1 = pd.DataFrame({"date_time": date_time, "date_value": date_value})
+                for i in data_indicators:
+                    print(i, len(data_indicators[i]))
+                    
+                df = pd.DataFrame(data_indicators)
+                
+                r = 1
+                column_headers = list(df.columns.values)
+                for cn in column_headers:
+                    if not 'CLOSE' in cn and not 'time' in cn:
+                        if "MACD" in cn:
+                            r = r + 1
+                        if "RSI" in cn:
+                            r = r + 1
+                
+                fig = make_subplots(rows=r, cols=1, shared_xaxes=True)
+                fig.add_scatter(x=df1["date_time"], y=df1["date_value"], mode='lines')#, row=1, col=1)#, secondary_y = False)           
 
-            for transaction in transaction_buy:
-                fig.add_annotation(x=transaction['time'], y=transaction['price'], text="Buy")
-                
-            for transaction in transaction_sell:
-                fig.add_annotation(x=transaction['time'], y=transaction['price'], text="Sell")
-            
-            fig.write_html(prefix + TRADES_GRAPH)
+                column_headers = list(df.columns.values)
+                for cn in column_headers:
+                    if not 'CLOSE' in cn and not 'time' in cn:
+                            df[cn] = df[cn].apply(pd.to_numeric)
+                            if "MACD" in cn or "RSI" in cn:
+                                r = r - 1
+                                if r > 1:
+                                    last_r = r
+                                    fig.add_scatter(x=df['time_1MIN'], y=df[cn], mode='lines', name=cn, row=r, col=1)
+                            else:
+                                fig.add_scatter(x=df['time_1MIN'], y=df[cn], mode='lines', name=cn)#, row=1, col=1)
+
+                for transaction in transaction_buy:
+                    fig.add_annotation(x=transaction['time'], y=transaction['price'], text="Buy")#, row=1, col=1)
+                    
+                for transaction in transaction_sell:
+                    fig.add_annotation(x=transaction['time'], y=transaction['price'], text="Sell")#, row=1, col=1)
+                    
+                #fig.update_xaxes(showticklabels=False)
+                #fig.update_xaxes(showticklabels=True, row=last_r, col=1)
+                fig.update_layout(
+                    xaxis_title="Date",
+                    yaxis_title="Price",
+                    autotypenumbers='convert types'
+                )
+                fig.update_xaxes(matches='x')
+                fig.write_html(prefix + TRADES_GRAPH)
     except Exception as e:
         write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}make_graphics(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -830,8 +853,8 @@ def convert_csv_to_html(filecsv):
         my_table.border = True
         my_table.align = "c"
         my_table.valign = "m"
-        my_table.field_names = [languages_bot.MSG32[LANGUAGE], languages_bot.MSG23[LANGUAGE], languages_bot.MSG29[LANGUAGE], languages_bot.MSG31[LANGUAGE], PAIR_WITH + languages_bot.MSG38[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + languages_bot.MSG37[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + languages_bot.MSG32[LANGUAGE]]
-        my_table.add_row([bot_stats["total_capital"], datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"]])
+        my_table.field_names = [languages_bot.MSG32[LANGUAGE], languages_bot.MSG23[LANGUAGE], languages_bot.MSG29[LANGUAGE], languages_bot.MSG31[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG38[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG37[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG32[LANGUAGE]]
+        my_table.add_row(["TOTAL " + str(float(bot_stats["total_capital"]) + float(bot_stats["session_USDT_EARNED"])), datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"]])
         htmlCode2 = my_table.get_html_string() 
         my_table = PrettyTable()
         with open(file_prefix + filecsv.replace("csv","html"), 'w') as final_htmlFile:
@@ -1023,26 +1046,27 @@ def set_exparis(pairs):
 			f.writelines(data)
 
 def buy_external_signals():
-	external_list = {}
+    external_list = {}
 
 	# check directory and load pairs from files into external_list
-	files = []
-	folder = "signals"
-	files = [item for sublist in [glob.glob(folder + ext) for ext in ["/*.buy", "/*.exs"]] for item in sublist]
+    files = []
+    folder = "signals"
+    files = [item for sublist in [glob.glob(folder + ext) for ext in ["/*.buy", "/*.exs"]] for item in sublist]
 
 	#signals = glob.glob(mask)  #"signals/*.buy")
 	#print("signals: ", signals)
-	for filename in files: #signals:
-		for line in open(filename):
-			symbol = line.strip()
-			if symbol.replace(PAIR_WITH, "") not in EX_PAIRS:
-				external_list[symbol] = symbol
-		try:
-			os.remove(filename)
-		except:
-			if DEBUG: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Could not remove external signalling file{txcolors.DEFAULT}')
+    for filename in files: #signals:
+        for line in open(filename):
+            symbol = line.strip()
+            print("symbol=",symbol)
+            if symbol.replace(PAIR_WITH, "") not in EX_PAIRS:
+                external_list[symbol] = symbol
+        try:
+            os.remove(filename)
+        except:
+            if DEBUG: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Could not remove external signalling file{txcolors.DEFAULT}')
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	return external_list
+    return external_list
 
 def random_without_repeating():
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
@@ -1057,8 +1081,8 @@ def wait_for_price():
 
         global historical_prices, hsp_head, coins_up,coins_down,coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD		
         volatile_coins = {}
-        externals1 = []
-        externals2 = []
+        externals1 = {}
+        externals2 = {}
         coins_up = 0
         coins_down = 0
         coins_unchanged = 0	
@@ -1067,7 +1091,7 @@ def wait_for_price():
 
         if USE_SIGNALLING_MODULES:
             # Here goes new code for external signalling
-            externals = buy_external_signals()
+            externals1 = buy_external_signals()
             last_price = get_price(False) #wait_for_price USE_SIGNALLING_MODULES
         else:
             coins1 = []
@@ -1086,8 +1110,9 @@ def wait_for_price():
             last_price = get_price(False, externals1) #wait_for_price
         
         exnumber = 0
-        for excoin1 in externals1:
-            excoin = excoin1['symbol']
+        for excoin in externals1:
+            #print("excoin1=", excoin1)
+            #excoin = excoin1 #['symbol']
             if excoin not in volatile_coins and excoin not in coins_bought and (len(coins_bought) + len(volatile_coins)) < TRADE_SLOTS:
                 volatile_coins[excoin] = 1
                 exnumber +=1               
@@ -1777,20 +1802,23 @@ def load_signal_threads():
 		pass
 
 def stop_signal_threads():
-	try:
-		global signalthreads
-		if len(signalthreads) > 0:
-			for signalthread in signalthreads:
-				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Terminating thread {str(signalthread.name)}{txcolors.DEFAULT}')
-				signalthread.terminate()
-				signalthread.kill()
-		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	except Exception as e:
-		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}stop_signal_threads(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass
-	except KeyboardInterrupt as ki:
-		pass
+    try:
+        if not SIGNALLING_MODULES:
+            global signalthreads
+            if len(signalthreads) > 0:
+                for signalthread in signalthreads:
+                    print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Terminating thread {str(signalthread.name)}{txcolors.DEFAULT}')
+                    signalthread.terminate()
+                    signalthread.kill()
+            ##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        #else:
+            #if menu() == True: sys.exit(0)
+    except Exception as e:
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}stop_signal_threads(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
+    except KeyboardInterrupt as ki:
+        pass
 
 def truncate(number, decimals=0):
 	"""
@@ -1827,7 +1855,7 @@ def load_settings():
     global DEBUG_SETTING, AMERICAN_USER, PAIR_WITH, QUANTITY, MAX_COINS, FIATS, TIME_DIFFERENCE, RECHECK_INTERVAL, CHANGE_IN_PRICE
     global STOP_LOSS, TAKE_PROFIT, CUSTOM_LIST, TICKERS_LIST, USE_TRAILING_STOP_LOSS, TRAILING_STOP_LOSS, TRAILING_TAKE_PROFIT, TRADING_FEE
     global SIGNALLING_MODULES, SCREEN_MODE, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
-    global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, MAIN_FILES_PATH, USE_VOLATILE_METOD
+    global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
     global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
     global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
     global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE
@@ -1839,15 +1867,13 @@ def load_settings():
 	# Load system vars
     TEST_MODE = parsed_config['script_options']['TEST_MODE']
     LANGUAGE = parsed_config['script_options']['LANGUAGE']
+    USERID = parsed_config['script_options']['USERID']
     BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
     BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
     BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
     BACKTESTING_MODE_TIME_END = parsed_config['script_options']['BACKTESTING_MODE_TIME_END']
     USE_VOLATILE_METOD = parsed_config['script_options']['USE_VOLATILE_METOD']
     USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
-	#REINVEST_MODE = parsed_config['script_options']['REINVEST_MODE']
-	#     LOG_TRADES = parsed_config['script_options'].get('LOG_TRADES')
-    MAIN_FILES_PATH = parsed_config['script_options'].get('MAIN_FILES_PATH')
     TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
     TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
     TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
@@ -2224,7 +2250,8 @@ def menu():
             print(f'{txcolors.MENUOPTION}[5]{txcolors.WARNING}Sell Specific Coin{txcolors.DEFAULT}')
             print(f'{txcolors.MENUOPTION}[6]{txcolors.WARNING}Sell All Coins{txcolors.DEFAULT}')
             print(f'{txcolors.MENUOPTION}[7]{txcolors.WARNING}Convert {TRADES_LOG_FILE} to html{txcolors.DEFAULT}')
-            print(f'{txcolors.MENUOPTION}[8]{txcolors.WARNING}Exit {languages_bot.MSG5[LANGUAGE]}{txcolors.DEFAULT}')
+            print(f'{txcolors.MENUOPTION}[8]{txcolors.WARNING}Make Graphics{txcolors.DEFAULT}')
+            print(f'{txcolors.MENUOPTION}[9]{txcolors.WARNING}Exit {languages_bot.MSG5[LANGUAGE]}{txcolors.DEFAULT}')
             x = input('Please enter your choice: ')
             x = int(x)
             print(f'\n \n')
@@ -2280,7 +2307,7 @@ def menu():
                         break
                     sell_coin(x.upper() + PAIR_WITH)
                 load_signal_threads()
-                LOOP = False				
+                LOOP = True				
             elif x == 6:
                 stop_signal_threads()
                 print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Do you want to sell all coins?[y/n]{txcolors.DEFAULT}')
@@ -2288,15 +2315,19 @@ def menu():
                 if sellall.upper() == "Y":
                     sell_all('Sell all, manual choice!')
                 load_signal_threads()
-                LOOP = False
+                LOOP = True
             elif x == 7:
                 print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Converting LOG_TRADES to html...{txcolors.DEFAULT}')
                 convert_csv_to_html(TRADES_LOG_FILE)
-                LOOP = False
+                LOOP = True
             elif x == 8:
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Make Graphics...{txcolors.DEFAULT}')
+                make_graphics()
+                LOOP = True
+            elif x == 9:
                 stop_signal_threads()
                 print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Program execution ended by user!{txcolors.DEFAULT}')
-                EXIT_BOT = True
+                EXIT_BOT = False
                 sys.exit(0)
             else:
                 print(f'wrong choice')

@@ -1,6 +1,7 @@
 # These options apply to how the script will operate.
 script_options:
   LANGUAGE: 'es'
+  USERID: 'pantersxx3'
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   TEST_MODE: True
@@ -9,14 +10,11 @@ script_options:
   #Backtest mode
   BACKTESTING_MODE: True
   BOT_TIMEFRAME: "1m"
-  BACKTESTING_MODE_TIME_START: "01/06/23 00:00:00" #"01/05/22 00:00:00" #
-  BACKTESTING_MODE_TIME_END: "06/06/23 07:00:00" #"15/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_START: "01/07/23 00:00:00" #"01/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_END: "21/07/23 22:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
   MICROSECONDS: 0.3
-  USE_SIGNALLING_MODULES: False #if BACKTESTING_MODE use USE_SIGNALLING_MODULES: True
-  #the MAIN_FILES_PATH will be the folder where the LOG_FILE, HISTORY_LOG_FILE, COIN_BOUGHT and BOT_STATS files will be stored. 
-  #By default, if it is empty, these files will be housed in the main folder of the Bot. Not yet implemented
-  MAIN_FILES_PATH: ""
+  USE_SIGNALLING_MODULES: False #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
   LOG_FILE: 'log.txt'
   TRADES_LOG_FILE: 'trades.csv'
   TRADES_GRAPH: 'graphics.html'
@@ -58,7 +56,7 @@ trading_options:
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 100
+  TRADE_TOTAL: 406
   
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
@@ -81,7 +79,7 @@ trading_options:
   STOP_LOSS: 0.10
 
   # define in % when to take profit on a profitable coin. default 0.25
-  TAKE_PROFIT: 0.15
+  TAKE_PROFIT: 0.10
 
   # Use custom tickers.txt list for filtering pairs.
   # Name of custom tickers list
