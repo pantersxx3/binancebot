@@ -1111,8 +1111,8 @@ def wait_for_price():
         
         exnumber = 0
         for excoin in externals1:
-            #print("excoin1=", excoin1)
-            #excoin = excoin1 #['symbol']
+            print("excoin=", excoin)
+            excoin = excoin['symbol']
             if excoin not in volatile_coins and excoin not in coins_bought and (len(coins_bought) + len(volatile_coins)) < TRADE_SLOTS:
                 volatile_coins[excoin] = 1
                 exnumber +=1               
@@ -1161,8 +1161,7 @@ def convert_volume():
                 if filt['filterType'] == 'LOT_SIZE':
                     lot_size[coin] = filt['stepSize'].find('1') - 1
 					#print("volume[coin]",volume[coin],"lot_size[coin]", lot_size[coin], "type", type(lot_size[coin]))
-                    break
-					
+                    break		
             if lot_size[coin] < 0: lot_size[coin] = 0
 
 			# calculate the volume in coin from TRADE_TOTAL in PAIR_WITH (default)
@@ -2342,15 +2341,15 @@ def menu():
     return END
 	
 def print_banner():
-	PRINT_BANNER = False
+	PRINT_BANNER = True
 	if PRINT_BANNER:
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 		__header__='''
-		\033[92m   ___ _                        __   __   _      _   _ _ _ _          _____            _ _             ___     _   
-		\033[92m  | _ (_)_ _  __ _ _ _  __ ___  \ \ / ___| |__ _| |_(_| (_| |_ _  _  |_   __ _ __ _ __| (_)_ _  __ _  | _ )___| |_ 
-		\033[92m  | _ | | ' \/ _` | ' \/ _/ -_)  \ V / _ | / _` |  _| | | |  _| || |   | || '_/ _` / _` | | ' \/ _` | | _ / _ |  _|
-		\033[92m  |___|_|_||_\__,_|_||_\__\___|   \_/\___|_\__,_|\__|_|_|_|\__|\_, |   |_||_| \__,_\__,_|_|_||_\__, | |___\___/\__|
-		\033[92m                                                                |__/                            |___/ by Pantersxx3'''
+		\033[92m   ___ _                         _____            _ _             ___     _   
+		\033[92m  | _ (_)_ _  __ _ _ _  __ ___  |_   __ _ __ _ __| (_)_ _  __ _  | _ )___| |_ 
+		\033[92m  | _ | | ' \/ _` | ' \/ _/ -_)   | || '_/ _` / _` | | ' \/ _` | | _ / _ |  _|
+		\033[92m  |___|_|_||_\__,_|_||_\__\___|   |_||_| \__,_\__,_|_|_||_\__, | |___\___/\__|
+		\033[92m                                                           |___/ by Pantersxx3'''
 		print(f'{__header__}')
 		print(f'{txcolors.DEFAULT}')
 
