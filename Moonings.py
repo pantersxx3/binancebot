@@ -1111,7 +1111,7 @@ def wait_for_price():
         
         exnumber = 0
         for excoin in externals1:
-            print("excoin=", excoin)
+            #print("excoin=", excoin)
             excoin = excoin['symbol']
             if excoin not in volatile_coins and excoin not in coins_bought and (len(coins_bought) + len(volatile_coins)) < TRADE_SLOTS:
                 volatile_coins[excoin] = 1
