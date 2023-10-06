@@ -10,11 +10,11 @@ script_options:
   #Backtest mode
   BACKTESTING_MODE: True
   BOT_TIMEFRAME: "1m"
-  BACKTESTING_MODE_TIME_START: "01/07/23 00:00:00" #"01/05/22 00:00:00" #
-  BACKTESTING_MODE_TIME_END: "21/07/23 22:00:00" #"15/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_START: "01/09/23 00:00:00" #"01/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_END: "30/09/23 22:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
   MICROSECONDS: 0.3
-  USE_SIGNALLING_MODULES: False #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
+  USE_SIGNALLING_MODULES: True #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
   LOG_FILE: 'log.txt'
   TRADES_LOG_FILE: 'trades.csv'
   TRADES_GRAPH: 'graphics.html'
@@ -56,7 +56,7 @@ trading_options:
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 406
+  TRADE_TOTAL: 10
   
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
