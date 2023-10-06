@@ -1,3 +1,5 @@
+![image](https://github.com/pantersxx3/binancebot/assets/2704036/2dd35f0c-d395-4134-bd16-d8a519920e0a)
+
 "# binancebot" 
 
 #Progress has been made with the possibility of operating in backtest mode.
