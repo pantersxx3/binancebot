@@ -55,9 +55,6 @@ creds_file = args.creds if args.creds else DEFAULT_CREDS_FILE
 parsed_creds = load_config(creds_file)
 parsed_config = load_config(config_file)
 
-access_key, secret_key = load_correct_creds(parsed_creds)
-client = Client(access_key, secret_key)
-
 LANGUAGE = parsed_config['script_options']['LANGUAGE']
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
 USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
@@ -75,6 +72,10 @@ TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
 BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
 MICROSECONDS = 2
+
+if not TEST_MODE:
+    access_key, secret_key = load_correct_creds(parsed_creds)
+    client = Client(access_key, secret_key)
 
 if USE_MOST_VOLUME_COINS == True:
     TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
@@ -309,7 +310,8 @@ def save_indicator(items):
                     myvalue = str(myvalue).strip()
                     #if not str(myvalue) == 'nan' or not str(myvalue) == 'NaN' or not pd.isnan(myvalue):
                     if name in data_indicators:
-                       data_indicators[name].append(myvalue)
+                        if not myvalue in data_indicators[name]:
+                            data_indicators[name].append(myvalue)
                     else:
                         data_indicators[name] = [myvalue]
             

@@ -18,7 +18,6 @@ regex==2021.7.6
 requests==2.26.0
 six==1.16.0
 tradingview-ta==3.2.4
-typing-extensions==3.10.0.0
 tzlocal==2.1
 ujson==4.0.2
 urllib3==1.26.6
@@ -31,3 +30,4 @@ kaleido
 plotly==5.15.0
 ccxt==4.0.55
 TA-Lib
+dash
