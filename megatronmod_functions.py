@@ -54,6 +54,7 @@ config_file = args.config if args.config else DEFAULT_CONFIG_FILE
 creds_file = args.creds if args.creds else DEFAULT_CREDS_FILE
 parsed_creds = load_config(creds_file)
 parsed_config = load_config(config_file)
+access_key, secret_key = load_correct_creds(parsed_creds)
 
 LANGUAGE = parsed_config['script_options']['LANGUAGE']
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
@@ -72,10 +73,6 @@ TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
 BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
 MICROSECONDS = 2
-
-if not TEST_MODE:
-    access_key, secret_key = load_correct_creds(parsed_creds)
-    client = Client(access_key, secret_key)
 
 if USE_MOST_VOLUME_COINS == True:
     TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
@@ -147,7 +144,8 @@ def get_analysis(d, tf, p, position1=0, el_profe=False, num_records=1000):
                 position2 = c['time'].iloc[0]
                 print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{BACKTESTING_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
                 d = pd.DataFrame([])
-        else:
+        else:            
+            client = Client(access_key, secret_key)
             klines = client.get_historical_klines(symbol=p, interval=tf, start_str=str(num_records) + 'min ago UTC', limit=num_records)
             c = pd.DataFrame(klines)
             c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteAssetVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore']
