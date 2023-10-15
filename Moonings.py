@@ -130,6 +130,7 @@ global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, sessi
 global PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down, client
 global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection, FLAG_FILE_READ
 global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, bot_started_datetime, EXIT_BOT
+global JSON_REPORT
  
 last_price_global = 0
 session_profit_incfees_perc = 0
@@ -759,17 +760,20 @@ def make_graphics():
                             time = datetime.fromtimestamp(int(time)).strftime("%d/%m/%y %H:%M:%S")
                             date_time.append(time)
                             
-                json_indicators = prefix + TRADES_INDICATORS
-                data_indicators = {}
-                if os.path.exists(json_indicators):
-                        with open(json_indicators) as json_file:
-                            data_indicators = json.load(json_file)
+                
+                csv_indicators = prefix + TRADES_INDICATORS
+                df = pd.DataFrame([])
+                
+                extension = "/*" + csv_indicators
+                files = [item for sublist in [glob.glob(ext) for ext in [os.path.dirname(__file__) + extension]] for item in sublist]
+                #print("files: ", files)
+                for file in files:
+                    if os.path.exists(file):
+                        str1 = file.replace("_" + prefix + TRADES_INDICATORS, "")
+                        dir1 = os.path.dirname(__file__) + "\\"
+                        df[str1.replace(dir1, "")] = pd.read_csv(file)
                 
                 df1 = pd.DataFrame({"date_time": date_time, "date_value": date_value})
-                for i in data_indicators:
-                    print(i, len(data_indicators[i]))
-                    
-                df = pd.DataFrame(data_indicators)
                 
                 r = 1
                 column_headers = list(df.columns.values)
@@ -814,6 +818,14 @@ def make_graphics():
         write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}make_graphics(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
+
+def make_report():
+        try:
+            print("")
+        except Exception as e:
+            write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}make_report(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+            write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+            pass
         
 def convert_csv_to_html(filecsv):
     try:
@@ -1857,7 +1869,7 @@ def load_settings():
     global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
     global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
     global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
-    global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE
+    global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
     global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
 
 	# Default no debugging
@@ -1877,6 +1889,7 @@ def load_settings():
     TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
     TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
     LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
+    JSON_REPORT  = parsed_config['script_options'].get('JSON_REPORT')
     COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
     BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
     DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
@@ -2198,7 +2211,7 @@ def new_or_continue():
                     remove_by_file_name(file_prefix + TRADES_LOG_FILE)
                     remove_by_file_name(file_prefix + TRADES_LOG_FILE.replace("csv", "html"))
                     remove_by_file_name(file_prefix + TRADES_GRAPH)
-                    remove_by_file_name(file_prefix + TRADES_INDICATORS)
+                    remove_by_extension("/*" + file_prefix + TRADES_INDICATORS)
                     remove_by_file_name(file_prefix + COINS_BOUGHT)
                     remove_by_file_name(file_prefix + BOT_STATS)
                     remove_by_file_name(file_prefix + LOG_FILE)
@@ -2222,6 +2235,7 @@ def end_bot():
         #if EXIT_BOT == False:
         convert_csv_to_html(TRADES_LOG_FILE)
         make_graphics()
+        make_report()
         menu()
     except Exception as e:
         write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} Exception in end_bot(): {e}{txcolors.DEFAULT}')

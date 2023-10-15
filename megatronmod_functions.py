@@ -292,31 +292,28 @@ def save_indicator(items):
             if TEST_MODE:
                     file_prefix = 'test_'
             else:
-                file_prefix = 'live_'
-                
-            data_indicators = {} 
-            json_indicators = file_prefix + TRADES_INDICATORS
-
-            if os.path.exists(json_indicators):
-                file_stats = os.stat(json_indicators)
-                if file_stats.st_size > 2:
-                    with open(json_indicators) as json_file:
-                        data_indicators = json.load(json_file)
-                        
+                file_prefix = 'live_'                
+             
+            data_indicator = pd.DataFrame([]) 
+            csv_indicators = file_prefix + TRADES_INDICATORS
+            
             for name, myvalue in list(items):
                 if name.endswith('_IND') or name == 'time_1MIN':
                     myvalue = str(myvalue).strip()
-                    #if not str(myvalue) == 'nan' or not str(myvalue) == 'NaN' or not pd.isnan(myvalue):
-                    if name in data_indicators:
-                        if not myvalue in data_indicators[name]:
-                            data_indicators[name].append(myvalue)
-                    else:
-                        data_indicators[name] = [myvalue]
-            
-            #print(data_indicators)
-            with open(json_indicators, 'w') as fp:
-                #fp.write(df.to_json)
-                json.dump(data_indicators, fp, indent=4)  
+                    data_indicators = pd.DataFrame([])
+                    data_indicators[name] = [myvalue] 
+                    
+                    if name == 'time_1MIN':
+                        if os.path.exists(name + "_" + csv_indicators):
+                            data_indicator = pd.read_csv(name + "_" + csv_indicators)
+                        for value in data_indicator.values.tolist():
+                            if "".join(value) == myvalue:
+                                data_indicators = pd.DataFrame([])
+                                break
+
+                    data_indicator = pd.DataFrame([])    
+                    if not data_indicators.empty:
+                        data_indicators.to_csv(name + "_" + csv_indicators, mode='a', index=False, header=False)
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()

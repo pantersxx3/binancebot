@@ -63,7 +63,9 @@ def analyze(d, pairs, buy=True):
         signal_coins1 = []
         signal_coins2 = []
         analysis1MIN = {}
-
+        buySignal00 = False
+        sellSignal00 = False
+        
         if TEST_MODE:
             file_prefix = 'test_'
         else:
@@ -91,9 +93,9 @@ def analyze(d, pairs, buy=True):
                 #TIME_1M = analysis1MIN['time'].iloc[-1]
                 #time1 = int(TIME_1M)/1000
                 #time_1MIN = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S") 
-                
                 buySignal00 = MS.buy(analysis1MIN, CLOSE_1MIN, pair)
                 sellSignal00 = MS.sell(analysis1MIN, CLOSE_1MIN, pair)
+
                 
                 if buy:
                     bought_at, timeHold, coins_bought = MF.load_json(pair)            
@@ -101,6 +103,7 @@ def analyze(d, pairs, buy=True):
                         
                         #buySignal00 = MS.buy(analysis1MIN, CLOSE_1MIN, pair)                        
 
+                
                         if buySignal00:
                             signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
                             MF.write_log(f'BUY {CLOSE_1MIN} {position2}', LOG_FILE, False, False)
