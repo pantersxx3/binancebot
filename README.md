@@ -7,6 +7,3 @@
 
 #There is a lot to do and many things can still be improved, I need collaborators who want to help improve this project and so that we can all earn, not only coins but experience.
 
-################### NEW FORUM ###################
-
-    http://binancebot.lovestoblog.com/index.php
