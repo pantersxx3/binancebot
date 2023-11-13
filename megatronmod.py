@@ -85,7 +85,7 @@ def analyze(d, pairs, buy=True):
                         
             analysis1MIN = MF.get_analysis(d, '1m', pair, position2, True, 1000)
 
-            if analysis1MIN.empty == False:
+            if not analysis1MIN.empty:
                 CLOSE_1MIN = round(float(analysis1MIN['Close'].iloc[-1]),5)
                 #OPEN_1MIN = round(float(analysis1MIN['Open'].iloc[-1]),5) 
                 #CLOSE_1MIN_ANT = round(float(analysis1MIN['Close'].iloc[-2]),5)
@@ -96,14 +96,11 @@ def analyze(d, pairs, buy=True):
                 buySignal00 = MS.buy(analysis1MIN, CLOSE_1MIN, pair)
                 sellSignal00 = MS.sell(analysis1MIN, CLOSE_1MIN, pair)
 
+                analysis1MIN = {}
                 
                 if buy:
                     bought_at, timeHold, coins_bought = MF.load_json(pair)            
-                    if coins_bought < TRADE_SLOTS and bought_at == 0:
-                        
-                        #buySignal00 = MS.buy(analysis1MIN, CLOSE_1MIN, pair)                        
-
-                
+                    if coins_bought < TRADE_SLOTS and bought_at == 0:                
                         if buySignal00:
                             signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
                             MF.write_log(f'BUY {CLOSE_1MIN} {position2}', LOG_FILE, False, False)
@@ -114,10 +111,7 @@ def analyze(d, pairs, buy=True):
                 
                 if SELL_ON_SIGNAL_ONLY:
                     bought_at, timeHold, coins_bought = MF.load_json(pair)
-                    if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE_1MIN) != 0:
-                    
-                        #sellSignal00 = MS.sell(analysis1MIN, CLOSE_1MIN, pair)                        
-                        
+                    if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE_1MIN) != 0:                       
                         if sellSignal00 and float(bought_at) != 0:
                             signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
                             MF.write_log(f'SELL {CLOSE_1MIN} {bought_at} {position2}', LOG_FILE, False, False)

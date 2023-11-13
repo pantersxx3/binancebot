@@ -267,7 +267,7 @@ def update_data_coin():
         filecsv = coin + ".csv"
         if os.path.exists(filecsv):
             fr1 = int(extract_first_record(filecsv))/1000
-            os1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()))
+            os1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) - 59940.0)
             lr1 = int(extract_last_record(filecsv))/1000
             oe1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()))
             if fr1 != os1 or lr1 != oe1:
@@ -280,7 +280,7 @@ def download_data(coin):
         create_conection_binance(True)
         print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG3[LANGUAGE]}...{txcolors.DEFAULT}')
         end = time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()) #datetime.now()
-        start = time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) #pd.to_datetime(end - timedelta(days = 7))
+        start = time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) - 59940.0 #pd.to_datetime(end - timedelta(days = 7))
         data = client.get_historical_klines(str(coin), Client.KLINE_INTERVAL_1MINUTE, int(start) * 1000, int(end) * 1000)
         c = pd.DataFrame(data, columns=['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
         c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
@@ -324,7 +324,16 @@ def read_next_row_csv(coin, nonext=False):
         pos = 0
         price = 0
         time1 = 0
-
+        
+        if TEST_MODE:
+                file_prefix = 'test_'
+        else:
+            file_prefix = 'live_'
+            
+        csv_indicators = file_prefix + TRADES_INDICATORS
+        
+        start = time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple())
+        
         if USE_SIGNALLING_MODULES:
             while not os.path.exists('ok.ok'):
                 time.sleep(1/1000)
@@ -346,7 +355,10 @@ def read_next_row_csv(coin, nonext=False):
                         break
                     locate = True
             if not locate and not nonext: sys.exit(0)
-            write_position_csv(coin,time1)    
+            
+            #with open(csv_indicators.replace('.csv', '') + "_time_" + BOT_TIMEFRAME.replace("m", "MIN") + ".csv", mode="a") as f:
+                #f.write(datetime.fromtimestamp(int(int(time1)/1000)).strftime("%d/%m/%y %H:%M:%S") + '\n')
+            #write_position_csv(coin,time1)    
         else:
             c = pd.read_csv(coin + '.csv')
             c.columns = ['time', 'Open', 'High', 'Low', 'Close']
@@ -354,8 +366,13 @@ def read_next_row_csv(coin, nonext=False):
             c = c.loc[999]
             price = float(c['Close'])
             time1 = int(c['time'])
-            c = pd.DataFrame([])
-            write_position_csv(coin,str(time1))
+            c = pd.DataFrame([]) 
+            
+        if time1 >= start:
+            with open(csv_indicators.replace('.csv', '') + "_time_1MIN.csv", mode="a") as f:
+                f.write(datetime.fromtimestamp(int(int(time1)/1000)).strftime("%d/%m/%y %H:%M:%S") + '\n')
+            
+        write_position_csv(coin,str(time1))
 
         if USE_SIGNALLING_MODULES: 
             os.remove("ok.ok")
@@ -740,8 +757,10 @@ def make_graphics():
             else:
                 TICKERS = 'tickers.txt'            
                 for line in open(TICKERS):
-                    pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
-                
+                    pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
+                    
+            start = float(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) - 59940.0)
+            
             for coin in pairs:
                 with open(prefix + TRADES_LOG_FILE, "r") as f:
                     for line in f:
@@ -753,25 +772,26 @@ def make_graphics():
               
                 with open(coin + ".csv", "r") as f:
                     for line in f:
-                        time, Open, High, Low, Close = line.split(",")
+                        time1, Open, High, Low, Close = line.split(",")                        
                         if Close != 'Close\n':
-                            date_value.append(round(float(Close),2))
-                            time = int(time)/1000
-                            time = datetime.fromtimestamp(int(time)).strftime("%d/%m/%y %H:%M:%S")
-                            date_time.append(time)
-                            
+                            time1 = float(time1)/1000
+                            if time1 >= start:
+                                date_value.append(round(float(Close),2))
+                                time1 = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S")
+                                date_time.append(time1)                            
                 
                 csv_indicators = prefix + TRADES_INDICATORS
                 df = pd.DataFrame([])
                 
-                extension = "/*" + csv_indicators
+                extension = "/" + csv_indicators.replace(".csv", "") + "*.csv"
                 files = [item for sublist in [glob.glob(ext) for ext in [os.path.dirname(__file__) + extension]] for item in sublist]
-                #print("files: ", files)
+
                 for file in files:
-                    if os.path.exists(file):
-                        str1 = file.replace("_" + prefix + TRADES_INDICATORS, "")
-                        dir1 = os.path.dirname(__file__) + "\\"
-                        df[str1.replace(dir1, "")] = pd.read_csv(file)
+                    if os.path.exists(file):                            
+                        str1 = file.replace(prefix + TRADES_INDICATORS.replace('.csv','') + '_' , '')
+                        dir1 = os.path.dirname(__file__) + '\\'
+                        replace = (str1.replace(dir1.replace('.csv', ''), '')).replace(".csv", "")
+                        df[replace] = pd.read_csv(file)
                 
                 df1 = pd.DataFrame({"date_time": date_time, "date_value": date_value})
                 
@@ -865,13 +885,23 @@ def convert_csv_to_html(filecsv):
         my_table.border = True
         my_table.align = "c"
         my_table.valign = "m"
-        my_table.field_names = [languages_bot.MSG32[LANGUAGE], languages_bot.MSG23[LANGUAGE], languages_bot.MSG29[LANGUAGE], languages_bot.MSG31[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG38[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG37[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG32[LANGUAGE]]
-        my_table.add_row(["TOTAL " + str(float(bot_stats["total_capital"]) + float(bot_stats["session_USDT_EARNED"])), datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"]])
+        my_table.field_names = [languages_bot.MSG32[LANGUAGE], languages_bot.MSG23[LANGUAGE], languages_bot.MSG29[LANGUAGE], languages_bot.MSG31[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG38[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG37[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG32[LANGUAGE], languages_bot.MSG33[LANGUAGE]]
+        my_table.add_row(["TOTAL " + str(float(bot_stats["total_capital"]) + float(bot_stats["session_USDT_EARNED"])), datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"], len(coins_bought)])
+        for line in open("megatronmod_strategy.py"):
+            if "buySignal" in line and "return" not in line:
+                 data1 = line
+            if "sellSignal" in line and "return" not in line:
+                data2 = line
         htmlCode2 = my_table.get_html_string() 
         my_table = PrettyTable()
         with open(file_prefix + filecsv.replace("csv","html"), 'w') as final_htmlFile:
             final_htmlFile.write(htmlCode1)
             final_htmlFile.write("\n" + htmlCode2)
+            final_htmlFile.write("<br>" + '<div style="\width: 85%; display: flex; justify-content: center; align-items: center; border: 1px solid black;\">') 
+            final_htmlFile.write('<h4 style=\"color:black\">')
+            final_htmlFile.write(data1)
+            final_htmlFile.write("<br>" + data2)
+            final_htmlFile.write('</h4></div>')
     except Exception as e:
         write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}convert_csv_to_html(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2211,7 +2241,7 @@ def new_or_continue():
                     remove_by_file_name(file_prefix + TRADES_LOG_FILE)
                     remove_by_file_name(file_prefix + TRADES_LOG_FILE.replace("csv", "html"))
                     remove_by_file_name(file_prefix + TRADES_GRAPH)
-                    remove_by_extension("/*" + file_prefix + TRADES_INDICATORS)
+                    remove_by_extension("/" + file_prefix + TRADES_INDICATORS.replace(".csv", "") + "*")
                     remove_by_file_name(file_prefix + COINS_BOUGHT)
                     remove_by_file_name(file_prefix + BOT_STATS)
                     remove_by_file_name(file_prefix + LOG_FILE)

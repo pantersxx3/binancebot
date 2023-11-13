@@ -13,15 +13,12 @@ import os
 
 def buy(Data, CLOSE, pair):
     try:
-        BA, BM, BB = MF.BollingerBands(Data, 21, 2)
-        #RSI = MF.Rsi(Data, 7)
-        #EMA = MF.Ema(Data, 9)
-        #STOCHK, STOCHD = MF.Stochastic(Data, 14, 3, 3)
-        SMA1 = MF.Sma(Data, 200)
+        BA, BM, BB = MF.BollingerBands(Data, 14, 2)
+        SMA3 = MF.Sma(Data, 200)
         SMA2 = MF.Sma(Data, 50)
-        SMA3 = MF.Sma(Data, 25)      
+        SMA1 = MF.Sma(Data, 25)      
       
-        buySignal = CLOSE < BM and CLOSE > SMA1 and CLOSE > SMA2 and CLOSE > SMA3 
+        buySignal = CLOSE < BM and CLOSE > SMA1 and CLOSE > SMA3 #and CLOSE > SMA2
 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -32,13 +29,10 @@ def buy(Data, CLOSE, pair):
     
 def sell(Data, CLOSE, pair):
     try:
-        BA, BM, BB = MF.BollingerBands(Data, 21, 2)
-        #RSI = MF.Rsi(Data, 7)
+        BA, BM, BB = MF.BollingerBands(Data, 14, 2)
         B = MF.Bought_at(pair)
-        #EMA = MF.Ema(Data, 9)
-        #STOCHK, STOCHD = MF.Stochastic(Data, 14, 3, 3)
-        sellSignal =  CLOSE > B and CLOSE > BM #MF.Tp(True, pair, CLOSE, True) or MF.Sl(True, pair, CLOSE)
         
+        sellSignal =  CLOSE > B and CLOSE > BM      
                 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()

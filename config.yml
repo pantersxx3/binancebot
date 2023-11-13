@@ -10,15 +10,16 @@ script_options:
   #Backtest mode
   BACKTESTING_MODE: True
   BOT_TIMEFRAME: "1m"
-  BACKTESTING_MODE_TIME_START: "01/09/23 00:00:00" #"01/05/22 00:00:00" #
-  BACKTESTING_MODE_TIME_END: "30/09/23 22:00:00" #"15/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_START: "01/10/23 00:00:00" #"01/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_END: "2/10/23 22:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
+  JSON_REPORT: 'report.json'
   MICROSECONDS: 0.3
   USE_SIGNALLING_MODULES: False #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
   LOG_FILE: 'log.txt'
   TRADES_LOG_FILE: 'trades.csv'
   TRADES_GRAPH: 'graphics.html'
-  TRADES_INDICATORS: 'indicators.json'
+  TRADES_INDICATORS: 'indicators.csv'
   #if it is empty no information will be saved
   #HISTORY_LOG_FILE: '' #'history.html'
   COINS_BOUGHT: 'coins_bought.json'

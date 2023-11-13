@@ -288,32 +288,24 @@ def ret_time(df):
     
 def save_indicator(items):
     try:
-        if TEST_MODE:
-            if TEST_MODE:
-                    file_prefix = 'test_'
-            else:
-                file_prefix = 'live_'                
-             
-            data_indicator = pd.DataFrame([]) 
-            csv_indicators = file_prefix + TRADES_INDICATORS
-            
-            for name, myvalue in list(items):
-                if name.endswith('_IND') or name == 'time_1MIN':
-                    myvalue = str(myvalue).strip()
-                    data_indicators = pd.DataFrame([])
-                    data_indicators[name] = [myvalue] 
-                    
-                    if name == 'time_1MIN':
-                        if os.path.exists(name + "_" + csv_indicators):
-                            data_indicator = pd.read_csv(name + "_" + csv_indicators)
-                        for value in data_indicator.values.tolist():
-                            if "".join(value) == myvalue:
-                                data_indicators = pd.DataFrame([])
-                                break
 
-                    data_indicator = pd.DataFrame([])    
-                    if not data_indicators.empty:
-                        data_indicators.to_csv(name + "_" + csv_indicators, mode='a', index=False, header=False)
+        if TEST_MODE:
+                file_prefix = 'test_'
+        else:
+            file_prefix = 'live_'                
+         
+        data_indicator = pd.DataFrame([]) 
+        csv_indicators = file_prefix + TRADES_INDICATORS
+        
+        for name, myvalue in list(items):
+            if name.endswith('_IND'): # or name == 'time_1MIN':
+                myvalue = str(myvalue).strip()
+                data_indicators = pd.DataFrame([])
+                data_indicators[name] = [myvalue] 
+                   
+                if not data_indicators.empty:
+                    data_indicators.to_csv(csv_indicators.replace('.csv', '') + "_" + name + '.csv', mode='a', index=False, header=False)
+
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -328,7 +320,7 @@ def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
     tenkan_sen_IND = round(df['tenkan_sen'], 4)
     kijun_sen_IND = round(df['kijun_sen'], 4)
     chikou_span_IND = round(df['chikou_span'], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
     
@@ -338,7 +330,7 @@ def BollingerBands(DF_Data, LENGHT, STD):
     B1_IND = round(df['upper'].iloc[-1], 4)
     BM_IND = round(df['middle'].iloc[-1], 4)
     B2_IND = round(df['lower'].iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return B1_IND, BM_IND, B2_IND
 
@@ -348,25 +340,25 @@ def Supertrend(DF_Data, LENGHT, MULT):
     SUPERTRENDUP_IND = round(df['supertrend_up'].iloc[-1], 4)
     SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 4)
     SUPERTREND_IND = round(df['supertrend'].iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return SUPERTREND_IND, SUPERTRENDDOWN_IND, SUPERTRENDUP_IND
 
 def Momentum(DF_Data, LENGHT):
     MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)    
+    #time_1MIN = ret_time(DF_Data)    
     save_indicator(locals().items())
     return MOMENTUM_IND
     
 def Ema(DF_Data, LENGHT):
     EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return EMA_IND
 
 def Sma(DF_Data, LENGHT):
     SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())    
     return SMA_IND
 
@@ -375,25 +367,25 @@ def Stochastic(DF_Data, LENGHT, K, D):
     STOCHK_1M_DATA[['k', 'd']] = ta.stoch(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], LENGHT, K, D)
     STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 4)
     STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return STOCHK_IND, STOCHD_IND
     
 def Rsi(DF_Data, LENGHT):
     RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return RSI_IND
 
 def Wma(DF_Data, LENGHT):
     WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return WMA_IND
     
 def Hma(DF_Data, LENGHT):
     HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return HMA_IND
     
@@ -404,19 +396,19 @@ def Heikinashi(DF_Data):
     HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 4)
     HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 4)
     HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_close'], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
 
 def Macd(DF_Data, FAST, SLOW, SIGNAL):
     MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return MACD_IND, MACDHIST_IND, MACDSIG_IND
     
 def Cci(DF_Data, LENGHT):
     CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 4)
-    time_1MIN = ret_time(DF_Data)
+    #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return CCI_IND
 
