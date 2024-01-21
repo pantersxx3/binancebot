@@ -311,6 +311,33 @@ def save_indicator(items):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
         pass
+
+# def save_strategy(items):
+    # try:
+        # TRADES_STRATEGY = 'strategy.csv'
+        # if TEST_MODE:
+                # file_prefix = 'test_'
+        # else:
+            # file_prefix = 'live_'                
+         
+        # data_strategy = pd.DataFrame([]) #buySignal price sellSignal price result
+        # csv_strategy  = file_prefix + TRADES_STRATEGY
+        
+        # for name, myvalue in list(items):
+            # if name.startswith('buy') or name.startswith('sell'):
+                # myvalue = str(myvalue).strip()
+                # data_strategy = pd.DataFrame([])
+                # if 'buy' in name:
+                    # data_strategy [name] = [myvalue] 
+                   
+                # if not data_strategy.empty:
+                    # data_strategy.to_csv(csv_strategy, mode='a', index=False, header=False)
+
+    # except Exception as e:
+        # write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
+        # exc_type, exc_obj, exc_tb = sys.exc_info()
+        # write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+        # pass
         
 def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
     df = pd.DataFrame(DF_Data)

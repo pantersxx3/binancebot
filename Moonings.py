@@ -130,8 +130,9 @@ global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, sessi
 global PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down, client
 global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection, FLAG_FILE_READ
 global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, bot_started_datetime, EXIT_BOT
-global JSON_REPORT
- 
+global JSON_REPORT, FILE_SYMBOL_INFO, SELL_PART, SAVED_COINS
+
+SAVED_COINS = 0 
 last_price_global = 0
 session_profit_incfees_perc = 0
 session_profit_incfees_total = 0
@@ -448,7 +449,6 @@ def get_price(add_to_historical=True, prices = []):
                             initial_price[coin['symbol']] = { 'price': coin['price'], 'time': coin['time']}
                         else:
                             initial_price[coin['symbol']] = { 'price': coin['price'], 'time': datetime.now()} 
-
             else:
                 today = "volatile_volume_" + str(date.today()) + ".txt"
                 VOLATILE_VOLUME_LIST=[line.strip() for line in open(today)]
@@ -617,16 +617,24 @@ def clear():
 
 def balance_report(last_price):
     try:
-        global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total, last_price_global
-        global session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL, session_USDT_LOSS
+        global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total
+        global last_price_global, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL
+        global session_USDT_LOSS, SAVED_COINS
 
         unrealised_session_profit_incfees_perc = 0
         unrealised_session_profit_incfees_total = 0
         msg1 = ""
-        msg2 = ""          
+        msg2 = "" 
+        pair = ""
         BUDGET = TRADE_SLOTS * TRADE_TOTAL
         exposure_calcuated = 0
-
+        if TRADE_SLOTS == 1:
+            if USE_MOST_VOLUME_COINS == True:
+                TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+            else:
+                TICKERS = 'tickers.txt' 
+            pair=str([line.strip() for line in open(TICKERS)]).replace("[","").replace("]", "").replace("'", "")
+        
         for coin in list(coins_bought):
             LastPriceBR = float(last_price[coin]['price'])
             sellFeeBR = (LastPriceBR * (TRADING_FEE/100))			
@@ -635,7 +643,7 @@ def balance_report(last_price):
             exposure_calcuated = exposure_calcuated + round(float(coins_bought[coin]['bought_at']) * float(coins_bought[coin]['volume']),0)
             PriceChangeIncFees_TotalBR = float(((LastPriceBR - sellFeeBR) - (BuyPriceBR + buyFeeBR)) * coins_bought[coin]['volume'])
             unrealised_session_profit_incfees_total = float(unrealised_session_profit_incfees_total + PriceChangeIncFees_TotalBR)
-				
+
         unrealised_session_profit_incfees_perc = (unrealised_session_profit_incfees_total / BUDGET) * 100
 
         DECIMALS = int(decimals())
@@ -662,7 +670,7 @@ def balance_report(last_price):
         my_table.padding_width = 3
         my_table.add_row([f'{txcolors.DEFAULT}{languages_bot.MSG22[LANGUAGE]}: {txcolors.SELL_LOSS}{(datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S")).split(".")[0]}{txcolors.DEFAULT} | {languages_bot.MSG23[LANGUAGE]}: {txcolors.SELL_LOSS}{str(datetime.now().timestamp() - bot_started_datetime).split(".")[0]}{txcolors.DEFAULT} | {languages_bot.MSG24[LANGUAGE]}: {txcolors.SELL_LOSS}{str(bot_paused)}{txcolors.DEFAULT} | {languages_bot.MSG25[LANGUAGE]}: {txcolors.SELL_LOSS}{TEST_MODE}{txcolors.DEFAULT} | {languages_bot.MSG26[LANGUAGE]}: {txcolors.SELL_LOSS}{BACKTESTING_MODE}{txcolors.DEFAULT}'])        
         my_table.add_row([f'{txcolors.DEFAULT} {languages_bot.MSG27[LANGUAGE]}: {txcolors.SELL_LOSS}{str(round(get_balance_wallet(PAIR_WITH),2))}{txcolors.DEFAULT} | {languages_bot.MSG28[LANGUAGE]}: {txcolors.SELL_LOSS}{str(len(coins_bought))}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{str(TRADE_SLOTS)} {int(CURRENT_EXPOSURE)}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{int(INVESTMENT_TOTAL)} {txcolors.DEFAULT}{PAIR_WITH}{txcolors.DEFAULT} | {txcolors.DEFAULT}{languages_bot.MSG29[LANGUAGE]}/{languages_bot.MSG31[LANGUAGE]}: {txcolors.BOT_WINS}{str(trade_wins)}{txcolors.DEFAULT}/{txcolors.BOT_LOSSES}{str(trade_losses)}{txcolors.DEFAULT} | {languages_bot.MSG29[LANGUAGE]} %: {txcolors.SELL_PROFIT if WIN_LOSS_PERCENT > 0. else txcolors.BOT_LOSSES}{float(WIN_LOSS_PERCENT):g}%{txcolors.DEFAULT} | {languages_bot.MSG30[LANGUAGE]}: {txcolors.SELL_LOSS}{trade_wins+trade_losses}{txcolors.DEFAULT}'])
-        my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.SELL_PROFIT if session_USDT_EARNED > 0. else txcolors.BOT_LOSSES}{str(format(float(session_USDT_EARNED), ".4f"))} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG31[LANGUAGE]}: {txcolors.BOT_LOSSES}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG32[LANGUAGE]}: {txcolors.SELL_PROFIT}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {languages_bot.MSG19[LANGUAGE].upper()} %: {txcolors.SELL_PROFIT if (session_USDT_EARNED * 100)/INVESTMENT_TOTAL > 0. else txcolors.BOT_LOSSES}{round((session_USDT_EARNED * 100)/INVESTMENT_TOTAL,3)}%{txcolors.DEFAULT}'])
+        my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.SELL_PROFIT if session_USDT_EARNED > 0. else txcolors.BOT_LOSSES}{str(format(float(session_USDT_EARNED), ".4f"))} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG31[LANGUAGE]}: {txcolors.BOT_LOSSES}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG32[LANGUAGE]}: {txcolors.SELL_PROFIT}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {languages_bot.MSG19[LANGUAGE].upper()} %: {txcolors.SELL_PROFIT if (session_USDT_EARNED * 100)/INVESTMENT_TOTAL > 0. else txcolors.BOT_LOSSES}{round((session_USDT_EARNED * 100)/INVESTMENT_TOTAL,3)}%{txcolors.DEFAULT} | {txcolors.DEFAULT}{languages_bot.MSG39[LANGUAGE]}: {txcolors.SELL_PROFIT}{str(format(float(SAVED_COINS), ".4f"))}{txcolors.DEFAULT} {pair} '])
         print("\n")
         print(my_table)
         my_table = PrettyTable()
@@ -897,7 +905,7 @@ def convert_csv_to_html(filecsv):
         with open(file_prefix + filecsv.replace("csv","html"), 'w') as final_htmlFile:
             final_htmlFile.write(htmlCode1)
             final_htmlFile.write("\n" + htmlCode2)
-            final_htmlFile.write("<br>" + '<div style="\width: 85%; display: flex; justify-content: center; align-items: center; border: 1px solid black;\">') 
+            final_htmlFile.write("<br>" + '<div style=\" width: 85%; display: flex; justify-content: center; align-items: center; border: 1px solid black;\">') 
             final_htmlFile.write('<h4 style=\"color:black\">')
             final_htmlFile.write(data1)
             final_htmlFile.write("<br>" + data2)
@@ -1153,8 +1161,8 @@ def wait_for_price():
         
         exnumber = 0
         for excoin in externals1:
-            #print("excoin=", excoin)
-            excoin = excoin['symbol']
+            #print("excoin=", excoin, "type=", type(excoin))
+            #excoin = excoin['symbol']
             if excoin not in volatile_coins and excoin not in coins_bought and (len(coins_bought) + len(volatile_coins)) < TRADE_SLOTS:
                 volatile_coins[excoin] = 1
                 exnumber +=1               
@@ -1170,11 +1178,24 @@ def wait_for_price():
     return volatile_coins, len(volatile_coins), last_price #historical_prices[hsp_head]
 
 def get_symbol_info(coin1):
-    ret = {}
-    if coin1 == "BTCUSDT" and BACKTESTING_MODE:
-        ret = {'symbol': 'BTCUSDT', 'status': 'TRADING', 'baseAsset': 'BTC', 'baseAssetPrecision': 8, 'quoteAsset': 'USDT', 'quotePrecision': 8, 'quoteAssetPrecision': 8, 'baseCommissionPrecision': 8, 'quoteCommissionPrecision': 8, 'orderTypes': ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'], 'icebergAllowed': True, 'ocoAllowed': True, 'quoteOrderQtyMarketAllowed': True, 'allowTrailingStop': True, 'cancelReplaceAllowed': True, 'isSpotTradingAllowed': True, 'isMarginTradingAllowed': True, 'filters': [{'filterType': 'PRICE_FILTER', 'minPrice': '0.01000000', 'maxPrice': '1000000.00000000', 'tickSize': '0.01000000'}, {'filterType': 'LOT_SIZE', 'minQty': '0.00001000', 'maxQty': '9000.00000000', 'stepSize': '0.00001000'}, {'filterType': 'ICEBERG_PARTS', 'limit': 10}, {'filterType': 'MARKET_LOT_SIZE', 'minQty': '0.00000000', 'maxQty': '149.41382295', 'stepSize': '0.00000000'}, {'filterType': 'TRAILING_DELTA', 'minTrailingAboveDelta': 10, 'maxTrailingAboveDelta': 2000, 'minTrailingBelowDelta': 10, 'maxTrailingBelowDelta': 2000}, {'filterType': 'PERCENT_PRICE_BY_SIDE', 'bidMultiplierUp': '5', 'bidMultiplierDown': '0.2', 'askMultiplierUp': '5', 'askMultiplierDown': '0.2', 'avgPriceMins': 5}, {'filterType': 'NOTIONAL', 'minNotional': '10.00000000', 'applyMinToMarket': True, 'maxNotional': '9000000.00000000', 'applyMaxToMarket': False, 'avgPriceMins': 5}, {'filterType': 'MAX_NUM_ORDERS', 'maxNumOrders': 200}, {'filterType': 'MAX_NUM_ALGO_ORDERS', 'maxNumAlgoOrders': 5}], 'permissions': ['SPOT', 'MARGIN', 'TRD_GRP_004', 'TRD_GRP_005', 'TRD_GRP_006'], 'defaultSelfTradePreventionMode': 'NONE', 'allowedSelfTradePreventionModes': ['NONE', 'EXPIRE_TAKER', 'EXPIRE_MAKER', 'EXPIRE_{languages_bot.MSG5[LANGUAGE]}H']}
-    if not BACKTESTING_MODE:
-        ret = client.get_symbol_info(coin1)
+    try:
+        global FILE_SYMBOL_INFO
+        ret = {}
+        if BACKTESTING_MODE:
+            for line in open(FILE_SYMBOL_INFO):
+                if coin1 in line:
+                    #print("line=", line)
+                    ret = eval(line)
+                    break
+            if len(ret) == 0:
+                import api_test as at
+                ret = at.get_info(coin1, FILE_SYMBOL_INFO)
+        if not BACKTESTING_MODE:
+            ret = client.get_symbol_info(coin1)
+    except Exception as e:
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}get_symbol_info() exception: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")       
+        pass
     return ret
     
 def convert_volume():
@@ -1192,9 +1213,8 @@ def convert_volume():
 			# while XRP is only 1
 			#try:
             info = get_symbol_info(coin)
+            #last_price = get_price(True)
             
-            #print(info)
-
 			#step_size = info['filterType'][1]['stepSize']
 			#step_size = float(info['filters'][2]['stepSize'])
 			#lot_size[coin] = step_size.index('1') - 1
@@ -1350,7 +1370,10 @@ def buy():
 def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
     try:
         '''sell coins that have reached the STOP LOSS or TAKE PROFIT threshold'''
-        global hsp_head, session_profit_incfees_perc, session_profit_incfees_total, coin_order_id, trade_wins, trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins, session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_BNB_IN_SESSION, TRADE_TOTAL, sell_specific_coin, session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED
+        global hsp_head, session_profit_incfees_perc, session_profit_incfees_total, coin_order_id, trade_wins
+        global trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins
+        global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_BNB_IN_SESSION, TRADE_TOTAL, sell_specific_coin
+        global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS
 			   
         OrderID = ""
 
@@ -1363,6 +1386,13 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
             for coin in list(coins_bought):            
                 if sell_specific_coin and not specific_coin_to_sell == coin: continue 
                 
+                if SELL_PART > 0:
+                    total_1 = coins_bought[coin]['volume']
+                    calc_1 = ((SELL_PART * total_1)/100)
+                    total_2 = total_1 - calc_1
+                    coins_bought[coin]['volume'] = total_2
+                    SAVED_COINS = SAVED_COINS + (calc_1)
+
                 LastPrice = float(last_price[coin]['price'])
                 sellFee = (LastPrice * (TRADING_FEE/100))
                 sellFeeTotal = (coins_bought[coin]['volume'] * LastPrice) * (TRADING_FEE/100)
@@ -1901,7 +1931,8 @@ def load_settings():
     global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
     global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
     global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
-
+    global FILE_SYMBOL_INFO, SELL_PART
+    
 	# Default no debugging
     DEBUG = False
 
@@ -1918,6 +1949,7 @@ def load_settings():
     TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
     TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
     TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
+    FILE_SYMBOL_INFO = parsed_config['script_options'].get('FILE_SYMBOL_INFO')
     LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
     JSON_REPORT  = parsed_config['script_options'].get('JSON_REPORT')
     COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
@@ -1937,7 +1969,7 @@ def load_settings():
     COMPOUND_INTEREST = parsed_config['trading_options']['COMPOUND_INTEREST']
     TRADE_TOTAL = parsed_config['trading_options']['TRADE_TOTAL']            
     TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
-		
+    SELL_PART = parsed_config['trading_options']['SELL_PART']	
 	#FIATS = parsed_config['trading_options']['FIATS']
     EX_PAIRS = parsed_config['trading_options']['EX_PAIRS']
 	
@@ -2191,17 +2223,17 @@ def remove_by_extension(extension):
 		pass  
 
 def remove_by_file_name(name):
-	try:
+    try:
 		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-		file1 = os.path.dirname(__file__) + "\.".replace(".","") + name
-		file_exists1 = os.path.exists(file1)
-		if file_exists1: 
-			print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Remove {file1}{txcolors.DEFAULT}')
-			os.remove(file1)
-	except Exception as e:
-		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass        
+        file1 = os.path.join(os.path.dirname(__file__), name)
+        file_exists1 = os.path.exists(file1)
+        if file_exists1: 
+            print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Remove {file1}{txcolors.DEFAULT}')
+            os.remove(file1)
+    except Exception as e:
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass        
 
 def new_or_continue():
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
@@ -2385,17 +2417,17 @@ def menu():
     return END
 	
 def print_banner():
-	PRINT_BANNER = True
-	if PRINT_BANNER:
-	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-		__header__='''
-		\033[92m   ___ _                         _____            _ _             ___     _   
-		\033[92m  | _ (_)_ _  __ _ _ _  __ ___  |_   __ _ __ _ __| (_)_ _  __ _  | _ )___| |_ 
-		\033[92m  | _ | | ' \/ _` | ' \/ _/ -_)   | || '_/ _` / _` | | ' \/ _` | | _ / _ |  _|
-		\033[92m  |___|_|_||_\__,_|_||_\__\___|   |_||_| \__,_\__,_|_|_||_\__, | |___\___/\__|
-		\033[92m                                                           |___/ by Pantersxx3'''
-		print(f'{__header__}')
-		print(f'{txcolors.DEFAULT}')
+	PRINT_BANNER = False
+	# if PRINT_BANNER:
+	# ##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		# __header__='''
+		# \033[92m   ___ _                         _____            _ _             ___     _   
+		# \033[92m  | _ (_)_ _  __ _ _ _  __ ___  |_   __ _ __ _ __| (_)_ _  __ _  | _ )___| |_ 
+		# \033[92m  | _ | | ' \/ _` | ' \/ _/ -_)   | || '_/ _` / _` | | ' \/ _` | | _ / _ |  _|
+		# \033[92m  |___|_|_||_\__,_|_||_\__\___|   |_||_| \__,_\__,_|_|_||_\__, | |___\___/\__|
+		# \033[92m                                                           |___/ by Pantersxx3'''
+		# print(f'{__header__}')
+		# print(f'{txcolors.DEFAULT}')
 
 def create_conection_binance(force=False):
     global BACKTESTING_MODE, AMERICAN_USER, PROXY_HTTP, PROXY_HTTPS, client
