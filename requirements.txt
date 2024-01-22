@@ -1,3 +1,4 @@
+Pyarrow
 requests
 pyproject-toml
 aiohttp
