@@ -11,13 +11,13 @@ import sys
 import glob
 import math
 import time
+import threading
 import pandas as pd
 import pandas_ta as ta
-import megatronmod_functions as MF
 import megatronmod_strategy as MS
+import megatronmod_functions as MF
 from datetime import date, datetime, timedelta
 from helpers.parameters import parse_args, load_config
-
 
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
@@ -143,23 +143,27 @@ def do_work():
             pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
             
         while True:
-                #if not threading.main_thread().is_alive(): exit()
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
-                if BACKTESTING_MODE:
-                    while os.path.exists('ok.ok'):
-                        time.sleep(1/1000) #do_work
-                    signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-                    with open('ok.ok','w') as f:
-                        f.write('1')
-                else:
-                    signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-                time.sleep(MICROSECONDS) #do_work
-                if len(signalcoins1) > 0:
-                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                    time.sleep(MICROSECONDS)
-                else:
-                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                    time.sleep(MICROSECONDS)
+            #if not threading.main_thread().is_alive(): exit()
+            if os.path.exists("signal.sig"):
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Exit...{txcolors.DEFAULT}') 
+                os.remove("signal.sig")
+                sys.exit(0)
+            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
+            if BACKTESTING_MODE:
+                while os.path.exists('ok.ok'):
+                    time.sleep(1/1000) #do_work
+                signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
+                with open('ok.ok','w') as f:
+                    f.write('1')
+            else:
+                signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
+            time.sleep(MICROSECONDS) #do_work
+            if len(signalcoins1) > 0:
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
+                time.sleep(MICROSECONDS)
+            else:
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
+                time.sleep(MICROSECONDS)
     except Exception as e:
         MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: do_work(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()

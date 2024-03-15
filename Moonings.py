@@ -40,6 +40,7 @@ import threading
 import multiprocessing
 import importlib
 import subprocess
+import signal
 
 # used for directory handling
 import glob
@@ -130,7 +131,7 @@ global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, sessi
 global PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down, client
 global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection, FLAG_FILE_READ
 global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, bot_started_datetime, EXIT_BOT
-global JSON_REPORT, FILE_SYMBOL_INFO, SELL_PART, SAVED_COINS
+global JSON_REPORT, FILE_SYMBOL_INFO, SELL_PART, SAVED_COINS, coins_bought
 
 SAVED_COINS = 0 
 last_price_global = 0
@@ -156,6 +157,7 @@ sell_all_coins = False
 lostconnection = False
 signalthreads = []
 c_data = pd.DataFrame([])
+coins_bought = {}
 EXIT_BOT = False
 
 try:
@@ -227,12 +229,19 @@ def decimals():
 
 def get_balance_wallet(crypto):   
 	try:
+        #if TEST_MODE:
+        #        file_prefix = 'test_'
+        #else:
+        #    file_prefix = 'live_'
+            
+        #jsonfile = file_prefix + JSON_REPORT
 		balance = 0.0        
 		if not TEST_MODE: #or not BACKTESTING_MODE:
 			balance = float(client.get_asset_balance(asset=crypto)['free'])
-			if balance < 10 and not TEST_MODE: #or not BACKTESTING_MODE:
-				print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{languages_bot.MSG34[LANGUAGE]}{txcolors.DEFAULT}')
-				sys.exit(0)
+            
+			#if balance < 10 and not TEST_MODE: #or not BACKTESTING_MODE:
+				#print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{languages_bot.MSG34[LANGUAGE]}{txcolors.DEFAULT}')
+				#sys.exit(0)
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}get_balance_wallet: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
@@ -565,6 +574,7 @@ def get_volume_list():
 
 def print_table_coins_bought():
     try:
+        global coins_bought
         if SHOW_TABLE_COINS_BOUGHT:
             if len(coins_bought) > 0:
                 my_table = PrettyTable()
@@ -619,7 +629,7 @@ def balance_report(last_price):
     try:
         global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total
         global last_price_global, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL
-        global session_USDT_LOSS, SAVED_COINS
+        global session_USDT_LOSS, SAVED_COINS, coins_bought
 
         unrealised_session_profit_incfees_perc = 0
         unrealised_session_profit_incfees_total = 0
@@ -870,24 +880,25 @@ def convert_csv_to_html(filecsv):
         if os.path.exists(bot_stats_file_path) and os.path.getsize(bot_stats_file_path) > 2:
             with open(bot_stats_file_path,'r') as f:
                 bot_stats = json.load(f)
-        with open(file_prefix + filecsv, 'r') as file:
-            filelines = file.readlines() 
-            headers = filelines[0] 
-            headers = headers.split(',')        
-            for head in headers:
-                h.append(head)
-            table = PrettyTable(h)
-            table.format = True
-            table.border = True
-            table.align = "c"
-            table.valign = "m"
-            table.hrules = 1
-            table.vrules = 1
-            for i in range(1, len(filelines)) : 
-                rowstr = [c.replace(".", ",") for c in filelines[i].split(',')]
-                table.add_row(rowstr)
-            htmlCode1 = table.get_html_string() 
-            table = PrettyTable(h)
+        if os.path.exists(file_prefix + filecsv):        
+            with open(file_prefix + filecsv, 'r') as file:
+                filelines = file.readlines() 
+                headers = filelines[0] 
+                headers = headers.split(',')        
+                for head in headers:
+                    h.append(head)
+                table = PrettyTable(h)
+                table.format = True
+                table.border = True
+                table.align = "c"
+                table.valign = "m"
+                table.hrules = 1
+                table.vrules = 1
+                for i in range(1, len(filelines)) : 
+                    rowstr = [c.replace(".", ",") for c in filelines[i].split(',')]
+                    table.add_row(rowstr)
+                htmlCode1 = table.get_html_string() 
+                table = PrettyTable(h) #h sin uso, verificar para que esta.
         my_table = PrettyTable()
         my_table.format = True
         my_table.border = True
@@ -1129,7 +1140,7 @@ def wait_for_price():
     try:
         '''calls the initial price and ensures the correct amount of time has passed before reading the current price again'''
 
-        global historical_prices, hsp_head, coins_up,coins_down,coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD		
+        global historical_prices, hsp_head, coins_up,coins_down,coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD, coins_bought		
         volatile_coins = {}
         externals1 = {}
         externals2 = {}
@@ -1260,11 +1271,14 @@ def convert_volume():
 
 def buy():
     try:
+        global coins_bought
+        
         '''Place Buy market orders for each volatile coin found'''        
         volume, last_price = convert_volume() #buy
         orders = {}
-		#global USED_BNB_IN_SESSION
-        for coin in volume:
+		#global USED_BNB_IN_SESSION        
+        for coin in volume: 
+            print("coin=", coin)
             if coin not in coins_bought and coin.replace(PAIR_WITH,'') not in EX_PAIRS:
 				#if not SCREEN_MODE == 2: print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.BUY}Preparing to buy {volume[coin]} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
                 coins = {}
@@ -1373,7 +1387,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
         global hsp_head, session_profit_incfees_perc, session_profit_incfees_total, coin_order_id, trade_wins
         global trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins
         global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_BNB_IN_SESSION, TRADE_TOTAL, sell_specific_coin
-        global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS
+        global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS, coins_bought
 			   
         OrderID = ""
 
@@ -1743,19 +1757,17 @@ def check_total_session_profit(coins_bought, last_price):
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def update_portfolio(orders, last_price, volume):
-	'''add every coin bought to our portfolio for tracking/selling later'''
+    global coins_bought
+    '''add every coin bought to our portfolio for tracking/selling later'''
+    for coin in orders:
+        try:
+            coin_step_size = float(next(filter(lambda f: f['filterType'] == 'LOT_SIZE', client.get_symbol_info(orders[coin][0]['symbol'])['filters']))['stepSize'])
+        except Exception as ExStepSize:
+            coin_step_size = .1
+            pass
 
-	for coin in orders:
-		try:
-			coin_step_size = float(next(
-						filter(lambda f: f['filterType'] == 'LOT_SIZE', client.get_symbol_info(orders[coin][0]['symbol'])['filters'])
-						)['stepSize'])
-		except Exception as ExStepSize:
-			coin_step_size = .1
-			pass
-
-		if not TEST_MODE: #or not BACKTESTING_MODE:
-			coins_bought[coin] = {
+        if not TEST_MODE: #or not BACKTESTING_MODE:
+            coins_bought[coin] = {
 			   'symbol': orders[coin]['symbol'],
 			   'orderid': orders[coin]['orderId'],
 			   'timestamp': orders[coin]['timestamp'],
@@ -1769,24 +1781,24 @@ def update_portfolio(orders, last_price, volume):
 			   'step_size': float(coin_step_size),
 			   }
 
-			if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
-		else:
-			coins_bought[coin] = {
-				'symbol': orders[coin][0]['symbol'],
-				'orderid': orders[coin][0]['orderId'],
-				'timestamp': orders[coin][0]['time'],
-				'bought_at': last_price[coin]['price'],
-				'volume': volume[coin],
-				'stop_loss': -STOP_LOSS,
-				'take_profit': TAKE_PROFIT,
-				'step_size': float(coin_step_size),
-				}
+            if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+        else:
+            coins_bought[coin] = {
+                'symbol': orders[coin][0]['symbol'],
+                'orderid': orders[coin][0]['orderId'],
+                'timestamp': orders[coin][0]['time'],
+                'bought_at': last_price[coin]['price'],
+                'volume': volume[coin],
+                'stop_loss': -STOP_LOSS,
+                'take_profit': TAKE_PROFIT,
+                'step_size': float(coin_step_size),
+                }
 
-			if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+            if not SCREEN_MODE == 2: print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
 
-		# save the coins in a json file in the same directory
-		with open(coins_bought_file_path, 'w') as file:
-			json.dump(coins_bought, file, indent=4)
+        # save the coins in a json file in the same directory
+        with open(coins_bought_file_path, 'w') as file:
+            json.dump(coins_bought, file, indent=4)
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 def update_bot_stats():
@@ -1815,6 +1827,7 @@ def update_bot_stats():
         pass  
 
 def remove_from_portfolio(coins_sold):
+    global coins_bought
     '''Remove coins sold due to SL or TP from portfolio'''
     try:
         for coin in coins_sold:
@@ -1845,42 +1858,45 @@ def remove_external_signals(fileext):
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def load_signal_threads():
-	try:
+    try:
 		#load signalling modules
-		global signalthreads
-		signalthreads = []
-		if SIGNALLING_MODULES is not None and USE_SIGNALLING_MODULES: 
-			if len(SIGNALLING_MODULES) > 0:
-				for module in SIGNALLING_MODULES:
-					if os.path.exists(module+'.py'):
-						print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Starting {module}{txcolors.DEFAULT}')
-						mymodule[module] = importlib.import_module(module)
-						t = threading.Thread(target=mymodule[module].do_work, args=())
+        global signalthreads
+        signalthreads = []
+        if SIGNALLING_MODULES is not None and USE_SIGNALLING_MODULES: 
+            if len(SIGNALLING_MODULES) > 0:
+                for module in SIGNALLING_MODULES:
+                    if os.path.exists(module+'.py'):
+                        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Starting {module}{txcolors.DEFAULT}')
+                        mymodule[module] = importlib.import_module(module)
+                        t = threading.Thread(target=mymodule[module].do_work, args=())
+                        t.daemon = True
 						#t = multiprocessing.Process(target=mymodule[module].do_work, args=())
-						t.name = module
-						t.daemon = True
-						t.start()
-						signalthreads.append(t)
-						time.sleep(2000/1000) #wait for load_signal_threads
-					else:
-						write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Module {module} does not exist... continuing to load other modules{txcolors.DEFAULT}')
-			else:
-				write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{"load_signal_threads"}: No modules to load {SIGNALLING_MODULES}{txcolors.DEFAULT}')
+                        t.name = module
+                        t.start()
+                        signalthreads.append(t)
+                        time.sleep(2000/1000) #wait for load_signal_threads
+                    else:
+                        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}Module {module} does not exist... continuing to load other modules{txcolors.DEFAULT}')
+            else:
+                write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{"load_signal_threads"}: No modules to load {SIGNALLING_MODULES}{txcolors.DEFAULT}')
 		#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	except Exception as e:
-		write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}load_signal_threads(): Loading external signals exception: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass
+    except Exception as e:
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}load_signal_threads(): Loading external signals exception: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
 
 def stop_signal_threads():
     try:
-        if not SIGNALLING_MODULES:
+        global SIGNALLING_MODULES
+        if USE_SIGNALLING_MODULES:
             global signalthreads
+            #signalthreads= [<Thread(megatronmod, started daemon 11684)>]
             if len(signalthreads) > 0:
                 for signalthread in signalthreads:
                     print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Terminating thread {str(signalthread.name)}{txcolors.DEFAULT}')
-                    signalthread.terminate()
-                    signalthread.kill()
+                    with open("signal.sig", "w") as f:
+                        f.write("0")
+          
             ##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         #else:
             #if menu() == True: sys.exit(0)
@@ -1931,7 +1947,7 @@ def load_settings():
     global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
     global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
     global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
-    global FILE_SYMBOL_INFO, SELL_PART
+    global FILE_SYMBOL_INFO, SELL_PART, TRADES_INDICATORS, USE_TRADES_INDICATORS
     
 	# Default no debugging
     DEBUG = False
@@ -1949,6 +1965,7 @@ def load_settings():
     TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
     TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
     TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
+    USE_TRADES_INDICATORS = parsed_config['script_options'].get('USE_TRADES_INDICATORS')
     FILE_SYMBOL_INFO = parsed_config['script_options'].get('FILE_SYMBOL_INFO')
     LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
     JSON_REPORT  = parsed_config['script_options'].get('JSON_REPORT')
@@ -2111,7 +2128,7 @@ def lost_connection(error, origin):
 def renew_list(in_init=False):
 	try:
 		##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-		global tickers, VOLATILE_VOLUME, FLAG_PAUSE, COINS_MAX_VOLUME, COINS_MIN_VOLUME
+		global tickers, VOLATILE_VOLUME, FLAG_PAUSE, COINS_MAX_VOLUME, COINS_MIN_VOLUME, coins_bought
 		volatile_volume_empty = False
 		volatile_volume_time = False
 		if USE_MOST_VOLUME_COINS == True:
