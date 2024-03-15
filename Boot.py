@@ -625,6 +625,20 @@ def clear():
 	else:
 		_ = os.system('clear')
 
+def convert_hhmmss():
+    try:
+        global bot_started_datetime
+        sec = datetime.now().timestamp() - bot_started_datetime
+        hours = sec // 3600
+        minutes = (sec % 3600) // 60
+        segundos = sec % 60
+        str_time = str(truncate(hours)) + ":" + str(truncate(minutes)) + ":" + str(truncate(segundos))
+    except Exception as e:
+        write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}convert_hhmmss: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
+    return str_time
+
 def balance_report(last_price):
     try:
         global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total
@@ -678,7 +692,8 @@ def balance_report(last_price):
         my_table.valign = "m"
         my_table.header = True
         my_table.padding_width = 3
-        my_table.add_row([f'{txcolors.DEFAULT}{languages_bot.MSG22[LANGUAGE]}: {txcolors.SELL_LOSS}{(datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S")).split(".")[0]}{txcolors.DEFAULT} | {languages_bot.MSG23[LANGUAGE]}: {txcolors.SELL_LOSS}{str(datetime.now().timestamp() - bot_started_datetime).split(".")[0]}{txcolors.DEFAULT} | {languages_bot.MSG24[LANGUAGE]}: {txcolors.SELL_LOSS}{str(bot_paused)}{txcolors.DEFAULT} | {languages_bot.MSG25[LANGUAGE]}: {txcolors.SELL_LOSS}{TEST_MODE}{txcolors.DEFAULT} | {languages_bot.MSG26[LANGUAGE]}: {txcolors.SELL_LOSS}{BACKTESTING_MODE}{txcolors.DEFAULT}'])        
+        #str(datetime.now().timestamp() - bot_started_datetime).split(".")[0]
+        my_table.add_row([f'{txcolors.DEFAULT}{languages_bot.MSG22[LANGUAGE]}: {txcolors.SELL_LOSS}{(datetime.fromtimestamp(bot_started_datetime).strftime("%d/%m/%y %H:%M:%S")).split(".")[0]}{txcolors.DEFAULT} | {languages_bot.MSG23[LANGUAGE]}: {txcolors.SELL_LOSS}{convert_hhmmss()}{txcolors.DEFAULT} | {languages_bot.MSG24[LANGUAGE]}: {txcolors.SELL_LOSS}{str(bot_paused)}{txcolors.DEFAULT} | {languages_bot.MSG25[LANGUAGE]}: {txcolors.SELL_LOSS}{TEST_MODE}{txcolors.DEFAULT} | {languages_bot.MSG26[LANGUAGE]}: {txcolors.SELL_LOSS}{BACKTESTING_MODE}{txcolors.DEFAULT}'])        
         my_table.add_row([f'{txcolors.DEFAULT} {languages_bot.MSG27[LANGUAGE]}: {txcolors.SELL_LOSS}{str(round(get_balance_wallet(PAIR_WITH),2))}{txcolors.DEFAULT} | {languages_bot.MSG28[LANGUAGE]}: {txcolors.SELL_LOSS}{str(len(coins_bought))}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{str(TRADE_SLOTS)} {int(CURRENT_EXPOSURE)}{txcolors.DEFAULT}/{txcolors.SELL_LOSS}{int(INVESTMENT_TOTAL)} {txcolors.DEFAULT}{PAIR_WITH}{txcolors.DEFAULT} | {txcolors.DEFAULT}{languages_bot.MSG29[LANGUAGE]}/{languages_bot.MSG31[LANGUAGE]}: {txcolors.BOT_WINS}{str(trade_wins)}{txcolors.DEFAULT}/{txcolors.BOT_LOSSES}{str(trade_losses)}{txcolors.DEFAULT} | {languages_bot.MSG29[LANGUAGE]} %: {txcolors.SELL_PROFIT if WIN_LOSS_PERCENT > 0. else txcolors.BOT_LOSSES}{float(WIN_LOSS_PERCENT):g}%{txcolors.DEFAULT} | {languages_bot.MSG30[LANGUAGE]}: {txcolors.SELL_LOSS}{trade_wins+trade_losses}{txcolors.DEFAULT}'])
         my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.SELL_PROFIT if session_USDT_EARNED > 0. else txcolors.BOT_LOSSES}{str(format(float(session_USDT_EARNED), ".4f"))} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG31[LANGUAGE]}: {txcolors.BOT_LOSSES}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG32[LANGUAGE]}: {txcolors.SELL_PROFIT}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {languages_bot.MSG19[LANGUAGE].upper()} %: {txcolors.SELL_PROFIT if (session_USDT_EARNED * 100)/INVESTMENT_TOTAL > 0. else txcolors.BOT_LOSSES}{round((session_USDT_EARNED * 100)/INVESTMENT_TOTAL,3)}%{txcolors.DEFAULT} | {txcolors.DEFAULT}{languages_bot.MSG39[LANGUAGE]}: {txcolors.SELL_PROFIT}{str(format(float(SAVED_COINS), ".4f"))}{txcolors.DEFAULT} {pair} '])
         print("\n")
