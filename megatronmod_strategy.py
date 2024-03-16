@@ -14,11 +14,11 @@ import os
 def buy(Data, CLOSE, pair):
     try:
         BA, BM, BB = MF.BollingerBands(Data, 14, 2)
-        SMA3 = MF.Sma(Data, 200)
-        SMA2 = MF.Sma(Data, 50)
-        SMA1 = MF.Sma(Data, 25)      
+        SMA1 = MF.Sma(Data, 200)
+        #SMA2 = MF.Sma(Data, 50)
+        #SMA3 = MF.Sma(Data, 25)      
       
-        buySignal = CLOSE < BM and CLOSE > SMA1 and CLOSE > SMA3 and CLOSE > SMA2
+        buySignal = CLOSE < BM and CLOSE > SMA1 #and CLOSE > SMA3 and CLOSE > SMA2
 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()

@@ -1,0 +1,11 @@
+# Ensure your keys and values have a space between them
+# Example:
+# Bad:
+#   access_key:myaccess_key
+# Good:
+#   access_key: myaccess_key 
+#https://testnet.binance.vision/
+
+prod:
+    access_key: JnL1Xef6QXNhebEtxV3TGRb3qeA05hA2XKNUpf2bDlJHOY9KFnhjjLZmKPvLjUPH
+    secret_key: MrHoCidzYgtcRiMXhx13eC9SNMMWwKiYXT5fO3Hs71uFpUH9Jr07sbsLXANobyKx

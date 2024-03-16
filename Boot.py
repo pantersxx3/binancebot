@@ -120,6 +120,7 @@ class txcolors:
     BOT_WINS = '\033[92m'
     RED = '\033[91m'
     MENUOPTION = '\033[97m'
+    GREEN = '\033[0m 1;32;40m'
 	#Blue = '\033[94m'
 	#Cyan = '\033[96m'	
 	#Magenta = '\033[95m'
@@ -131,8 +132,11 @@ global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, sessi
 global PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down, client
 global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection, FLAG_FILE_READ
 global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, bot_started_datetime, EXIT_BOT
-global JSON_REPORT, FILE_SYMBOL_INFO, SELL_PART, SAVED_COINS, coins_bought
+global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds
 
+parsed_creds = []
+secret_key = ""
+access_key = ""
 SAVED_COINS = 0 
 last_price_global = 0
 session_profit_incfees_perc = 0
@@ -684,8 +688,8 @@ def balance_report(last_price):
         #print_banner()
         if STATIC_MAIN_INFO == True: clear()
         my_table = PrettyTable()
-        my_table.title = 'BINANCE TRADING BOT'
-        my_table.field_names = ['by Pantersxx3']
+        my_table.title = f'{txcolors.WARNING}BINANCE TRADING BOT{txcolors.DEFAULT}'
+        my_table.field_names = ['Pantersxx3']
         my_table.format = True
         my_table.border = True
         my_table.align = "c"
@@ -1403,25 +1407,20 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
         global trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins
         global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_BNB_IN_SESSION, TRADE_TOTAL, sell_specific_coin
         global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS, coins_bought
-			   
+   
         OrderID = ""
-
+        total_1 = 0.0
+        calc_1 = 0.0
+        total_2 = 0.0
 		#last_price = get_price(add_to_historical=True)
         coins_sold = {}
         if len(coins_bought) > 0:
             externals = sell_external_signals()
             last_price = get_price(False, externals) #sell_coins            
             BUDGET = TRADE_TOTAL * TRADE_SLOTS        
-            for coin in list(coins_bought):            
-                if sell_specific_coin and not specific_coin_to_sell == coin: continue 
+            for coin in list(coins_bought):  
+                if sell_specific_coin and not specific_coin_to_sell == coin: continue                 
                 
-                if SELL_PART > 0:
-                    total_1 = coins_bought[coin]['volume']
-                    calc_1 = ((SELL_PART * total_1)/100)
-                    total_2 = total_1 - calc_1
-                    coins_bought[coin]['volume'] = total_2
-                    SAVED_COINS = SAVED_COINS + (calc_1)
-
                 LastPrice = float(last_price[coin]['price'])
                 sellFee = (LastPrice * (TRADING_FEE/100))
                 sellFeeTotal = (coins_bought[coin]['volume'] * LastPrice) * (TRADING_FEE/100)
@@ -1455,8 +1454,8 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                 if SELL_ON_SIGNAL_ONLY:
                     # only sell if told to by external signal
                     for extcoin in externals:
-                        print("SELL_ON_SIGNAL_ONLY: ", extcoin['symbol'], coin, datetime.now())
-                        if extcoin['symbol'] == coin:
+                        print("SELL_ON_SIGNAL_ONLY: ", extcoin, coin, datetime.now())
+                        if extcoin == coin:
                         #if coin in externals:
                             sellCoin = True
                             sell_reason = 'External Sell Signal'
@@ -1500,7 +1499,6 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     # try to create a real order          
                     try:
                         if not TEST_MODE:
-                            
                             order_details = client.create_order(
                                 symbol = coin,
                                 side = 'SELL',
@@ -1639,9 +1637,10 @@ def sell_coin(coin):
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def sell_external_signals():
-    external_list = {}
+    #external_list = {}
     signals1 = []
     signals2 = []
+
     #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     if USE_SIGNALLING_MODULES:
         # check directory and load pairs from files into external_list
@@ -1649,12 +1648,13 @@ def sell_external_signals():
         for filename in signals:
             for line in open(filename):
                 symbol = line.strip()
-                external_list[symbol] = symbol
-                print(f'{symbol} added to sell_external_signals() list')
+                signals2.append(symbol)
+                #print(f'{symbol} added to sell_external_signals() list')
             try:
                 os.remove(filename)
             except:
                 if DEBUG: write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} {"sell_external_signals()"}: Could not remove external SELL signalling file{txcolors.DEFAULT}')
+        #return external_list
     else:
         coins1 = []
         TICKERS = ''
@@ -1668,8 +1668,10 @@ def sell_external_signals():
             coins1.append(pair)
 
         signals1, signals2 = megatronmod.analyze(c_data, coins1, False)#, 0)
+        
+    return signals2
     #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-    return signals2 #external_list
+
 
 def extract_order_data(order_details):
 	try:
@@ -1782,6 +1784,7 @@ def update_portfolio(orders, last_price, volume):
             pass
 
         if not TEST_MODE: #or not BACKTESTING_MODE:
+            print("orders_volume=", orders[coin]['volume'], type(orders[coin]['volume']))
             coins_bought[coin] = {
 			   'symbol': orders[coin]['symbol'],
 			   'orderid': orders[coin]['orderId'],
@@ -1940,16 +1943,15 @@ def truncate(number, decimals=0):
 def load_settings():
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	# set to false at Start
-    global bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds
+    global bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds, client
     bot_paused = False
 
     DEFAULT_CONFIG_FILE = 'config.yml'
-    DEFAULT_CREDS_FILE = 'creds.yml'
+    DEFAULT_CREDS_FILE = 'creds.yml'    
 
     config_file = args.config if args.config else DEFAULT_CONFIG_FILE
-    creds_file = args.creds if args.creds else DEFAULT_CREDS_FILE
     parsed_config = load_config(config_file)
-    parsed_creds = load_config(creds_file)
+    
 
 	# Default no debugging
     global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE
@@ -1962,13 +1964,14 @@ def load_settings():
     global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
     global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
     global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
-    global FILE_SYMBOL_INFO, SELL_PART, TRADES_INDICATORS, USE_TRADES_INDICATORS
+    global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, USE_TESNET_IN_ONLINEMODE
     
 	# Default no debugging
     DEBUG = False
 
 	# Load system vars
     TEST_MODE = parsed_config['script_options']['TEST_MODE']
+    USE_TESNET_IN_ONLINEMODE = parsed_config['script_options']['USE_TESNET_IN_ONLINEMODE']
     LANGUAGE = parsed_config['script_options']['LANGUAGE']
     USERID = parsed_config['script_options']['USERID']
     BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
@@ -2000,8 +2003,7 @@ def load_settings():
     PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
     COMPOUND_INTEREST = parsed_config['trading_options']['COMPOUND_INTEREST']
     TRADE_TOTAL = parsed_config['trading_options']['TRADE_TOTAL']            
-    TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
-    SELL_PART = parsed_config['trading_options']['SELL_PART']	
+    TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']	
 	#FIATS = parsed_config['trading_options']['FIATS']
     EX_PAIRS = parsed_config['trading_options']['EX_PAIRS']
 	
@@ -2085,7 +2087,18 @@ def load_settings():
     if DEBUG_SETTING or args.debug:
         DEBUG = True
     print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}All config loaded...{txcolors.DEFAULT}')
-    access_key, secret_key = load_correct_creds(parsed_creds)
+    if USE_TESNET_IN_ONLINEMODE:
+        #
+        creds_file = args.creds if args.creds else 'test_net_' + DEFAULT_CREDS_FILE
+        parsed_creds = load_config(creds_file)
+        access_key, secret_key = load_correct_creds(parsed_creds)
+        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Cargando credenciales de la red BINANCE TESTNET...')
+        
+    else:
+        creds_file = args.creds if args.creds else DEFAULT_CREDS_FILE
+        parsed_creds = load_config(creds_file)
+        access_key, secret_key = load_correct_creds(parsed_creds)
+        print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Cargando credenciales de la red BINANCE...')        
     #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def CheckIfAliveStation(ip_address):
@@ -2327,9 +2340,9 @@ def new_or_continue():
 def end_bot():
     try:
         #if EXIT_BOT == False:
-        convert_csv_to_html(TRADES_LOG_FILE)
-        make_graphics()
-        make_report()
+        #convert_csv_to_html(TRADES_LOG_FILE)
+        #make_graphics()
+        #make_report()
         menu()
     except Exception as e:
         write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} Exception in end_bot(): {e}{txcolors.DEFAULT}')
@@ -2462,7 +2475,9 @@ def print_banner():
 		# print(f'{txcolors.DEFAULT}')
 
 def create_conection_binance(force=False):
-    global BACKTESTING_MODE, AMERICAN_USER, PROXY_HTTP, PROXY_HTTPS, client
+    global BACKTESTING_MODE, AMERICAN_USER, PROXY_HTTP, PROXY_HTTPS, client, parsed_config, creds_file, parsed_creds
+    global access_key, secret_key
+
     if not BACKTESTING_MODE or force:
         # Authenticate with the client, Ensure API key is good before continuing
         if AMERICAN_USER:
@@ -2486,12 +2501,13 @@ def create_conection_binance(force=False):
             else:
                 client = Client(access_key, secret_key)
 
+        if USE_TESNET_IN_ONLINEMODE: client.API_URL = 'https://testnet.binance.vision/api'
         # If the users has a bad / incorrect API key.
         # this will stop the script from starting, and display a helpful error.
         api_ready, msg = test_api_key(client, BinanceAPIException)
         if api_ready is not True:
             exit(f'{txcolors.SELL_LOSS}{msg}{txcolors.DEFAULT}')
-                
+        #print(client.get_account())        
 if __name__ == '__main__':
     req_version = (3,9)
     if sys.version_info[:2] < req_version: 

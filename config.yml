@@ -9,6 +9,7 @@ script_options:
   #TEST_MODE is required to be true.
   #Backtest mode
   BACKTESTING_MODE: False
+  USE_TESNET_IN_ONLINEMODE: True
   BOT_TIMEFRAME: "1m"
   BACKTESTING_MODE_TIME_START: "01/01/24 00:00:00" #"01/05/22 00:00:00" #
   BACKTESTING_MODE_TIME_END: "20/01/24 00:00:00" #"15/05/22 00:00:00" #
@@ -63,9 +64,7 @@ trading_options:
   
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
-  #It will only sell a part of the total purchased.
-  SELL_PART: 3
-  
+
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.
   # Anything added here will be excluded from coin withdrawal and will not be sold.
   EX_PAIRS: ['PAX', 'EUR', 'GBP', 'JPY', 'USD', 'AUD', 'DOWN', 'UP', 'ONE', 'USDC', 'SHIB', 'VET', 'AXS', 'NEAR', 'GRT', 'CHR', 'BUSD', 'TUSD', 'LUNA', 'UST', 'BTTC', 'USDP', 'POLY']
