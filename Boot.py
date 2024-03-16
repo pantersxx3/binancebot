@@ -1138,7 +1138,6 @@ def buy_external_signals():
     for filename in files: #signals:
         for line in open(filename):
             symbol = line.strip()
-            print("symbol=",symbol)
             if symbol.replace(PAIR_WITH, "") not in EX_PAIRS:
                 external_list[symbol] = symbol
         try:
@@ -1297,7 +1296,6 @@ def buy():
         orders = {}
 		#global USED_BNB_IN_SESSION        
         for coin in volume: 
-            print("coin=", coin)
             if coin not in coins_bought and coin.replace(PAIR_WITH,'') not in EX_PAIRS:
 				#if not SCREEN_MODE == 2: print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.BUY}Preparing to buy {volume[coin]} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
                 coins = {}
@@ -1784,7 +1782,6 @@ def update_portfolio(orders, last_price, volume):
             pass
 
         if not TEST_MODE: #or not BACKTESTING_MODE:
-            print("orders_volume=", orders[coin]['volume'], type(orders[coin]['volume']))
             coins_bought[coin] = {
 			   'symbol': orders[coin]['symbol'],
 			   'orderid': orders[coin]['orderId'],
