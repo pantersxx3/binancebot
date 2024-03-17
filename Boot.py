@@ -1250,11 +1250,10 @@ def convert_volume():
 			
             for filt in info['filters']:
                 if filt['filterType'] == 'LOT_SIZE':
-                    lot_size[coin] = filt['stepSize'].find('1') - 1
-					#print("volume[coin]",volume[coin],"lot_size[coin]", lot_size[coin], "type", type(lot_size[coin]))
+                    lot_size[coin] = filt['stepSize'].find('1') - 1                    
                     break		
             if lot_size[coin] < 0: lot_size[coin] = 0
-
+            #print("volume[coin]",volume[coin],"lot_size[coin]", lot_size[coin], "type", type(lot_size[coin]))
 			# calculate the volume in coin from TRADE_TOTAL in PAIR_WITH (default)
 				
             if COMPOUND_INTEREST and TRADE_SLOTS == 1:
@@ -1404,7 +1403,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
         global hsp_head, session_profit_incfees_perc, session_profit_incfees_total, coin_order_id, trade_wins
         global trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins
         global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_BNB_IN_SESSION, TRADE_TOTAL, sell_specific_coin
-        global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS, coins_bought
+        global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS, coins_bought, SELL_PART
    
         OrderID = ""
         total_1 = 0.0
@@ -1493,7 +1492,11 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                 if sellCoin:
                     print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}Sell: {coins_bought[coin]['volume']} of {coin} | {sell_reason} | ${float(LastPrice):g} - ${float(BuyPrice):g}{txcolors.DEFAULT}")
                     print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.SELL_PROFIT if PriceChangeIncFees_Perc >= 0. else txcolors.SELL_LOSS}Profit: {PriceChangeIncFees_Perc:.2f}% Est: {((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChangeIncFees_Perc)/100:.{decimals()}f} {PAIR_WITH} (Inc Fees) {PAIR_WITH} earned: {(float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))}{txcolors.DEFAULT}")
-
+                    
+                    q = coins_bought[coin]['volume']
+                    if SELL_PART != 100 and SELL_PART > 0:
+                        q = round((SELL_PART * q)/100, 3)
+                        print("Sell ", SELL_PART, "% of ", coins_bought[coin]['volume'], ". Sell ", q, "not sell ", coins_bought[coin]['volume'] - q)
                     # try to create a real order          
                     try:
                         if not TEST_MODE:
@@ -1501,7 +1504,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                                 symbol = coin,
                                 side = 'SELL',
                                 type = 'MARKET',
-                                quantity = coins_bought[coin]['volume']
+                                quantity = q
                             )
 
                     # error handling here in case position cannot be placed
@@ -1961,7 +1964,7 @@ def load_settings():
     global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
     global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
     global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
-    global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, USE_TESNET_IN_ONLINEMODE
+    global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, USE_TESNET_IN_ONLINEMODE, SELL_PART
     
 	# Default no debugging
     DEBUG = False
@@ -2048,7 +2051,8 @@ def load_settings():
     if IGNORE_FEE == False:
         TRADING_FEE = parsed_config['trading_options']['TRADING_FEE']
     else:
-        TRADING_FEE = 0    
+        TRADING_FEE = 0
+    SELL_PART = parsed_config['trading_options']['SELL_PART']
     SIGNALLING_MODULES = parsed_config['trading_options']['SIGNALLING_MODULES']
 	
     SHOW_INITIAL_CONFIG = parsed_config['trading_options']['SHOW_INITIAL_CONFIG']

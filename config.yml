@@ -119,6 +119,10 @@ trading_options:
   #if it is activated, the commission is ignored in WIN = (SELL_PRICE + FEE) >= (BUY_PRICE + FEE)
   IGNORE_FEE: True
   
+  #sells the percentage that is placed on it, this serves to save a part of what was purchased.
+  #If get error APIError(code=-1013), change percentage 
+  SELL_PART: 100
+  
   # Discord integration
   # Used to push alerts, messages etc to a discord channel
   MSG_DISCORD: False
