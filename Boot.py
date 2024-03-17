@@ -1160,8 +1160,8 @@ def wait_for_price():
 
         global historical_prices, hsp_head, coins_up,coins_down,coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD, coins_bought		
         volatile_coins = {}
-        externals1 = {}
-        externals2 = {}
+        externals1 = []
+        externals2 = []
         coins_up = 0
         coins_down = 0
         coins_unchanged = 0	
@@ -1190,8 +1190,8 @@ def wait_for_price():
         
         exnumber = 0
         for excoin in externals1:
-            #print("excoin=", excoin, "type=", type(excoin))
-            #excoin = excoin['symbol']
+            #print("excoin=", excoin['symbol'], "externals1", externals1)
+            excoin = excoin['symbol']
             if excoin not in volatile_coins and excoin not in coins_bought and (len(coins_bought) + len(volatile_coins)) < TRADE_SLOTS:
                 volatile_coins[excoin] = 1
                 exnumber +=1               
@@ -1413,10 +1413,12 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
         coins_sold = {}
         if len(coins_bought) > 0:
             externals = sell_external_signals()
-            last_price = get_price(False, externals) #sell_coins            
+            #if len(externals) > 0: print("externals=", externals)
+            last_price = get_price(False, externals) #sell_coins
+            #print("last_price=", last_price)
             BUDGET = TRADE_TOTAL * TRADE_SLOTS        
             for coin in list(coins_bought):  
-                if sell_specific_coin and not specific_coin_to_sell == coin: continue                 
+                #if sell_specific_coin and not specific_coin_to_sell == coin: continue                 
                 
                 LastPrice = float(last_price[coin]['price'])
                 sellFee = (LastPrice * (TRADING_FEE/100))
@@ -1451,7 +1453,8 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                 if SELL_ON_SIGNAL_ONLY:
                     # only sell if told to by external signal
                     for extcoin in externals:
-                        print("SELL_ON_SIGNAL_ONLY: ", extcoin, coin, datetime.now())
+                        extcoin = extcoin['symbol']
+                        #print("SELL_ON_SIGNAL_ONLY: ", extcoin, coin, datetime.now())
                         if extcoin == coin:
                         #if coin in externals:
                             sellCoin = True
@@ -1650,7 +1653,7 @@ def sell_external_signals():
             for line in open(filename):
                 symbol = line.strip()
                 signals2.append(symbol)
-                #print(f'{symbol} added to sell_external_signals() list')
+                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{symbol} added to sell_external_signals() list.')
             try:
                 os.remove(filename)
             except:
