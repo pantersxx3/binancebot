@@ -1126,7 +1126,7 @@ def set_exparis(pairs):
 			f.writelines(data)
 
 def buy_external_signals():
-    external_list = {}
+    external_list = []
 
 	# check directory and load pairs from files into external_list
     files = []
@@ -1139,7 +1139,9 @@ def buy_external_signals():
         for line in open(filename):
             symbol = line.strip()
             if symbol.replace(PAIR_WITH, "") not in EX_PAIRS:
-                external_list[symbol] = symbol
+                #external_list.append(symbol)
+                external_list.append({'symbol': symbol})
+                #external_list[symbol] = symbol
         try:
             os.remove(filename)
         except:
@@ -1170,7 +1172,7 @@ def wait_for_price():
 
         if USE_SIGNALLING_MODULES:
             # Here goes new code for external signalling
-            externals1 = buy_external_signals()
+            externals1 = buy_external_signals() #wait_for_price USE_SIGNALLING_MODULES
             last_price = get_price(False) #wait_for_price USE_SIGNALLING_MODULES
         else:
             coins1 = []
@@ -1185,12 +1187,12 @@ def wait_for_price():
                 pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
             for pair in pairs:
                 coins1.append(pair)
-            externals1, externals2 = megatronmod.analyze(c_data, coins1, True)
+            externals1, externals2 = megatronmod.analyze(c_data, coins1, True) #wait_for_price
             last_price = get_price(False, externals1) #wait_for_price
         
         exnumber = 0
         for excoin in externals1:
-            #print("excoin=", excoin['symbol'], "externals1", externals1)
+            #print("excoin=", excoin, "externals1", externals1)
             excoin = excoin['symbol']
             if excoin not in volatile_coins and excoin not in coins_bought and (len(coins_bought) + len(volatile_coins)) < TRADE_SLOTS:
                 volatile_coins[excoin] = 1
@@ -1412,7 +1414,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
 		#last_price = get_price(add_to_historical=True)
         coins_sold = {}
         if len(coins_bought) > 0:
-            externals = sell_external_signals()
+            externals = sell_external_signals() #sell_coins
             #if len(externals) > 0: print("externals=", externals)
             last_price = get_price(False, externals) #sell_coins
             #print("last_price=", last_price)
@@ -1453,6 +1455,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                 if SELL_ON_SIGNAL_ONLY:
                     # only sell if told to by external signal
                     for extcoin in externals:
+                        #print("extcoin=", extcoin, "externals=", externals)
                         extcoin = extcoin['symbol']
                         #print("SELL_ON_SIGNAL_ONLY: ", extcoin, coin, datetime.now())
                         if extcoin == coin:
@@ -1652,8 +1655,9 @@ def sell_external_signals():
         for filename in signals:
             for line in open(filename):
                 symbol = line.strip()
-                signals2.append(symbol)
-                print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{symbol} added to sell_external_signals() list.')
+                #signals2.append(symbol)
+                signals2.append({'symbol': symbol})
+                #print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING}{symbol} added to sell_external_signals() list.')
             try:
                 os.remove(filename)
             except:
@@ -1662,16 +1666,19 @@ def sell_external_signals():
     else:
         coins1 = []
         TICKERS = ''
+        
         if USE_MOST_VOLUME_COINS == True:
             TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
         else:
-            TICKERS = 'tickers.txt'            
+            TICKERS = 'tickers.txt'  
+            
         for line in open(TICKERS):
-            pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
-        for pair in pairs:
-            coins1.append(pair)
+            symbols=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
+            
+        for symbol in symbols:
+            coins1.append(symbol)
 
-        signals1, signals2 = megatronmod.analyze(c_data, coins1, False)#, 0)
+        signals1, signals2 = megatronmod.analyze(c_data, coins1, False) # sell_external_signals()
         
     return signals2
     #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
