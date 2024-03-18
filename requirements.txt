@@ -20,7 +20,7 @@ requests==2.26.0
 six==1.16.0
 tradingview-ta==3.2.4
 tzlocal==2.1
-ujson==4.0.2
+ujson==5.4.0
 urllib3==1.26.6
 websockets==9.1
 yarl
