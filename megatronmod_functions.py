@@ -439,12 +439,10 @@ def Cci(DF_Data, LENGHT):
     save_indicator(locals().items())
     return CCI_IND
 
-def Sl(enable, PAIR, CLOSE_1MIN):
+def Sl(PAIR, CLOSE_1MIN):
     bought_at, timeHold, coins_bought = load_json(PAIR)
     SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
-    sellSignalSL = (float(CLOSE_1MIN) < float(SL) and float(SL) != 0)
-    if not enable: sellSignalSL = False
-    return sellSignalSL
+    return (float(CLOSE_1MIN) < float(SL) and float(SL) != 0)
     
 def Tp(enable, PAIR, CLOSE_1MIN, secure=False):
     bought_at, timeHold, coins_bought = load_json(PAIR)
