@@ -86,6 +86,9 @@ import megatronmod
 #module to control the outputs of the bot
 import atexit
 
+#print banner
+from art import *
+
 #make graphics
 import matplotlib.pyplot as plt
 
@@ -1540,7 +1543,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                         if int(MAX_HOLDING_TIME) != 0: 
                             if time_held >= int(MAX_HOLDING_TIME): set_exparis(coin)
 
-                        print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}sell_coins() | Coin: {coin} | Sell Volume: {coins_bought[coin]['volume']} | Price:{LastPrice}")
+                        #print(f"{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}sell_coins() | Coin: {coin} | Sell Volume: {coins_bought[coin]['volume']} | Price:{LastPrice}")
                         
                         # Log trade
                         profit_incfees_total = coins_sold[coin]['volume'] * PriceChangeIncFees_Unit
@@ -2098,7 +2101,7 @@ def load_settings():
     if DEBUG_SETTING or args.debug:
         DEBUG = True
     print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}All config loaded...{txcolors.DEFAULT}')
-    if USE_TESNET_IN_ONLINEMODE:
+    if USE_TESNET_IN_ONLINEMODE and TEST_MODE:
         #
         creds_file = args.creds if args.creds else 'test_net_' + DEFAULT_CREDS_FILE
         parsed_creds = load_config(creds_file)
@@ -2353,7 +2356,7 @@ def end_bot():
         #if EXIT_BOT == False:
         #convert_csv_to_html(TRADES_LOG_FILE)
         #make_graphics()
-        #make_report()
+        make_report()
         menu()
     except Exception as e:
         write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.WARNING} Exception in end_bot(): {e}{txcolors.DEFAULT}')
@@ -2471,19 +2474,6 @@ def menu():
     except KeyboardInterrupt as ki:
         menu()
     return END
-	
-def print_banner():
-	PRINT_BANNER = False
-	# if PRINT_BANNER:
-	# ##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-		# __header__='''
-		# \033[92m   ___ _                         _____            _ _             ___     _   
-		# \033[92m  | _ (_)_ _  __ _ _ _  __ ___  |_   __ _ __ _ __| (_)_ _  __ _  | _ )___| |_ 
-		# \033[92m  | _ | | ' \/ _` | ' \/ _/ -_)   | || '_/ _` / _` | | ' \/ _` | | _ / _ |  _|
-		# \033[92m  |___|_|_||_\__,_|_||_\__\___|   |_||_| \__,_\__,_|_|_||_\__, | |___\___/\__|
-		# \033[92m                                                           |___/ by Pantersxx3'''
-		# print(f'{__header__}')
-		# print(f'{txcolors.DEFAULT}')
 
 def create_conection_binance(force=False):
     global BACKTESTING_MODE, AMERICAN_USER, PROXY_HTTP, PROXY_HTTPS, client, parsed_config, creds_file, parsed_creds
@@ -2512,13 +2502,19 @@ def create_conection_binance(force=False):
             else:
                 client = Client(access_key, secret_key)
 
-        if USE_TESNET_IN_ONLINEMODE: client.API_URL = 'https://testnet.binance.vision/api'
+        if USE_TESNET_IN_ONLINEMODE and TEST_MODE: client.API_URL = 'https://testnet.binance.vision/api'
         # If the users has a bad / incorrect API key.
         # this will stop the script from starting, and display a helpful error.
         api_ready, msg = test_api_key(client, BinanceAPIException)
         if api_ready is not True:
             exit(f'{txcolors.SELL_LOSS}{msg}{txcolors.DEFAULT}')
-        #print(client.get_account())        
+        #print(client.get_account()) 
+
+def banner():
+    tprint('Binance Trading Bot')    
+    print(f'                                                 by {txcolors.RED}Pantersxx3{txcolors.DEFAULT}')                   
+    print('\n')
+        
 if __name__ == '__main__':
     req_version = (3,9)
     if sys.version_info[:2] < req_version: 
@@ -2527,8 +2523,7 @@ if __name__ == '__main__':
 		# Load arguments then parse settings
     args = parse_args()
     mymodule = {}
-    print_banner()
-    print(f'')
+    banner()
     print(f'{txcolors.WARNING}BOT: {txcolors.DEFAULT}Initializing, wait a moment...{txcolors.DEFAULT}')
     discord_msg_balance_data = ""
     last_msg_discord_balance_date = datetime.now()
@@ -2649,7 +2644,7 @@ if __name__ == '__main__':
 
     print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Press Ctrl-C to stop the script. {txcolors.DEFAULT}')
 
-    if not TEST_MODE:
+    if not TEST_MODE and not USE_TESNET_IN_ONLINEMODE:
         if not args.notimeout: # if notimeout skip this (fast for dev tests)
             write_log(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}WARNING: Test mode is disabled in the configuration, you are using _LIVE_ funds.{txcolors.DEFAULT}')
             print(f'{txcolors.WARNING}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}WARNING: Waiting 10 seconds before live trading as a security measure!{txcolors.DEFAULT}')
