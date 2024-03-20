@@ -1,4 +1,5 @@
 ![image](https://github.com/pantersxx3/binancebot/assets/2704036/2dd35f0c-d395-4134-bd16-d8a519920e0a)
+![image](https://github.com/pantersxx3/binancebot/assets/2704036/86c40212-43b6-46e0-99ec-ea2e956326e9)
 
 "# binancebot" 
 
