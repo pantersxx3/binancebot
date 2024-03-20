@@ -29,13 +29,14 @@ def buy(Data, CLOSE, pair):
     
 def sell(Data, CLOSE, pair):
     try:
+        sellSignal1 = True
         BA, BM, BB = MF.BollingerBands(Data, 3, 2)
         B = MF.Bought_at(pair)
         
-        sellSignal =  CLOSE > B and CLOSE > BM
-                
+        sellSignal1 =  CLOSE > B and CLOSE > BM
+        
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print('Sell Error on line ' + str(exc_tb.tb_lineno))
         pass
-    return sellSignal
+    return sellSignal1

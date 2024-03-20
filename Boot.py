@@ -118,8 +118,6 @@ class txcolors:
     DEFAULT = '\033[39m'
     RED = '\033[91m'
     WHITE = '\033[97m'
-    BOLD_INIT ='\033[1m'
-    BOLD_END = '\033[0m'
 
 	#Cyan = '\033[96m'	
 	#Magenta = '\033[95m'
@@ -2509,7 +2507,7 @@ def create_conection_binance(force=False):
         #print(client.get_account()) 
 
 def banner():
-    print(f'{txcolors.BLUE}')
+    print(f'{txcolors.YELLOW}')
     tprint('Binance Trading Bot')    
     print(f'                                                 by {txcolors.RED}Pantersxx3{txcolors.DEFAULT}')                   
     print('\n')
