@@ -2084,8 +2084,7 @@ def load_settings():
     if DEBUG_SETTING or args.debug:
         DEBUG = True
     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}All config loaded...{txcolors.DEFAULT}')
-    if USE_TESNET_IN_ONLINEMODE and TEST_MODE:
-        #
+    if USE_TESNET_IN_ONLINEMODE and not TEST_MODE:
         creds_file = args.creds if args.creds else 'test_net_' + DEFAULT_CREDS_FILE
         parsed_creds = load_config(creds_file)
         access_key, secret_key = load_correct_creds(parsed_creds)
@@ -2630,8 +2629,8 @@ if __name__ == '__main__':
 
     if not TEST_MODE and not USE_TESNET_IN_ONLINEMODE:
         if not args.notimeout: # if notimeout skip this (fast for dev tests)
-            write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}YELLOW: Test mode is disabled in the configuration, you are using _LIVE_ funds.{txcolors.DEFAULT}')
-            print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}YELLOW: Waiting 10 seconds before live trading as a security measure!{txcolors.DEFAULT}')
+            write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Test mode is disabled in the configuration, you are using _LIVE_ funds.{txcolors.DEFAULT}')
+            print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Waiting 10 seconds before live trading as a security measure!{txcolors.DEFAULT}')
             time.sleep(10) #Waiting 10 seconds before live trading
 
 	#remove_external_signals('buy')
