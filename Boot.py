@@ -381,7 +381,7 @@ def read_next_row_csv(coin, nonext=False):
             time1 = int(c['time'])
             c = pd.DataFrame([]) 
             
-        if time1 >= start:
+        if time1 >= start and USE_TRADES_INDICATORS:
             with open(csv_indicators.replace('.csv', '') + "_time_1MIN.csv", mode="a") as f:
                 f.write(datetime.fromtimestamp(int(int(time1)/1000)).strftime("%d/%m/%y %H:%M:%S") + '\n')
             
@@ -457,7 +457,7 @@ def get_price(add_to_historical=True, prices = []):
             if CUSTOM_LIST and USE_MOST_VOLUME_COINS == False:
                 tickers=[line.strip() for line in open(TICKERS_LIST)]
                 for item1 in tickers:
-                    if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EX_PAIRS:
+                    if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
                         if BACKTESTING_MODE:
                             initial_price[coin['symbol']] = { 'price': coin['price'], 'time': coin['time']}
                         else:
@@ -466,7 +466,7 @@ def get_price(add_to_historical=True, prices = []):
                 today = "volatile_volume_" + str(date.today()) + ".txt"
                 VOLATILE_VOLUME_LIST=[line.strip() for line in open(today)]
                 for item1 in VOLATILE_VOLUME_LIST:
-                    if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EX_PAIRS:
+                    if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
                         initial_price[coin['symbol']] = { 'price': coin['price'], 'time': datetime.now()} 
 
         if add_to_historical:
@@ -535,7 +535,7 @@ def get_volume_list():
 						#try:
 						infocoin = client.get_ticker(symbol= coin + PAIR_WITH)
 						volumecoin = float(infocoin['quoteVolume']) #/ 1000000                
-						if volumecoin <= COINS_MAX_VOLUME1 and volumecoin >= COINS_MIN_VOLUME1 and coin not in EX_PAIRS and coin not in most_volume_coins:
+						if volumecoin <= COINS_MAX_VOLUME1 and volumecoin >= COINS_MIN_VOLUME1 and coin not in EXCLUDE_PAIRS and coin not in most_volume_coins:
 							most_volume_coins.update({coin : volumecoin})  					
 							c = c + 1
 						# except Exception as e:
@@ -1102,12 +1102,12 @@ def set_exparis(pairs):
 	c = 0
 	for line in data:
 		c = c + 1
-		if "EX_PAIRS: [" in line:
+		if "EXCLUDE_PAIRS: [" in line:
 			break
-	#EX_PAIRS = parsed_config['trading_options']['EX_PAIRS']
+	#EXCLUDE_PAIRS = parsed_config['trading_options']['EXCLUDE_PAIRS']
 	e = False
 	pairs = pairs.strip().replace('USDT','')
-	for coin in EX_PAIRS:
+	for coin in EXCLUDE_PAIRS:
 		if coin == pairs: 
 			e = True
 			break
@@ -1115,8 +1115,8 @@ def set_exparis(pairs):
 			e = False
 	if e == False:
 		print(f'The exception has been saved in EX_PAIR in the configuration file...{txcolors.DEFAULT}')
-		EX_PAIRS.append(pairs)
-		data[c-1] = "  EX_PAIRS: " + str(EX_PAIRS) + "\n"
+		EXCLUDE_PAIRS.append(pairs)
+		data[c-1] = "  EXCLUDE_PAIRS: " + str(EXCLUDE_PAIRS) + "\n"
 		with open(file_name, 'w') as f:
 			f.writelines(data)
 
@@ -1133,7 +1133,7 @@ def buy_external_signals():
     for filename in files: #signals:
         for line in open(filename):
             symbol = line.strip()
-            if symbol.replace(PAIR_WITH, "") not in EX_PAIRS:
+            if symbol.replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
                 #external_list.append(symbol)
                 external_list.append({'symbol': symbol})
                 #external_list[symbol] = symbol
@@ -1283,7 +1283,7 @@ def buy():
         orders = {}
 		#global USED_BNB_IN_SESSION        
         for coin in volume: 
-            if coin not in coins_bought and coin.replace(PAIR_WITH,'') not in EX_PAIRS:
+            if coin not in coins_bought and coin.replace(PAIR_WITH,'') not in EXCLUDE_PAIRS:
 				#if not SCREEN_MODE == 2: print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.GREEN}Preparing to buy {volume[coin]} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
                 coins = {}
                 coins[coin] = coin + PAIR_WITH
@@ -1959,8 +1959,8 @@ def load_settings():
     global SIGNALLING_MODULES, SCREEN_MODE, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
     global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
     global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
-    global ENABLE_PRINT_TO_FILE, EX_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
-    global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, EXTERNAL_COINS, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
+    global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, ALWAYS_OVERWRITE, ALWAYS_CONTINUE, SORT_TABLE_BY
+    global REVERSE_SORT, MAX_HOLDING_TIME, IGNORE_FEE, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
     global LOG_FILE, PANIC_STOP, ASK_ME, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
     global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, USE_TESNET_IN_ONLINEMODE, SELL_PART
     
@@ -1971,13 +1971,14 @@ def load_settings():
     TEST_MODE = parsed_config['script_options']['TEST_MODE']
     USE_TESNET_IN_ONLINEMODE = parsed_config['script_options']['USE_TESNET_IN_ONLINEMODE']
     LANGUAGE = parsed_config['script_options']['LANGUAGE']
-    USERID = parsed_config['script_options']['USERID']
+    USERID = 'Pantersxx3' #parsed_config['script_options']['USERID']
     BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
     BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
     BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
     BACKTESTING_MODE_TIME_END = parsed_config['script_options']['BACKTESTING_MODE_TIME_END']
     USE_VOLATILE_METOD = parsed_config['script_options']['USE_VOLATILE_METOD']
-    USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
+    USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
+    #USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
     TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
     TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
     TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
@@ -1988,14 +1989,13 @@ def load_settings():
     COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
     BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
     DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
-    ENABLE_FUNCTION_NAME = parsed_config['script_options'].get('ENABLE_FUNCTION_NAME')
+    ENABLE_FUNCTION_NAME = False #parsed_config['script_options'].get('ENABLE_FUNCTION_NAME')
     SAVE_FUNCTION_NAME = parsed_config['script_options'].get('SAVE_FUNCTION_NAME')
-    SHOW_FUNCTION_NAME = parsed_config['script_options'].get('SHOW_FUNCTION_NAME')
-    SHOW_VARIABLES_AND_VALUE = parsed_config['script_options'].get('SHOW_VARIABLES_AND_VALUE')
-    SAVE_VARIABLES_AND_VALUE = parsed_config['script_options'].get('SAVE_VARIABLES_AND_VALUE')
+    SHOW_FUNCTION_NAME = False #parsed_config['script_options'].get('SHOW_FUNCTION_NAME')
+    SHOW_VARIABLES_AND_VALUE = False #parsed_config['script_options'].get('SHOW_VARIABLES_AND_VALUE')
+    SAVE_VARIABLES_AND_VALUE = False #parsed_config['script_options'].get('SAVE_VARIABLES_AND_VALUE')
     MICROSECONDS = parsed_config['script_options'].get('MICROSECONDS')
     AMERICAN_USER = parsed_config['script_options'].get('AMERICAN_USER')
-	#EXTERNAL_COINS = parsed_config['script_options']['EXTERNAL_COINS']
 
 	# Load trading vars
     PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
@@ -2003,7 +2003,7 @@ def load_settings():
     TRADE_TOTAL = parsed_config['trading_options']['TRADE_TOTAL']            
     TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']	
 	#FIATS = parsed_config['trading_options']['FIATS']
-    EX_PAIRS = parsed_config['trading_options']['EX_PAIRS']
+    EXCLUDE_PAIRS = parsed_config['trading_options']['EXCLUDE_PAIRS']
 	
     TIME_DIFFERENCE = parsed_config['trading_options']['TIME_DIFFERENCE']
     RECHECK_INTERVAL = parsed_config['trading_options']['RECHECK_INTERVAL']
@@ -2059,9 +2059,9 @@ def load_settings():
     USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
     COINS_MAX_VOLUME = parsed_config['trading_options']['COINS_MAX_VOLUME']
     COINS_MIN_VOLUME = parsed_config['trading_options']['COINS_MIN_VOLUME']
-    ALWAYS_OVERWRITE = parsed_config['trading_options']['ALWAYS_OVERWRITE']
-    ALWAYS_CONTINUE = parsed_config['trading_options']['ALWAYS_CONTINUE']
-    ASK_ME = parsed_config['trading_options']['ASK_ME']
+    ALWAYS_OVERWRITE = False #parsed_config['trading_options']['ALWAYS_OVERWRITE']
+    ALWAYS_CONTINUE = False #parsed_config['trading_options']['ALWAYS_CONTINUE']
+    ASK_ME = False #parsed_config['trading_options']['ASK_ME']
 	
     SORT_TABLE_BY = parsed_config['trading_options']['SORT_TABLE_BY']
     REVERSE_SORT = parsed_config['trading_options']['REVERSE_SORT']

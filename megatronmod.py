@@ -43,16 +43,15 @@ args = parse_args()
 config_file = args.config if args.config else DEFAULT_CONFIG_FILE
 parsed_config = load_config(config_file)
  
-USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
 BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
-USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
 TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 TEST_MODE = parsed_config['script_options']['TEST_MODE']
 SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
 LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
 BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
+USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
 
 MICROSECONDS = 2
  

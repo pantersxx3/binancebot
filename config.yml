@@ -1,26 +1,24 @@
 # These options apply to how the script will operate.
 script_options:
   LANGUAGE: 'es'
-  USERID: 'pantersxx3'
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   TEST_MODE: False
   #In this mode, the price information of a cryptocurrency will be downloaded during a given period of time. 
-  #TEST_MODE is required to be true.
+  #TEST_MODE is required to be true for Backtest.
   #Backtest mode
   BACKTESTING_MODE: False
-  USE_TESNET_IN_ONLINEMODE: True
+  USE_TESNET_IN_ONLINEMODE: False
   BOT_TIMEFRAME: "1m"
   BACKTESTING_MODE_TIME_START: "20/03/24 00:00:00" #"01/05/22 00:00:00" #
   BACKTESTING_MODE_TIME_END: "21/03/24 00:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
   JSON_REPORT: 'report.json'
   MICROSECONDS: 0.3
-  USE_SIGNALLING_MODULES: True #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
   LOG_FILE: 'log.txt'
   TRADES_LOG_FILE: 'trades.csv'
   TRADES_GRAPH: 'graphics.html'
-  USE_TRADES_INDICATORS: FALSE
+  USE_TRADES_INDICATORS: False
   TRADES_INDICATORS: 'indicators.csv'
   FILE_SYMBOL_INFO: 'symbol.info'
   #if it is empty no information will be saved
@@ -28,68 +26,47 @@ script_options:
   COINS_BOUGHT: 'coins_bought.json'
   BOT_STATS: 'bot_stats.json'
   USE_VOLATILE_METOD: False
-  #This file will show the currencies contributed by the module or the compa modules for the bot. If empty are disable
-  #EXTERNAL_COINS: '' #'excoin.txt'
   DEBUG: True
-  #The name of the function will be displayed when it is used in the bot process
-  ENABLE_FUNCTION_NAME: False
-  SHOW_FUNCTION_NAME: False
-  SHOW_VARIABLES_AND_VALUE: False
-  SAVE_FUNCTION_NAME: True
-  SAVE_VARIABLES_AND_VALUE: True
   #all binance requests from our bot will be proxied
   PROXY_HTTP: '' #'http://localhost:8090'
   PROXY_HTTPS: ''
-
   # Set this to true if you are accessing binance from within the United States of America
   # Need to change TLD
   AMERICAN_USER: False
   BUY_PAUSED: False
 
 # These options apply to the trading methods the script executes
-trading_options:
- 
+trading_options: 
   # select your base currency to use for trading (trade for example USDT pairs)
-  PAIR_WITH: USDT
-  
+  PAIR_WITH: USDT  
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
   #it will be bought with all the capital in the wallet.
   #The method works....
-  COMPOUND_INTEREST: False
-  
+  COMPOUND_INTEREST: False  
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 21
-  
+  TRADE_TOTAL: 21  
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
-
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.
   # Anything added here will be excluded from coin withdrawal and will not be sold.
-  EX_PAIRS: ['PAX', 'EUR', 'GBP', 'JPY', 'USD', 'AUD', 'DOWN', 'UP', 'ONE', 'USDC', 'SHIB', 'VET', 'AXS', 'NEAR', 'GRT', 'CHR', 'BUSD', 'TUSD', 'LUNA', 'UST', 'BTTC', 'USDP', 'POLY']
-
+  EXCLUDE_PAIRS: ['PAX', 'EUR', 'GBP', 'JPY', 'USD', 'AUD', 'DOWN', 'UP', 'ONE', 'USDC', 'SHIB', 'VET', 'AXS', 'NEAR', 'GRT', 'CHR', 'BUSD', 'TUSD', 'LUNA', 'UST', 'BTTC', 'USDP', 'POLY']
   # the amount of time in MINUTES to calculate the difference from the current price (minimum: 1).
   TIME_DIFFERENCE: 1
-
   # Number of times to check for TP/SL during each TIME_DIFFERENCE (minimum: 1).
   # Don't spam the Binance API, you will be banned (max 1200 requests per minute per IP). default 6
   RECHECK_INTERVAL: 6
-
   # the difference in % between the first and second checks for the price. default 0.25
   CHANGE_IN_PRICE: 100
-
   # define in % when to sell a coin that's not making a profit.
   STOP_LOSS: 0.10
-
   # define in % when to take profit on a profitable coin. default 0.25
   TAKE_PROFIT: 0.15
-
   # Use custom tickers.txt list for filtering pairs.
   # Name of custom tickers list
   CUSTOM_LIST: True
-  TICKERS_LIST: 'tickers.txt'
-   
+  TICKERS_LIST: 'tickers.txt'   
   # whether to use trailing stop loss or not; default is True
   # when hit TAKE_PROFIT, move STOP_LOSS to TRAILING_STOP_LOSS percentage points below TAKE_PROFIT hence locking in profit
   # when hit TAKE_PROFIT, move TAKE_PROFIT up by TRAILING_TAKE_PROFIT percentage points
@@ -97,7 +74,6 @@ trading_options:
   USE_TRAILING_STOP_LOSS: False
   TRAILING_STOP_LOSS: .1
   TRAILING_TAKE_PROFIT: .1
-
   # Following are used to override SL, TP, TSL & TTP & SELL_ON_SIGNAL_ONLY in the case of a market crash
   # when hit SESSION_TAKE_PROFIT %, sell all coins and stop bot
   # when hit SESSION_STOP_LOSS %, sell all coins and stop bot.
@@ -105,56 +81,33 @@ trading_options:
   SESSION_TPSL_OVERRIDE: False
   SESSION_TAKE_PROFIT: 0.2
   SESSION_STOP_LOSS: -1
-
   # Let a signalling module control sell of coin
   # NOTE - If USE_TRAILING_STOP_LOSS: True then this needs to be False
   SELL_ON_SIGNAL_ONLY: True
-
   # Trading fee in % per trade.
   # If using 0.075% (using BNB for fees) you must have BNB in your account to cover trading fees.
-  # If using BNB for fees, it MUST be enabled in your Binance 'Dashboard' page (checkbox).
-  
-  TRADING_FEE: 0 #0.075 
-  
+  # If using BNB for fees, it MUST be enabled in your Binance 'Dashboard' page (checkbox).  
+  TRADING_FEE: 0 #0.075   
   #if it is activated, the commission is ignored in WIN = (SELL_PRICE + FEE) >= (BUY_PRICE + FEE)
-  IGNORE_FEE: True
-  
+  IGNORE_FEE: True  
   #sells the percentage that is placed on it, this serves to save a part of what was purchased.
   #If get error APIError(code=-1013), change percentage 
-  SELL_PART: 100
-  
+  SELL_PART: 100  
   # Discord integration
   # Used to push alerts, messages etc to a discord channel
-  MSG_DISCORD: False
-  
+  MSG_DISCORD: False  
   #restart all modules every hour
-  RESTART_MODULES: False
-  
+  RESTART_MODULES: False  
   #minimal mode set to 0, complete mode set to 1, termux mode set to 2
   SCREEN_MODE: 2
   STATIC_MAIN_INFO: False
   DISABLE_TIMESTAMPS: True  
-  SHOW_INITIAL_CONFIG: False
-  
+  SHOW_INITIAL_CONFIG: False  
   #If the sale time exceeds 6 hours it is automatically added to the black list of currencies. If set to 0 this can be disable
-  MAX_HOLDING_TIME: 0
-  
+  MAX_HOLDING_TIME: 0  
   SHOW_TABLE_COINS_BOUGHT: True  
-  #Thanks to the idea of Norker Play, the table of purchased coins can now be ordered according to the name of the column that we want ... 
-  #thank you Norker Play for your contribution ...
-  #["Symbol", "Volume", "Bought At", "Now At", "TP %", "SL %", "Change %", "Profit $", "Time Held"]
   SORT_TABLE_BY: "Time Held"
-  REVERSE_SORT: False
-  
-  #if true, it will ignore ALWAYS_OVERWRITE and ALWAYS_CONTINUE
-  ASK_ME: True
-  
-  #I will no longer ask if you want to continue a new session, I would simply start from 0
-  ALWAYS_OVERWRITE: False
-  
-  #ALWAYS_OVERWRITE must be false to use this option, which if TRUE will not ask, and will start the previous session automatically
-  ALWAYS_CONTINUE: True
-  
+  REVERSE_SORT: False 
   #Enables the use of currencies with greater or lesser volume
   USE_MOST_VOLUME_COINS: False
   #the list is updated every n number of minutes. by default it is updated every 24 hours (1440 minutes). 
@@ -165,8 +118,7 @@ trading_options:
   #idea from my psychologist, thanks Sebastian V.
   #Two different currencies can be used as a range (within the market table in Binance ordered from highest to lowest)
   COINS_MAX_VOLUME: BTC #ETH  #5000000000
-  COINS_MIN_VOLUME: ASTR #100000000
-  
+  COINS_MIN_VOLUME: ASTR #100000000  
   #if the losses are equal to or greater than the established percentage, the bot will stop completely. if it is 0 it is deactivated.
   PANIC_STOP: 0
   

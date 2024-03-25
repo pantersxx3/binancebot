@@ -58,7 +58,6 @@ access_key, secret_key = load_correct_creds(parsed_creds)
 
 LANGUAGE = parsed_config['script_options']['LANGUAGE']
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
-USE_SIGNALLING_MODULES = parsed_config['script_options']['USE_SIGNALLING_MODULES']
 BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
