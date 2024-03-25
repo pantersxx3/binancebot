@@ -11,8 +11,8 @@ script_options:
   BACKTESTING_MODE: False
   USE_TESNET_IN_ONLINEMODE: True
   BOT_TIMEFRAME: "1m"
-  BACKTESTING_MODE_TIME_START: "01/03/24 00:00:00" #"01/05/22 00:00:00" #
-  BACKTESTING_MODE_TIME_END: "16/03/24 00:00:00" #"15/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_START: "20/03/24 00:00:00" #"01/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_END: "21/03/24 00:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
   JSON_REPORT: 'report.json'
   MICROSECONDS: 0.3
@@ -55,12 +55,12 @@ trading_options:
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
   #it will be bought with all the capital in the wallet.
   #The method works....
-  COMPOUND_INTEREST: True
+  COMPOUND_INTEREST: False
   
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 20
+  TRADE_TOTAL: 21
   
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
@@ -83,7 +83,7 @@ trading_options:
   STOP_LOSS: 0.10
 
   # define in % when to take profit on a profitable coin. default 0.25
-  TAKE_PROFIT: 0.10
+  TAKE_PROFIT: 0.15
 
   # Use custom tickers.txt list for filtering pairs.
   # Name of custom tickers list

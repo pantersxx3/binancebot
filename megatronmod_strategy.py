@@ -10,16 +10,18 @@
 import megatronmod_functions as MF
 import sys
 import os
-
+#import random
+  
 def buy(Data, CLOSE, pair):
     try:
-        BA, BM, BB = MF.BollingerBands(Data, 3, 2)
+        BA, BM, BB = MF.BollingerBands(Data, 2, 2)
         SMA1 = MF.Sma(Data, 200)
         #SMA2 = MF.Sma(Data, 50)
         #SMA3 = MF.Sma(Data, 25)      
       
         buySignal = CLOSE < BM and CLOSE > SMA1 #and CLOSE > SMA3 and CLOSE > SMA2
-        
+        #random.choice([True, False]) #
+
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print('Buy Error on line ' + str(exc_tb.tb_lineno))
@@ -30,11 +32,12 @@ def buy(Data, CLOSE, pair):
 def sell(Data, CLOSE, pair):
     try:
         sellSignal1 = True
-        BA, BM, BB = MF.BollingerBands(Data, 3, 2)
+        BA, BM, BB = MF.BollingerBands(Data, 2, 2)
         B = MF.Bought_at(pair)
         
-        sellSignal1 =  CLOSE > B and CLOSE > BM
-        
+        sellSignal1 = MF.Tp(pair, CLOSE) 
+        #random.choice([True, False]) #CLOSE > B and CLOSE > BM
+
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print('Sell Error on line ' + str(exc_tb.tb_lineno))

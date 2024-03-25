@@ -103,7 +103,7 @@ def analyze(d, pairs, buy=True):
                     if coins_bought < TRADE_SLOTS and bought_at == 0:                
                         if buySignal00:
                             signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
-                            MF.write_log(f'BUY {CLOSE_1MIN} {position2}', LOG_FILE, False, False)
+                            #MF.write_log(f'BUY {CLOSE_1MIN} {position2}', LOG_FILE, False, False)
                             if USE_SIGNALLING_MODULES:
                                 with open(SIGNAL_FILE_BUY,'w+') as f:
                                     f.write(pair + '\n') 
@@ -114,7 +114,7 @@ def analyze(d, pairs, buy=True):
                     if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE_1MIN) != 0:                       
                         if sellSignal00 and float(bought_at) != 0:
                             signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
-                            MF.write_log(f'SELL {CLOSE_1MIN} {bought_at} {position2}', LOG_FILE, False, False)
+                            #MF.write_log(f'SELL {CLOSE_1MIN} {bought_at} {position2}', LOG_FILE, False, False)
                             if USE_SIGNALLING_MODULES:
                                 with open(SIGNAL_FILE_SELL,'w+') as f:
                                     f.write(pair + '\n')

@@ -444,14 +444,17 @@ def Sl(PAIR, CLOSE_1MIN):
     SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
     return (float(CLOSE_1MIN) < float(SL) and float(SL) != 0)
     
-def Tp(enable, PAIR, CLOSE_1MIN, secure=False):
-    bought_at, timeHold, coins_bought = load_json(PAIR)
-    TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
-    if secure:
-        sellSignalTP = (float(CLOSE_1MIN) > float(TP) and float(TP) != 0) and float(CLOSE_1MIN) > float(bought_at)
-    else:
-        sellSignalTP = (float(CLOSE_1MIN) > float(TP) and float(TP) != 0)
-    if not enable: sellSignalTP = False
+def Tp(PAIR, CLOSE_1MIN):
+    try:
+        global TAKE_PROFIT
+        sellSignalTP = False
+        bought_at, timeHold, coins_bought = load_json(PAIR)
+        TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
+        sellSignalTP = (float(CLOSE_1MIN) > float(TP) and float(TP) != 0.0)
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        print('Tp Error on line ' + str(exc_tb.tb_lineno))
+        pass
     return sellSignalTP
     
 def Bought_at(PAIR):
