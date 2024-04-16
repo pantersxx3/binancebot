@@ -992,9 +992,9 @@ def panic_bot(invest, lost):
 		lost_percent = (lost*invest)/100
 		print(f'invest= {invest} lost= {lost} lost_percent= {lost_percent}')
 		if lost_percent >= PANIC_STOP and PANIC_STOP != 0:
-			printf(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}PANIC_STOP activated.{txcolors.DEFAULT}')
+			print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}PANIC_STOP activated.{txcolors.DEFAULT}')
 			stop_signal_threads()
-			printf(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}The percentage of losses is greater than or equal to the established one. Bot Stopped.{txcolors.DEFAULT}')
+			print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}The percentage of losses is greater than or equal to the established one. Bot Stopped.{txcolors.DEFAULT}')
 			exit(1)
 
 def chek_files_paused():
