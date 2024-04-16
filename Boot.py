@@ -81,6 +81,7 @@ import pandas as pd
 
 # main module, contains some strategies
 import megatronmod
+import tp_pausebotmod
 
 #module to control the outputs of the bot
 import atexit
@@ -90,6 +91,8 @@ from art import *
 
 #make graphics
 import matplotlib.pyplot as plt
+
+from progressbar import set_progress_bar
 
 from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
@@ -160,24 +163,10 @@ signalthreads = []
 c_data = pd.DataFrame([])
 coins_bought = {}
 EXIT_BOT = False
-
-try:
-	historic_profit_incfees_perc
-except NameError:
-	historic_profit_incfees_perc = 0      # or some other default value.
-try:
-	historic_profit_incfees_total
-except NameError:
-	historic_profit_incfees_total = 0      # or some other default value.
-try:
-	trade_wins
-except NameError:
-	trade_wins = 0      # or some other default value.
-try:
-	trade_losses
-except NameError:
-	trade_losses = 0      # or some other default value.
-
+historic_profit_incfees_perc = 0.0
+historic_profit_incfees_total = 0.0
+trade_wins = 0
+trade_losses = 0
 bot_started_datetime = ""
 
 def show_func_name(function_name, items):
@@ -411,7 +400,7 @@ def get_all_tickers(nonext=False):
             pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
 		
         for coin in pairs:
-            if BACKTESTING_MODE:
+            if not BACKTESTING_MODE or TEST_MODE:
                 file = coin + '.csv'
                 while not os.path.exists(file):
                     download_data(coin)
@@ -730,7 +719,7 @@ def balance_report(last_price):
 def prefix_type():
     if TEST_MODE:
         fileprefix = 'test_'
-    else:
+    if not TEST_MODE:
         fileprefix = 'live_'
     return fileprefix
     
@@ -1136,7 +1125,7 @@ def buy_external_signals():
         try:
             os.remove(filename)
         except:
-            if DEBUG: print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Could not remove external signalling file{txcolors.DEFAULT}')
+            print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Could not remove external signalling file{txcolors.DEFAULT}')
 	#show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     return external_list
 
@@ -1177,6 +1166,7 @@ def wait_for_price():
             for pair in pairs:
                 coins1.append(pair)
             externals1, externals2 = megatronmod.analyze(c_data, coins1, True) #wait_for_price
+            tp_pausebotmod.analyze(c_data)
             last_price = get_price(False, externals1) #wait_for_price
         
         exnumber = 0
@@ -1337,7 +1327,6 @@ def buy():
                         print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order returned, saving order to file.{txcolors.DEFAULT}')
                         if not TEST_MODE: #or not BACKTESTING_MODE:
                             orders[coin] = extract_order_data(order_details)
-							#adding the price in USDT
                             BuyUSDT = str(orders[coin]['volume'] * orders[coin]['avgPrice'])
                             volumeBuy = float(volume[coin])
                             last_price_buy = orders[coin]['avgPrice']
@@ -1388,6 +1377,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
         global trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins, client
         global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_BNB_IN_SESSION, TRADE_TOTAL, sell_specific_coin
         global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS, coins_bought, SELL_PART
+        global ALLOW_NEGATIVE_SELLING
    
         OrderID = ""
         total_1 = 0.0
@@ -1435,11 +1425,8 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                 if SELL_ON_SIGNAL_ONLY:
                     # only sell if told to by external signal
                     for extcoin in externals:
-                        #print("extcoin=", extcoin, "externals=", externals)
                         extcoin = extcoin['symbol']
-                        #print("SELL_ON_SIGNAL_ONLY: ", extcoin, coin, datetime.now())
                         if extcoin == coin:
-                        #if coin in externals:
                             sellCoin = True
                             sell_reason = 'External Sell Signal'
                             break
@@ -1475,7 +1462,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     sellCoin = True
                     sell_reason = 'Session TPSL Override reached'
 
-                if sellCoin and LastPriceBR > BuyPriceBR:                                
+                if sellCoin and LastPriceBR > BuyPriceBR or sellCoin and ALLOW_NEGATIVE_SELLING:                                
                     #print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.BLUE}Sell: {coins_bought[coin]['volume']} of {coin} | {sell_reason} | ${float(BuyPriceBR):g} - ${float(LastPriceBR):g}{txcolors.DEFAULT}")
                     if TRADING_FEE == 0:
                         print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.BLUE}Sell {coins_bought[coin]['volume']} of {coin} | {sell_reason} | ${float(BuyPriceBR):g} - ${float(LastPriceBR):g} {txcolors.BLUE}| Profit: {PriceChange_Perc:.2f}% | Est: {((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_Perc)/100:.{decimals()}f} {PAIR_WITH} (Sin Fees){txcolors.DEFAULT}")
@@ -1485,6 +1472,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     q = coins_bought[coin]['volume']
                     if SELL_PART != 100 and SELL_PART > 0:
                         q = round((SELL_PART * q)/100, 3)
+                        SAVED_COINS = SAVED_COINS + (coins_bought[coin]['volume'] - q)
                         #print("Sell ", SELL_PART, "% of ", coins_bought[coin]['volume'], ". Sell ", q, "not sell ", coins_bought[coin]['volume'] - q)
                     
                     # try to create a real order          
@@ -1529,12 +1517,12 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                         # Log trade
                         profit_incfees_total = coins_sold[coin]['volume'] * PriceChangeIncFees_Unit
                         
-                        if TRADING_FEE == 0:
-                            SellUSDT = coins_bought[coin]['volume'] * (LastPriceBR)
-                            USDTdiff = SellUSDT - (BuyPriceBR * coins_bought[coin]['volume'])
-                        else:
-                            SellUSDT = coins_sold[coin]['volume'] * (LastPriceBR - sellFee)
-                            USDTdiff = SellUSDT - ((BuyPriceBR + buyFee) * coins_sold[coin]['volume'])
+                        #if TRADING_FEE == 0:
+                            #SellUSDT = coins_bought[coin]['volume'] * (LastPriceBR)
+                            #USDTdiff = SellUSDT - (BuyPriceBR * coins_bought[coin]['volume'])
+                        #else:
+                        SellUSDT = coins_sold[coin]['volume'] * (LastPriceBR - sellFee)
+                        USDTdiff = SellUSDT - ((BuyPriceBR + buyFee) * coins_sold[coin]['volume'])
                                 
                         session_USDT_EARNED = session_USDT_EARNED + USDTdiff
                         if USDTdiff < 0:
@@ -1571,6 +1559,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                             # within sell_all_coins, it will print display to screen
                             balance_report(last_price)
 
+                    #order_details= {'symbol': 'BNBUSDT', 'orderId': 2713807, 'orderListId': -1, 'clientOrderId': 'uyoChruda6ri2cn7s9Ntv6', 'transactTime': 1711481770052, 'price': '0.00000000', 'origQty': '0.03600000', 'executedQty': '0.03600000', 'cummulativeQuoteQty': '20.76480000', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'MARKET', 'side': 'SELL', 'workingTime': 1711481770052, 'fills': [{'price': '576.80000000', 'qty': '0.03600000', 'commission': '0.00000000', 'commissionAsset': 'USDT', 'tradeId': 175744}], 'selfTradePreventionMode': 'EXPIRE_MAKER'}
                     # sometimes get "rate limited" errors from Binance if we try to sell too many coins at once
                     # so wait 1 second in between sells
                     if not TEST_MODE:
@@ -1663,6 +1652,7 @@ def sell_external_signals():
             coins1.append(symbol)
 
         signals1, signals2 = megatronmod.analyze(c_data, coins1, False) # sell_external_signals()
+        tp_pausebotmod.analyze(c_data)
         
     return signals2
     #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
@@ -1757,7 +1747,7 @@ def check_total_session_profit(coins_bought, last_price):
         
 	allsession_profits_perc = session_profit_incfees_perc +  ((unrealised_session_profit_incfees_total / BUDGET) * 100)
 
-	if DEBUG: print(f'Session Override SL Feature: ASPP={allsession_profits_perc} STP {SESSION_TAKE_PROFIT} SSL {SESSION_STOP_LOSS}{txcolors.DEFAULT}')
+	#print(f'Session Override SL Feature: ASPP={allsession_profits_perc} STP {SESSION_TAKE_PROFIT} SSL {SESSION_STOP_LOSS}{txcolors.DEFAULT}')
 	
 	if allsession_profits_perc >= float(SESSION_TAKE_PROFIT): 
 		session_tpsl_override_msg = "Session TP Override target of " + str(SESSION_TAKE_PROFIT) + "% met. Sell all coins now!"
@@ -1955,7 +1945,7 @@ def load_settings():
     global SIGNALLING_MODULES, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
     global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
     global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
-    global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY
+    global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY, ALLOW_NEGATIVE_SELLING
     global REVERSE_SORT, MAX_HOLDING_TIME, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
     global LOG_FILE, PANIC_STOP, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
     global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, USE_TESNET_IN_ONLINEMODE, SELL_PART
@@ -2041,6 +2031,7 @@ def load_settings():
     DISABLE_TIMESTAMPS = parsed_config['trading_options']['DISABLE_TIMESTAMPS']
     TRADING_FEE = parsed_config['trading_options']['TRADING_FEE']
     SELL_PART = parsed_config['trading_options']['SELL_PART']
+    ALLOW_NEGATIVE_SELLING = parsed_config['trading_options']['ALLOW_NEGATIVE_SELLING']
     SIGNALLING_MODULES = parsed_config['trading_options']['SIGNALLING_MODULES']
 	
     SHOW_INITIAL_CONFIG = parsed_config['trading_options']['SHOW_INITIAL_CONFIG']
@@ -2264,20 +2255,17 @@ def remove_by_file_name(name):
 
 def new_or_continue():
 	##show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    global COINS_BOUGHT, BOT_STATS
     file_prefix = prefix_type()     
 
     if os.path.exists(file_prefix + str(COINS_BOUGHT)) or os.path.exists(file_prefix + str(BOT_STATS)):
-        LOOP = True
-        END = False
-        while LOOP:
+        while True:
             print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Do you want to continue previous session?[y/n]{txcolors.DEFAULT}')
             x = input("#: ")
-
             if x == "y" or x == "n":
                 if x == "y":
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Continuing with the session started ...{txcolors.DEFAULT}')
-                    LOOP = False
-                    END = True
+                    break
                 else:
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Deleting previous sessions ...{txcolors.DEFAULT}')
                     if USE_MOST_VOLUME_COINS == False:
@@ -2302,12 +2290,9 @@ def new_or_continue():
                     remove_by_extension("/*.position")
 
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Session deleted, continuing ...{txcolors.DEFAULT}')
-                    LOOP = False
-                    END = True
+                    break
             else:
-                print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Press the y key or the or key ...{txcolors.DEFAULT}')
-                LOOP = True
-        return END
+                print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Press the y key or the n key ...{txcolors.DEFAULT}')
 
 def get_order_info():
     try:
@@ -2415,7 +2400,7 @@ def menu(banner1=True):
         while LOOP:
             if banner1: banner()
             time.sleep(5) #menu
-            print(f'\n \n')
+            print(f'\n')
             print(f'{txcolors.WHITE}[A]{txcolors.YELLOW}Reload Configuration{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[B]{txcolors.YELLOW}Reload modules{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[C]{txcolors.YELLOW}Reload Volatily Volume List{txcolors.DEFAULT}')
@@ -2433,7 +2418,7 @@ def menu(banner1=True):
             print(f'{txcolors.WHITE}[L]{txcolors.YELLOW}Exit {languages_bot.MSG5[LANGUAGE]}{txcolors.DEFAULT}')
             x = input('Please enter your choice: ')
             x = str(x)
-            print(f'\n \n')
+            print(f'\n')
             if x == "A" or x == "a":
                 load_settings()
                 renew_list()
@@ -2517,7 +2502,6 @@ def menu(banner1=True):
             elif x == "L" or x == "l":
                 stop_signal_threads()
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Program execution ended by user!{txcolors.DEFAULT}')
-                EXIT_BOT = False
                 sys.exit(0)
             else:
                 print(f'wrong choice: {x}')
@@ -2528,7 +2512,7 @@ def menu(banner1=True):
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
     except KeyboardInterrupt as ki:
-        menu()
+        menu(False)
     return END
 
 def create_conection_binance(force=False):
@@ -2568,9 +2552,8 @@ def create_conection_binance(force=False):
 
 def banner():
     print(f'{txcolors.YELLOW}')
-    tprint('Binance Trading Bot')    
-    print(f'                                                 by {txcolors.RED}Pantersxx3{txcolors.DEFAULT}')                   
-    print('\n')
+    tprint('BinanceTradingBot')    
+    print(f'                                               by {txcolors.RED}Pantersxx3{txcolors.DEFAULT}')                   
         
 if __name__ == '__main__':
     req_version = (3,9)
@@ -2614,9 +2597,8 @@ if __name__ == '__main__':
         sys.stdout = St_ampe_dOut()
 			
 	# Load creds for correct environment
-    if DEBUG:
-        if SHOW_INITIAL_CONFIG == True: print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Loaded config below\n{json.dumps(parsed_config, indent=4)}{txcolors.DEFAULT}')
-        if SHOW_INITIAL_CONFIG == True: print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Your credentials have been loaded from {creds_file}{txcolors.DEFAULT}')
+   # print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Loaded config below\n{json.dumps(parsed_config, indent=4)}{txcolors.DEFAULT}')
+   # print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Your credentials have been loaded from {creds_file}{txcolors.DEFAULT}')
 		
     if MSG_DISCORD:
         DISCORD_WEBHOOK = load_discord_creds(parsed_creds)
@@ -2630,7 +2612,7 @@ if __name__ == '__main__':
     create_conection_binance()
 	
     menu(False)
-    
+
     new_or_continue()
 	
     renew_list(True)
@@ -2707,7 +2689,8 @@ if __name__ == '__main__':
         if not args.notimeout: # if notimeout skip this (fast for dev tests)
             write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Test mode is disabled in the configuration, you are using _LIVE_ funds.{txcolors.DEFAULT}')
             print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Waiting 10 seconds before live trading as a security measure!{txcolors.DEFAULT}')
-            time.sleep(10) #Waiting 10 seconds before live trading
+            set_progress_bar("Esperando " + str(10) + " segundos", 75 , 10)
+            #time.sleep(10) #Waiting 10 seconds before live trading
 
 	#remove_external_signals('buy')
 	#remove_external_signals('sell')
@@ -2764,8 +2747,8 @@ if __name__ == '__main__':
         except BinanceAPIException as bapie:
             BINANCE_API_EXCEPTION += 1
             write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}We got an API error from Binance. Re-loop. API Errors so far: {BINANCE_API_EXCEPTION}.\nException:\n{bapie}{txcolors.DEFAULT}')											
-        except KeyboardInterrupt as ki:
-            if menu() == True: sys.exit(0)
+        #except KeyboardInterrupt as ki:
+            #if menu() == True: sys.exit(0)
     try:
         if not is_bot_running:
             if SESSION_TPSL_OVERRIDE:
