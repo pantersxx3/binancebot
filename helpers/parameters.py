@@ -5,8 +5,19 @@ import argparse
 def load_config(file):
     try:
 
-        with open(file) as file:
+        with open(file, 'r') as file:
             return yaml.load(file, Loader=yaml.FullLoader)
+    except FileNotFoundError as fe:
+        exit(f'Could not find {file}')
+    
+    except Exception as e:
+        exit(f'Encountered exception...\n {e}')
+        
+def save_config(file1, data):
+    try:
+
+        with open(file1, 'w') as file:
+            return yaml.dump(data, file)
     except FileNotFoundError as fe:
         exit(f'Could not find {file}')
     
