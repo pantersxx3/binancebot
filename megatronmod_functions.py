@@ -439,9 +439,16 @@ def Cci(DF_Data, LENGHT):
     return CCI_IND
 
 def Sl(PAIR, CLOSE_1MIN):
-    bought_at, timeHold, coins_bought = load_json(PAIR)
-    SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
-    return (float(CLOSE_1MIN) < float(SL) and float(SL) != 0)
+    try:
+        #r = False
+        bought_at, timeHold, coins_bought = load_json(PAIR)
+        SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
+        r = float(CLOSE_1MIN) < float(SL) and float(SL) != 0
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        print('Sl Error on line ' + str(exc_tb.tb_lineno))
+        pass    
+    return r
     
 def Tp(PAIR, CLOSE_1MIN):
     try:
@@ -459,3 +466,15 @@ def Tp(PAIR, CLOSE_1MIN):
 def Bought_at(PAIR):
     bought_at, timeHold, coins_bought = load_json(PAIR)
     return bought_at
+    
+def zigzag(DF_Data, LENGHT):
+    try:
+        print("DF_Data=", DF_Data, " len=", len(DF_Data))
+        if len(DF_Data) > 999:
+            r = zigzag(DF_Data.iloc[-1], LENGHT).iloc[-1]
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        print(e)
+        print('zigzag Error on line ' + str(exc_tb.tb_lineno))
+        pass        
+    return r

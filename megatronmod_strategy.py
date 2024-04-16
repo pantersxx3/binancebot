@@ -14,12 +14,23 @@ import os
   
 def buy(Data, CLOSE, pair):
     try:
-        BA, BM, BB = MF.BollingerBands(Data, 2, 2)
+        buySignal = False
+        zigzag_data = []
+        ZIGZAG_RESULT = False
+        ZIGZAG = MF.zigzag(Data, 2)
+        zigzag_data.append(ZIGZAG)
+        for i in range(len(zigzag_data)):
+            # Si el valor actual de Zigzag es mayor que el anterior y la pendiente es positiva
+            if zigzag_data.loc[i] > zigzag_data.loc[i - 1] and zigzag_data.loc[i] > 0:
+                ZIGZAG_RESULT = True
+                break
+                
+        #BA, BM, BB = MF.BollingerBands(Data, 2, 2)
         SMA1 = MF.Sma(Data, 200)
         #SMA2 = MF.Sma(Data, 50)
         #SMA3 = MF.Sma(Data, 25)      
-      
-        buySignal = CLOSE < BM and CLOSE > SMA1 #and CLOSE > SMA3 and CLOSE > SMA2
+       
+        buySignal = CLOSE > SMA1 and ZIGZAG_RESULT #CLOSE < BM and CLOSE > SMA1 #and CLOSE > SMA3 and CLOSE > SMA2
         #random.choice([True, False]) #
 
     except Exception as e:
@@ -32,10 +43,18 @@ def buy(Data, CLOSE, pair):
 def sell(Data, CLOSE, pair):
     try:
         sellSignal1 = True
-        BA, BM, BB = MF.BollingerBands(Data, 2, 2)
-        B = MF.Bought_at(pair)
+        zigzag_data = []
+        ZIGZAG_RESULT = False
+        ZIGZAG = MF.zigzag(Data, 2)
+        zigzag_data.append(ZIGZAG)
+        for i in range(len(zigzag_data)):
+            if zigzag_data.loc[i] < zigzag_data.loc[i - 1] and zigzag_data.loc[i] < 0:
+                ZIGZAG_RESULT = True
+                break
+        #BA, BM, BB = MF.BollingerBands(Data, 2, 2)
+        #B = MF.Bought_at(pair)
         
-        sellSignal1 = MF.Tp(pair, CLOSE) 
+        sellSignal1 = ZIGZAG_RESULT #MF.Tp(pair, CLOSE) or MF.Sl(pair, CLOSE)
         #random.choice([True, False]) #CLOSE > B and CLOSE > BM
 
     except Exception as e:
