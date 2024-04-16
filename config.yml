@@ -3,7 +3,7 @@ script_options:
   LANGUAGE: 'es'
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
-  TEST_MODE: False
+  TEST_MODE: True
   #In this mode, the price information of a cryptocurrency will be downloaded during a given period of time. 
   #TEST_MODE is required to be true for Backtest.
   #Backtest mode
@@ -42,7 +42,7 @@ trading_options:
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
   #it will be bought with all the capital in the wallet.
   #The method works....
-  COMPOUND_INTEREST: False  
+  COMPOUND_INTEREST: True
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
@@ -60,9 +60,9 @@ trading_options:
   # the difference in % between the first and second checks for the price. default 0.25
   CHANGE_IN_PRICE: 100
   # define in % when to sell a coin that's not making a profit.
-  STOP_LOSS: 0.10
+  STOP_LOSS: 0.5
   # define in % when to take profit on a profitable coin. default 0.25
-  TAKE_PROFIT: 0.15
+  TAKE_PROFIT: 1
   # Use custom tickers.txt list for filtering pairs.
   # Name of custom tickers list
   CUSTOM_LIST: True
@@ -87,19 +87,16 @@ trading_options:
   # Trading fee in % per trade.
   # If using 0.075% (using BNB for fees) you must have BNB in your account to cover trading fees.
   # If using BNB for fees, it MUST be enabled in your Binance 'Dashboard' page (checkbox).  
-  TRADING_FEE: 0 #0.075   
-  #if it is activated, the commission is ignored in WIN = (SELL_PRICE + FEE) >= (BUY_PRICE + FEE)
-  IGNORE_FEE: True  
+  TRADING_FEE: 0 #0.075    
   #sells the percentage that is placed on it, this serves to save a part of what was purchased.
   #If get error APIError(code=-1013), change percentage 
-  SELL_PART: 100  
+  SELL_PART: 99  
+  ALLOW_NEGATIVE_SELLING: False
   # Discord integration
   # Used to push alerts, messages etc to a discord channel
   MSG_DISCORD: False  
   #restart all modules every hour
   RESTART_MODULES: False  
-  #minimal mode set to 0, complete mode set to 1, termux mode set to 2
-  SCREEN_MODE: 2
   STATIC_MAIN_INFO: False
   DISABLE_TIMESTAMPS: True  
   SHOW_INITIAL_CONFIG: False  
@@ -134,6 +131,7 @@ trading_options:
     #- triple_rsi_v1
     #- HMA
     - megatronmod
+    #- tp_pausebotmod
     #- CCI
     #- Superdupermod
     #- Superdupermod_v1
