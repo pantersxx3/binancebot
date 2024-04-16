@@ -180,9 +180,9 @@ def show_func_name(function_name, items):
                     for name, myvalue in items:
 						#if not name.startswith('__'):
                         #myvalue = eval(name)
-                        print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}{function_name} = {name}: {myvalue} {sys.getsizeof(name)}{txcolors.DEFAULT}')
+                        print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}function_name = {name}: {myvalue} {sys.getsizeof(name)}{txcolors.DEFAULT}')
                 else:
-                    print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}{function_name} {varnames}{txcolors.DEFAULT}')
+                    print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}function_name {name}{txcolors.DEFAULT}')
             if SAVE_FUNCTION_NAME:
                 if SAVE_VARIABLES_AND_VALUE:
                     #all_variables = dir()
