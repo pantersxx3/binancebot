@@ -1166,7 +1166,7 @@ def wait_for_price():
             for pair in pairs:
                 coins1.append(pair)
             externals1, externals2 = megatronmod.analyze(c_data, coins1, True) #wait_for_price
-            tp_pausebotmod.analyze(c_data)
+            #tp_pausebotmod.analyze(c_data)
             last_price = get_price(False, externals1) #wait_for_price
         
         exnumber = 0
@@ -1652,7 +1652,7 @@ def sell_external_signals():
             coins1.append(symbol)
 
         signals1, signals2 = megatronmod.analyze(c_data, coins1, False) # sell_external_signals()
-        tp_pausebotmod.analyze(c_data)
+        #tp_pausebotmod.analyze(c_data)
         
     return signals2
     #show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
