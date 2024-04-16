@@ -81,7 +81,7 @@ import pandas as pd
 
 # main module, contains some strategies
 import megatronmod
-import tp_pausebotmod
+#import tp_pausebotmod
 
 #module to control the outputs of the bot
 import atexit
