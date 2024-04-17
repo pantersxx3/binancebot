@@ -1732,7 +1732,7 @@ def extract_order_data(order_details):
 	return transactionInfo
 
 def check_total_session_profit(coins_bought, last_price):
-	global is_bot_running, session_tpsl_override_msg, SESSION_TAKE_PROFIT, SESSION_STOP_LOSS
+	global is_bot_running, session_tpsl_override_msg, SESSION_TAKE_PROFIT, SESSION_STOP_LOSS, BUDGET
 	unrealised_session_profit_incfees_total = 0
 			
 	BUDGET = TRADE_SLOTS * get_balance_test_mode()
