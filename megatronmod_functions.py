@@ -33,7 +33,7 @@ from helpers.handle_creds import (
 
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
-global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args, BACKTESTING_MODE_TIME_START
+global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args
 
 
 class txcolors:
@@ -127,7 +127,7 @@ def read_position_csv(coin):
 
 def get_analysis(d, tf, p, position1=0, el_profe=False, num_records=1000):
     try:
-        global BACKTESTING_MODE
+        global BACKTESTING_MODE, BACKTESTING_MODE_TIME_START
         c = pd.DataFrame([])
         e = 0
         if BACKTESTING_MODE:
