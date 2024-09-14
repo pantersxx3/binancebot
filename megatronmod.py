@@ -13,6 +13,7 @@ import math
 import time
 import threading
 import pandas as pd
+from Boot import set_correct_mode
 import pandas_ta as ta
 import megatronmod_strategy as MS
 import megatronmod_functions as MF
@@ -22,7 +23,7 @@ from helpers.parameters import parse_args, load_config
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
 global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args, BACKTESTING_MODE_TIME_START, USE_MOST_VOLUME_COINS
-global BACKTESTING_MODE
+global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE
 
 class txcolors:
     BUY = '\033[92m'
@@ -43,27 +44,57 @@ args = parse_args()
 config_file = args.config if args.config else DEFAULT_CONFIG_FILE
 parsed_config = load_config(config_file)
  
-BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
+global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
-TEST_MODE = parsed_config['script_options']['TEST_MODE']
+MODE = parsed_config['script_options']['MODE']
 SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
 LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
-BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
-USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
+LANGUAGE = parsed_config['script_options']['LANGUAGE']
+#USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
 
 MICROSECONDS = 2
- 
+
+# def set_correct_mode():
+    # global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES
+    
+    # if MODE == "ONLINE":
+        # TEST_MODE = False
+        # BACKTESTING_MODE = False
+        # USE_TESNET_IN_ONLINEMODE = False
+        # USE_SIGNALLING_MODULES = False
+    # elif MODE == "ONLINETESNET":
+        # TEST_MODE = False
+        # BACKTESTING_MODE = False
+        # USE_TESNET_IN_ONLINEMODE = True
+        # USE_SIGNALLING_MODULES = False
+    # elif MODE == "TESTMODE":
+        # TEST_MODE = True
+        # BACKTESTING_MODE = True
+        # USE_TESNET_IN_ONLINEMODE = False
+        # USE_SIGNALLING_MODULES = True
+    # elif MODE == "BACKTESTING":
+        # TEST_MODE = False
+        # BACKTESTING_MODE = True
+        # USE_TESNET_IN_ONLINEMODE = False
+        # USE_SIGNALLING_MODULES = False
+    # else:
+        # print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}MODO incorrecto, modifique en config.yml...{txcolors.DEFAULT}')
+        # exit(0)
+        
 def analyze(d, pairs, buy=True):
     try:
-        global BACKTESTING_MODE
+        global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
 
         signal_coins1 = []
         signal_coins2 = []
         analysis1MIN = {}
         buySignal00 = False
         sellSignal00 = False
+        position2 = 0
+        
+        TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
         
         if TEST_MODE:
             file_prefix = 'test_'
@@ -72,15 +103,17 @@ def analyze(d, pairs, buy=True):
     
         print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}')
         
+        
         for pair in pairs:
-            position2 = MF.read_position_csv(pair)
-            if not os.path.exists(pair + '.csv'): 
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Whaiting for Download Data...{txcolors.DEFAULT}')
-                if USE_SIGNALLING_MODULES:
-                    while not os.path.exists(pair + '.csv'):
-                        time.sleep(1/1000) #Wait for download 
-                else:
-                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
+            if BACKTESTING_MODE:
+                position2 = MF.read_position_csv(pair)
+                if not os.path.exists(pair + '.csv'): 
+                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Whaiting for Download Data...{txcolors.DEFAULT}')
+                    if USE_SIGNALLING_MODULES:
+                        while not os.path.exists(pair + '.csv'):
+                            time.sleep(1/1000) #Wait for download 
+                    else:
+                        print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
                         
             analysis1MIN = MF.get_analysis(d, '1m', pair, position2, True, 1000)
 
@@ -106,7 +139,7 @@ def analyze(d, pairs, buy=True):
                             if USE_SIGNALLING_MODULES:
                                 with open(SIGNAL_FILE_BUY,'w+') as f:
                                     f.write(pair + '\n') 
-                                break
+                                #break
                 
                 if SELL_ON_SIGNAL_ONLY:
                     bought_at, timeHold, coins_bought = MF.load_json(pair)
@@ -117,7 +150,7 @@ def analyze(d, pairs, buy=True):
                             if USE_SIGNALLING_MODULES:
                                 with open(SIGNAL_FILE_SELL,'w+') as f:
                                     f.write(pair + '\n')
-                                break 
+                                    #break 
     except Exception as e:
         MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -127,11 +160,14 @@ def analyze(d, pairs, buy=True):
 
 def do_work():
     try:
+        global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
         signalcoins1 = []
         signalcoins2 = []
         pairs = {}
         dataBuy = {}
         dataSell = {}
+        
+        TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
         
         if USE_MOST_VOLUME_COINS == True:
             TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'

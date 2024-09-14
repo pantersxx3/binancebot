@@ -10,6 +10,7 @@
 import megatronmod_functions as MF
 import sys
 import os
+import random
 #import random
   
 def buy(Data, CLOSE, pair):
@@ -25,12 +26,16 @@ def buy(Data, CLOSE, pair):
                 #ZIGZAG_RESULT = True
                 #break
                 
-        BA, BM, BB = MF.BollingerBands(Data, 2, 2)
-        SMA1 = MF.Sma(Data, 200)
+        #BA, BM, BB = MF.BollingerBands(Data, 2, 2)
+        SMA1 = MF.Sma(Data, 9)
+        SMA2 = MF.Sma(Data, 200)
         #SMA2 = MF.Sma(Data, 50)
         #SMA3 = MF.Sma(Data, 25)      
        
-        buySignal = CLOSE < BM and CLOSE > SMA1 #CLOSE > SMA1 and ZIGZAG_RESULT # #and CLOSE > SMA3 and CLOSE > SMA2
+        buySignal = CLOSE < SMA1 and CLOSE > SMA2
+        #random.choice([True, False])
+        #CLOSE > SMA1 and ZIGZAG_RESULT # #and CLOSE > SMA3 and CLOSE > SMA2
+        #print("buySignal=", buySignal, "CLOSE=", CLOSE, "SMA1=", SMA1, "SMA2=", SMA2)
         #random.choice([True, False]) #
 
     except Exception as e:
@@ -51,10 +56,14 @@ def sell(Data, CLOSE, pair):
             #if zigzag_data.loc[i] < zigzag_data.loc[i - 1] and zigzag_data.loc[i] < 0:
                 #ZIGZAG_RESULT = True
                 #break
-        BA, BM, BB = MF.BollingerBands(Data, 2, 2)
+        #BA, BM, BB = MF.BollingerBands(Data, 2, 2)
+        SMA1 = MF.Sma(Data, 9)
         B = MF.Bought_at(pair)
         
-        sellSignal1 = CLOSE > B and CLOSE > BM #ZIGZAG_RESULT #MF.Tp(pair, CLOSE) or MF.Sl(pair, CLOSE)
+        sellSignal1 = CLOSE > B and CLOSE > SMA1
+        #CLOSE > B and random.choice([True, False]) 
+        #ZIGZAG_RESULT #MF.Tp(pair, CLOSE) or MF.Sl(pair, CLOSE)
+
         #random.choice([True, False]) #
 
     except Exception as e:

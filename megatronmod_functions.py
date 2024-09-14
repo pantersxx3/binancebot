@@ -10,8 +10,10 @@ from tradingview_ta import TA_Handler, Interval, Exchange
 from binance.client import Client, BinanceAPIException
 from helpers.parameters import parse_args, load_config
 from datetime import date, datetime, timedelta
+from scipy.special import expit as sigmoid
 from collections import defaultdict
 import pandas_ta as ta #pta
+from Boot import set_correct_mode
 import pandas as pd
 import threading
 import os
@@ -33,7 +35,8 @@ from helpers.handle_creds import (
 
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
-global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args
+global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args, TEST_MODE, BACKTESTING_MODE
+global USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE
 
 
 class txcolors:
@@ -58,10 +61,10 @@ access_key, secret_key = load_correct_creds(parsed_creds)
 
 LANGUAGE = parsed_config['script_options']['LANGUAGE']
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
-BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
+#BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
-TEST_MODE = parsed_config['script_options']['TEST_MODE']
+MODE = parsed_config['script_options']['MODE']
 LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
 COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
 STOP_LOSS = parsed_config['trading_options']['STOP_LOSS']
@@ -69,15 +72,10 @@ TAKE_PROFIT = parsed_config['trading_options']['TAKE_PROFIT']
 TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
 TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
 TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
-BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
+#BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
 BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
 MICROSECONDS = 2
-
-if USE_MOST_VOLUME_COINS == True:
-    TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
-else:
-    TICKERS = 'tickers.txt'
-            
+      
 #ACTUAL_POSITION = 0
 SIGNAL_NAME = 'MEGATRONMOD'
 #CREATE_BUY_SELL_FILES = True
@@ -87,7 +85,35 @@ SCREENER = 'CRYPTO'
 
 #JSON_FILE_BOUGHT = SIGNAL_NAME + '.json'
 
-                                    
+# def set_correct_mode():
+    # global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES
+    
+    # if MODE == "ONLINE":
+        # TEST_MODE = False
+        # BACKTESTING_MODE = False
+        # USE_TESNET_IN_ONLINEMODE = False
+        # USE_SIGNALLING_MODULES = False
+    # elif MODE == "ONLINETESNET":
+        # TEST_MODE = False
+        # BACKTESTING_MODE = False
+        # USE_TESNET_IN_ONLINEMODE = True
+        # USE_SIGNALLING_MODULES = False
+    # elif MODE == "TESTMODE":
+        # TEST_MODE = True
+        # BACKTESTING_MODE = True
+        # USE_TESNET_IN_ONLINEMODE = False
+        # USE_SIGNALLING_MODULES = True
+    # elif MODE == "BACKTESTING":
+        # TEST_MODE = False
+        # BACKTESTING_MODE = True
+        # USE_TESNET_IN_ONLINEMODE = False
+        # USE_SIGNALLING_MODULES = False
+    # else:
+        # print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}MODO incorrecto, modifique en config.yml...{txcolors.DEFAULT}')
+        # exit(0)
+
+TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
+        
 def write_log(logline, LOGFILE = LOG_FILE, show = True, time = False):
     try:
         if TEST_MODE:
@@ -151,6 +177,7 @@ def get_analysis(d, tf, p, position1=0, el_profe=False, num_records=1000):
             c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
             c['time'] = pd.to_datetime(c['time'], unit='ms')
             c['Close'] = c['Close'].astype(float)
+            #print(c)
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: get_analysis(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
