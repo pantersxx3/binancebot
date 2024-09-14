@@ -3,15 +3,17 @@ script_options:
   LANGUAGE: 'es'
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
-  TEST_MODE: True
+  #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
+  MODE: "ONLINETESNET"
+  #TEST_MODE: True
   #In this mode, the price information of a cryptocurrency will be downloaded during a given period of time. 
   #TEST_MODE is required to be true for Backtest.
   #Backtest mode
-  BACKTESTING_MODE: False
-  USE_TESNET_IN_ONLINEMODE: False
+  #BACKTESTING_MODE: False
+  #USE_TESNET_IN_ONLINEMODE: False
   BOT_TIMEFRAME: "1m"
-  BACKTESTING_MODE_TIME_START: "20/03/24 00:00:00" #"01/05/22 00:00:00" #
-  BACKTESTING_MODE_TIME_END: "21/03/24 00:00:00" #"15/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_START: "01/04/24 00:00:00" #"01/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_END: "23/04/24 00:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
   JSON_REPORT: 'report.json'
   MICROSECONDS: 0.3
@@ -38,7 +40,7 @@ script_options:
 # These options apply to the trading methods the script executes
 trading_options: 
   # select your base currency to use for trading (trade for example USDT pairs)
-  PAIR_WITH: USDT  
+  PAIR_WITH: BTC  
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
   #it will be bought with all the capital in the wallet.
   #The method works....
@@ -46,7 +48,7 @@ trading_options:
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 21  
+  TRADE_TOTAL: 0.00034991
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.

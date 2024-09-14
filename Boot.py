@@ -2334,6 +2334,7 @@ def new_or_continue():
                     remove_by_file_name(file_prefix + COINS_BOUGHT)
                     remove_by_file_name(file_prefix + BOT_STATS)
                     remove_by_file_name(file_prefix + LOG_FILE)
+                    remove_by_file_name("signal.sig")
                     remove_by_extension("/*.log")
                     remove_by_extension("/*.pause")
                     remove_by_extension("/*.buy")
@@ -2343,6 +2344,7 @@ def new_or_continue():
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Session deleted, continuing ...{txcolors.DEFAULT}')
                     break
             else:
+                remove_by_file_name("signal.sig")
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Press the y key or the n key ...{txcolors.DEFAULT}')
     if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     
