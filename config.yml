@@ -4,7 +4,7 @@ script_options:
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
-  MODE: "ONLINETESNET"
+  MODE: "ONLINE"
   #TEST_MODE: True
   #In this mode, the price information of a cryptocurrency will be downloaded during a given period of time. 
   #TEST_MODE is required to be true for Backtest.
@@ -29,6 +29,9 @@ script_options:
   BOT_STATS: 'bot_stats.json'
   USE_VOLATILE_METOD: False
   DEBUG: True
+  REMOTE_INSPECTOR_BOT_PORT: 0
+  #if 0 remote server is disabled
+  REMOTE_INSPECTOR_MEGATRONMOD_PORT: 0 #9999
   #all binance requests from our bot will be proxied
   PROXY_HTTP: '' #'http://localhost:8090'
   PROXY_HTTPS: ''
@@ -40,7 +43,7 @@ script_options:
 # These options apply to the trading methods the script executes
 trading_options: 
   # select your base currency to use for trading (trade for example USDT pairs)
-  PAIR_WITH: BTC  
+  PAIR_WITH: USDT  
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
   #it will be bought with all the capital in the wallet.
   #The method works....
@@ -48,7 +51,7 @@ trading_options:
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 0.00034991
+  TRADE_TOTAL: 21
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.

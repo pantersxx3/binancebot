@@ -8,9 +8,11 @@
 
 import os
 import sys
+import json
 import glob
 import math
 import time
+import socket
 import threading
 import pandas as pd
 from Boot import set_correct_mode
@@ -19,6 +21,10 @@ import megatronmod_strategy as MS
 import megatronmod_functions as MF
 from datetime import date, datetime, timedelta
 from helpers.parameters import parse_args, load_config
+import traceback
+
+# Diccionario para almacenar las variables locales de cada función
+variables_funciones = {}
 
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
@@ -44,7 +50,7 @@ args = parse_args()
 config_file = args.config if args.config else DEFAULT_CONFIG_FILE
 parsed_config = load_config(config_file)
  
-global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
+global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 MODE = parsed_config['script_options']['MODE']
@@ -52,36 +58,69 @@ SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
 LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
 LANGUAGE = parsed_config['script_options']['LANGUAGE']
+REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_MEGATRONMOD_PORT']
 #USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
 
 MICROSECONDS = 2
 
-# def set_correct_mode():
-    # global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES
+        
+def register_func_name(function_name, items):
+    global variables_funciones
+    variables_funciones[function_name] = {k: v for k, v in items}
     
-    # if MODE == "ONLINE":
-        # TEST_MODE = False
-        # BACKTESTING_MODE = False
-        # USE_TESNET_IN_ONLINEMODE = False
-        # USE_SIGNALLING_MODULES = False
-    # elif MODE == "ONLINETESNET":
-        # TEST_MODE = False
-        # BACKTESTING_MODE = False
-        # USE_TESNET_IN_ONLINEMODE = True
-        # USE_SIGNALLING_MODULES = False
-    # elif MODE == "TESTMODE":
-        # TEST_MODE = True
-        # BACKTESTING_MODE = True
-        # USE_TESNET_IN_ONLINEMODE = False
-        # USE_SIGNALLING_MODULES = True
-    # elif MODE == "BACKTESTING":
-        # TEST_MODE = False
-        # BACKTESTING_MODE = True
-        # USE_TESNET_IN_ONLINEMODE = False
-        # USE_SIGNALLING_MODULES = False
-    # else:
-        # print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}MODO incorrecto, modifique en config.yml...{txcolors.DEFAULT}')
-        # exit(0)
+def convertir_a_str(value):
+    if isinstance(value, dict):
+        return str(value)
+    elif isinstance(value, list):
+        return str(value)
+    elif isinstance(value, pd.DataFrame):
+        return value.to_string()  # Convierte el DataFrame a texto legible
+    else:
+        return str(value)
+        
+def handle_client(client_socket):
+    try:
+        global variables_funciones
+        while True:
+            request = client_socket.recv(1024).decode().strip() 
+            parts = request.split(".")
+            if len(parts) == 2:
+                funcion = parts[0]
+                variable = parts[1]
+
+                if variable == "all_val":
+                    all_vars = "\n".join([f"{k}: {convertir_a_str(v)}" for k, v in variables_funciones[funcion].items()])
+                    response = f"{funcion}:\n {all_vars}\n <END_COMMAND>"
+                else:
+                    if funcion in variables_funciones and variable in variables_funciones[funcion]:
+                        response = f"{funcion}.{variable}: {variables_funciones[funcion][variable]}\n<END_COMMAND>"
+                    else:
+                        response = f"Variable {variable} no encontrada en la función {funcion}\n<END_COMMAND>"
+            else:
+                response = "Comando no reconocido. Use 'funcion.variable'\n<END_COMMAND>"
+            
+            client_socket.send(response.encode()) 
+            
+    except Exception as e:
+        MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        MF.write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+        pass  
+        
+def start_telnet_server():
+    if REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0:
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind(('0.0.0.0', REMOTE_INSPECTOR_MEGATRONMOD_PORT))  # Escucha en todas las interfaces en el puerto 9999
+        server.listen(5)
+        print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: escuchando en el puerto 9999')
+
+        while True:
+            client_socket, addr = server.accept()
+            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: Conexión aceptada desde {addr}')
+            
+            # Crear un hilo separado para manejar la conexión
+            client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+            client_handler.start()
         
 def analyze(d, pairs, buy=True):
     try:
@@ -118,9 +157,9 @@ def analyze(d, pairs, buy=True):
             analysis1MIN = MF.get_analysis(d, '1m', pair, position2, True, 1000)
 
             if not analysis1MIN.empty:
-                CLOSE_1MIN = round(float(analysis1MIN['Close'].iloc[-1]),5)
-                #OPEN_1MIN = round(float(analysis1MIN['Open'].iloc[-1]),5) 
-                #CLOSE_1MIN_ANT = round(float(analysis1MIN['Close'].iloc[-2]),5)
+                CLOSE_1MIN = round(float(analysis1MIN['Close'].iloc[-1]),6)
+                #OPEN_1MIN = round(float(analysis1MIN['Open'].iloc[-1]),6) 
+                #CLOSE_1MIN_ANT = round(float(analysis1MIN['Close'].iloc[-2]),6)
                 time1 = 0
                 #TIME_1M = analysis1MIN['time'].iloc[-1]
                 #time1 = int(TIME_1M)/1000
@@ -150,7 +189,8 @@ def analyze(d, pairs, buy=True):
                             if USE_SIGNALLING_MODULES:
                                 with open(SIGNAL_FILE_SELL,'w+') as f:
                                     f.write(pair + '\n')
-                                    #break 
+                                    #break                      
+        register_func_name("analyze", locals().items())
     except Exception as e:
         MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -168,6 +208,10 @@ def do_work():
         dataSell = {}
         
         TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
+        
+        telnet_thread = threading.Thread(target=start_telnet_server)
+        telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
+        telnet_thread.start()
         
         if USE_MOST_VOLUME_COINS == True:
             TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
@@ -199,6 +243,8 @@ def do_work():
             else:
                 print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
                 time.sleep(MICROSECONDS)
+                
+            register_func_name("do_work", locals().items())
     except Exception as e:
         MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: do_work(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()

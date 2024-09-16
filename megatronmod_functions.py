@@ -85,33 +85,6 @@ SCREENER = 'CRYPTO'
 
 #JSON_FILE_BOUGHT = SIGNAL_NAME + '.json'
 
-# def set_correct_mode():
-    # global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES
-    
-    # if MODE == "ONLINE":
-        # TEST_MODE = False
-        # BACKTESTING_MODE = False
-        # USE_TESNET_IN_ONLINEMODE = False
-        # USE_SIGNALLING_MODULES = False
-    # elif MODE == "ONLINETESNET":
-        # TEST_MODE = False
-        # BACKTESTING_MODE = False
-        # USE_TESNET_IN_ONLINEMODE = True
-        # USE_SIGNALLING_MODULES = False
-    # elif MODE == "TESTMODE":
-        # TEST_MODE = True
-        # BACKTESTING_MODE = True
-        # USE_TESNET_IN_ONLINEMODE = False
-        # USE_SIGNALLING_MODULES = True
-    # elif MODE == "BACKTESTING":
-        # TEST_MODE = False
-        # BACKTESTING_MODE = True
-        # USE_TESNET_IN_ONLINEMODE = False
-        # USE_SIGNALLING_MODULES = False
-    # else:
-        # print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}MODO incorrecto, modifique en config.yml...{txcolors.DEFAULT}')
-        # exit(0)
-
 TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
         
 def write_log(logline, LOGFILE = LOG_FILE, show = True, time = False):
@@ -368,11 +341,11 @@ def save_indicator(items):
 def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
     df = pd.DataFrame(DF_Data)
     df[['spanA', 'spanB', 'tenkan_sen', 'kijun_sen', 'chikou_span']] = ta.ichimoku(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], TENKA, KIJUN, SENKU)
-    spanA = round(df['spanA'], 4)
-    spanB = round(df['spanB'], 4)
-    tenkan_sen_IND = round(df['tenkan_sen'], 4)
-    kijun_sen_IND = round(df['kijun_sen'], 4)
-    chikou_span_IND = round(df['chikou_span'], 4)
+    spanA = round(df['spanA'], 6)
+    spanB = round(df['spanB'], 6)
+    tenkan_sen_IND = round(df['tenkan_sen'], 6)
+    kijun_sen_IND = round(df['kijun_sen'], 6)
+    chikou_span_IND = round(df['chikou_span'], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
@@ -380,9 +353,9 @@ def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
 def BollingerBands(DF_Data, LENGHT, STD):
     df = pd.DataFrame()
     df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(DF_Data['Close'], length=LENGHT, std=STD)
-    B1_IND = round(df['upper'].iloc[-1], 4)
-    BM_IND = round(df['middle'].iloc[-1], 4)
-    B2_IND = round(df['lower'].iloc[-1], 4)
+    B1_IND = round(df['upper'].iloc[-1], 6)
+    BM_IND = round(df['middle'].iloc[-1], 6)
+    B2_IND = round(df['lower'].iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return B1_IND, BM_IND, B2_IND
@@ -390,27 +363,27 @@ def BollingerBands(DF_Data, LENGHT, STD):
 def Supertrend(DF_Data, LENGHT, MULT):
     df = pd.DataFrame()
     df[['supertrend', 'supertrend_direc', 'supertrend_down', 'supertrend_up']] = ta.supertrend(pd.to_numeric(DF_Data['High']), pd.to_numeric(DF_Data['Low']), pd.to_numeric(DF_Data['Close']), length=LENGHT, multiplier=MULT)
-    SUPERTRENDUP_IND = round(df['supertrend_up'].iloc[-1], 4)
-    SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 4)
-    SUPERTREND_IND = round(df['supertrend'].iloc[-1], 4)
+    SUPERTRENDUP_IND = round(df['supertrend_up'].iloc[-1], 6)
+    SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 6)
+    SUPERTREND_IND = round(df['supertrend'].iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return SUPERTREND_IND, SUPERTRENDDOWN_IND, SUPERTRENDUP_IND
 
 def Momentum(DF_Data, LENGHT):
-    MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 4)
+    MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)    
     save_indicator(locals().items())
     return MOMENTUM_IND
     
 def Ema(DF_Data, LENGHT):
-    EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 4)
+    EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return EMA_IND
 
 def Sma(DF_Data, LENGHT):
-    SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 4)
+    SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())    
     return SMA_IND
@@ -418,26 +391,26 @@ def Sma(DF_Data, LENGHT):
 def Stochastic(DF_Data, LENGHT, K, D):
     STOCHK_1M_DATA = pd.DataFrame()
     STOCHK_1M_DATA[['k', 'd']] = ta.stoch(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], LENGHT, K, D)
-    STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 4)
-    STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 4)
+    STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 6)
+    STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return STOCHK_IND, STOCHD_IND
     
 def Rsi(DF_Data, LENGHT):
-    RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 4)
+    RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return RSI_IND
 
 def Wma(DF_Data, LENGHT):
-    WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 4)
+    WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return WMA_IND
     
 def Hma(DF_Data, LENGHT):
-    HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 4)
+    HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return HMA_IND
@@ -445,22 +418,22 @@ def Hma(DF_Data, LENGHT):
 def Heikinashi(DF_Data):
     HEIKINASHI_1M_DATA = pd.DataFrame()
     HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
-    HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 4)
-    HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 4)
-    HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 4)
-    HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_close'], 4)
+    HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 6)
+    HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 6)
+    HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 6)
+    HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_close'], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
 
 def Macd(DF_Data, FAST, SLOW, SIGNAL):
-    MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 4)
+    MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return MACD_IND, MACDHIST_IND, MACDSIG_IND
     
 def Cci(DF_Data, LENGHT):
-    CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 4)
+    CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
     save_indicator(locals().items())
     return CCI_IND

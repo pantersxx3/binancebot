@@ -11,10 +11,14 @@ import megatronmod_functions as MF
 import sys
 import os
 import random
-#import random
+import telnetlib
   
 def buy(Data, CLOSE, pair):
     try:
+        # HOST = "localhost"
+        # PORT = 10000
+        # tn = telnetlib.Telnet(HOST, PORT)
+        
         buySignal = False
         #zigzag_data = []
         #ZIGZAG_RESULT = False
@@ -31,13 +35,15 @@ def buy(Data, CLOSE, pair):
         SMA2 = MF.Sma(Data, 200)
         #SMA2 = MF.Sma(Data, 50)
         #SMA3 = MF.Sma(Data, 25)      
-       
+        
         buySignal = CLOSE < SMA1 and CLOSE > SMA2
         #random.choice([True, False])
         #CLOSE > SMA1 and ZIGZAG_RESULT # #and CLOSE > SMA3 and CLOSE > SMA2
         #print("buySignal=", buySignal, "CLOSE=", CLOSE, "SMA1=", SMA1, "SMA2=", SMA2)
         #random.choice([True, False]) #
-
+        #cmmd = f'buySignal: {buySignal} CLOSE: {CLOSE} SMA9: {SMA1} SMA200: {SMA2}'
+        #tn.write(cmmd.encode('utf-8'))
+        
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print('Buy Error on line ' + str(exc_tb.tb_lineno))
@@ -47,7 +53,10 @@ def buy(Data, CLOSE, pair):
     
 def sell(Data, CLOSE, pair):
     try:
-        sellSignal1 = True
+        # HOST = "localhost"
+        # PORT = 10000
+        # tn = telnetlib.Telnet(HOST, PORT)
+        sellSignal1 = False
         #zigzag_data = []
         #ZIGZAG_RESULT = False
         #ZIGZAG = MF.zigzag(Data, 2)
@@ -65,7 +74,9 @@ def sell(Data, CLOSE, pair):
         #ZIGZAG_RESULT #MF.Tp(pair, CLOSE) or MF.Sl(pair, CLOSE)
 
         #random.choice([True, False]) #
-
+        #cmmd = f'sellSignal1: {sellSignal1} CLOSE: {CLOSE} SMA9: {SMA1} B: {B}'
+        #tn.write(cmmd.encode('utf-8'))
+        
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print('Sell Error on line ' + str(exc_tb.tb_lineno))

@@ -47,6 +47,8 @@ import glob
 #discord needs import request
 import requests
 
+import socket
+
 # Needed for colorful console output
 from colorama import init
 init()
@@ -126,7 +128,7 @@ class txcolors:
 	#Grey = '\033[90m'
 	#Black = '\033[90m'
     #yelow = '\033[33m'
-	
+
 global session_profit_incfees_perc, session_profit_incfees_total, session_tpsl_override_msg, is_bot_running, session_USDT_EARNED, sell_all_coins
 global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, session_USDT_EARNED_TODAY, parsed_creds, TUP,PUP, TDOWN, c_data
 global PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down, client
@@ -134,7 +136,7 @@ global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_M
 global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, bot_started_datetime, EXIT_BOT
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
-global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES
+global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT
 
 parsed_creds = []
 secret_key = ""
@@ -170,10 +172,74 @@ historic_profit_incfees_total = 0.0
 trade_wins = 0
 trade_losses = 0
 bot_started_datetime = ""
+function_variables = {}
 
-def show_func_name(function_name, items):
-    global ENABLE_FUNCTION_NAME, LANGUAGE
+
+def convertir_a_str(value):
+    if isinstance(value, dict):
+        return str(value)
+    elif isinstance(value, list):
+        return str(value)
+    elif isinstance(value, pd.DataFrame):
+        return value.to_string()  # Convierte el DataFrame a texto legible
+    else:
+        return str(value)
+        
+def handle_client(client_socket):
     try:
+        global function_variables
+        while True:
+            request = client_socket.recv(1024).decode().strip() 
+            parts = request.split(".")
+            if len(parts) == 2:
+                funcion = parts[0]
+                variable = parts[1]
+
+                if variable == "all_val":
+                    all_vars = "\n".join([f"{k}: {convertir_a_str(v)}" for k, v in function_variables[funcion].items()])
+                    response = f"{funcion}:\n {all_vars}\n <END_COMMAND>"
+                else:
+                    if funcion in function_variables and variable in function_variables[funcion]:
+                        response = f"{funcion}.{variable}: {function_variables[funcion][variable]}\n<END_COMMAND>"
+                    else:
+                        response = f"Variable {variable} no encontrada en la función {funcion}\n<END_COMMAND>"
+            else:
+                response = "Comando no reconocido. Use 'funcion.variable'\n<END_COMMAND>"
+            
+            client_socket.send(response.encode()) 
+            
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}handle_client: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass   
+        
+def start_telnet_server():
+    try:
+        if REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0:
+            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server.bind(('0.0.0.0', REMOTE_INSPECTOR_MEGATRONMOD_PORT))  # Escucha en todas las interfaces en el puerto 9999
+            server.listen(5)
+            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: escuchando en el puerto 9999')
+
+            while True:
+                client_socket, addr = server.accept()
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: Conexión aceptada desde {addr}')
+                
+                # Crear un hilo separado para manejar la conexión
+                client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+                client_handler.start()
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}start_telnet_server: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass  
+        
+def show_func_name(function_name, items):
+    try:
+        global ENABLE_FUNCTION_NAME, LANGUAGE, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT, SHOW_VARIABLES_AND_VALUE
+        global SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, LANGUAGE
+        
+        if REMOTE_INSPECTOR_BOT_PORT > 0 or REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0: 
+            function_variables[function_name] = {k: v for k, v in items}
         if ENABLE_FUNCTION_NAME:
             fn = str(datetime.now()) + "_" + function_name
             if SHOW_FUNCTION_NAME:  
@@ -231,7 +297,7 @@ def get_balance_wallet(crypto):
 			#if balance < 10 and not TEST_MODE: #or not BACKTESTING_MODE:
 				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}{languages_bot.MSG34[LANGUAGE]}{txcolors.DEFAULT}')
 				#sys.exit(0)
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_balance_wallet: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -289,7 +355,7 @@ def download_data(coin):
         c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
         c.to_csv(coin + '.csv', index=False)
         c = pd.DataFrame([])
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}download_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -300,7 +366,7 @@ def write_position_csv(coin, position):
 		f = open(coin + '.position', 'w')
 		f.write(str(position).replace(".0", ""))
 		f.close()
-		if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -314,7 +380,7 @@ def read_position_csv(coin):
 			r = f.read().replace(".0", "")
 			pos1 = int(r)
 			f.close()
-		if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -376,7 +442,7 @@ def read_next_row_csv(coin, nonext=False):
 
         if USE_SIGNALLING_MODULES: 
             os.remove("ok.ok")
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}read_next_row_csv: {languages_bot.MSG1[LANGUAGE]} read_next_row_csv(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -417,7 +483,7 @@ def get_all_tickers(nonext=False):
                 c['Close'] = c['Close'].astype(float)
                 coins.append({ 'time': c['time'].iloc[-1], 'symbol': coin, 'price': float(c['Close'].iloc[-1])}) #round(float(c['Close'].iloc[-1]),5)})
                 c = pd.DataFrame([])
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_all_tickers: {languages_bot.MSG1[LANGUAGE]} get_all_tickers():{coin} {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -461,7 +527,7 @@ def get_price(add_to_historical=True, prices = []):
             if hsp_head == RECHECK_INTERVAL:
                 hsp_head = 0
             historical_prices[hsp_head] = initial_price
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_price: {languages_bot.MSG1[LANGUAGE]} get_price(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -553,7 +619,7 @@ def get_volume_list():
                 return VOLATILE_VOLUME
         else:
             tickers=[line.strip() for line in open(TICKERS_LIST)]
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_volume_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}{txcolors.DEFAULT}")
@@ -597,7 +663,7 @@ def print_table_coins_bought():
                 #my_table.reversesort = REVERSE_SORT
                 print(my_table)
                 my_table = PrettyTable()
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}print_table_coins_bought: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -713,7 +779,7 @@ def balance_report(last_price):
             msg_discord_balance(msg1, msg2)
         
         panic_bot(int(INVESTMENT_TOTAL), trade_losses)
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}balance_report(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -960,7 +1026,7 @@ def get_balance_test_mode():
             value1 = TRADE_TOTAL + value1
         else:
             value1 = TRADE_TOTAL
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_balance_test_mode(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -984,7 +1050,7 @@ def msg_discord_balance(msg1, msg2):
 
 def msg_discord(msg):
 	message = msg + '\n\n'
-	if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	if MSG_DISCORD:
 		#Webhook of my channel. Click on edit channel --> Webhooks --> Creates webhook
 		mUrl = "https://discordapp.com/api/webhooks/"+DISCORD_WEBHOOK
@@ -1062,7 +1128,7 @@ def pause_bot():
                 msg = str(datetime.now()) + ' | PAUSE{languages_bot.MSG5[LANGUAGE]}. Resuming buying due to positive market conditions, total sleep time: ' + str(time_elapsed)
                 msg_discord(msg)
                 bot_paused = False
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}pause_bot: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1070,7 +1136,7 @@ def pause_bot():
     return
 	
 def set_config(data, value):
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     file_name = "config.yml"
     parsed_config = load_config(file_name)
     with open(file_name, 'r') as file:
@@ -1085,7 +1151,7 @@ def set_config(data, value):
         f.writelines(items)
 
 def set_exparis(pairs):
-	if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	file_name = "config.yml"
 	parsed_config = load_config(file_name)
 	with open(file_name, 'r') as file:
@@ -1132,11 +1198,11 @@ def buy_external_signals():
             os.remove(filename)
         except:
             print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Could not remove external signalling file{txcolors.DEFAULT}')
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     return external_list
 
 def random_without_repeating():
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())      
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())      
     RandOrderId = randint(1000, 9999)		
     return RandOrderId
 
@@ -1183,7 +1249,7 @@ def wait_for_price():
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}External signal received on {excoin}, purchasing ${get_balance_test_mode()} {PAIR_WITH} value of {excoin}!{txcolors.DEFAULT}')
 
         balance_report(last_price)
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}wait_for_price(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1252,7 +1318,7 @@ def convert_volume():
                     volume[coin] = float(volume[coin])
                 else:
                     volume[coin] = truncate(volume[coin], lot_size[coin])
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except ZeroDivisionError:
         pass
     except Exception as e:
@@ -1366,7 +1432,7 @@ def buy():
                         write_signallsell(coin)
             else:
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Signal detected, but there is already an active trade on {coin}{txcolors.DEFAULT}')
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} buy(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1572,7 +1638,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                         time.sleep(MICROSECONDS)
                     
                     continue
-            if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+            show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
                 #else:
                     #print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.BLUE}Orden Canselada para el par {coin}, Bajo el precio de venta. Compra: {BuyPriceBR} - Presio Actual: {LastPriceBR}{txcolors.DEFAULT}")
     except Exception as e:
@@ -1605,7 +1671,7 @@ def sell_all(msgreason, session_tspl_ovr = False):
     discordmsg = balance_report(last_price)
     msg_discord(discordmsg)
     sell_all_coins = False
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 #extracted from the code of OlorinSledge
 def sell_coin(coin):
@@ -1617,7 +1683,7 @@ def sell_coin(coin):
     coins_sold = sell_coins(False, coin)
     remove_from_portfolio(coins_sold)
     sell_specific_coin = False
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def sell_external_signals():
     #external_list = {}
@@ -1657,7 +1723,7 @@ def sell_external_signals():
         signals1, signals2 = megatronmod.analyze(c_data, coins1, False) # sell_external_signals()
         #tp_pausebotmod.analyze(c_data)
         
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
     return signals2
     
 
@@ -1727,7 +1793,7 @@ def extract_order_data(order_details):
 			'tradeFeeBNB': float(FILLS_FEE),
 			'tradeFeeUnit': tradeFeeApprox,
 		}
-		if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}extract_order_data(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1758,7 +1824,7 @@ def check_total_session_profit(coins_bought, last_price):
 	if allsession_profits_perc <= float(SESSION_STOP_LOSS):
 		session_tpsl_override_msg = "Session SL Override target of " + str(SESSION_STOP_LOSS) + "% met. Sell all coins now!"
 		is_bot_running = False   
-	if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def update_portfolio(orders, last_price, volume):
     global coins_bought, client
@@ -1803,7 +1869,7 @@ def update_portfolio(orders, last_price, volume):
         # save the coins in a json file in the same directory
         with open(coins_bought_file_path, 'w') as file:
             json.dump(coins_bought, file, indent=4)
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 def update_bot_stats():
     try:
@@ -1824,7 +1890,7 @@ def update_bot_stats():
         #save session info for through session portability
         with open(bot_stats_file_path, 'w') as file:
             json.dump(bot_stats, file, indent=4)
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}update_bot_stats(): exception: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1844,7 +1910,7 @@ def remove_from_portfolio(coins_sold):
                 os.remove('signalsell_tickers.txt')
                 for coin in coins_bought:
                     write_signallsell(coin.removesuffix(PAIR_WITH))
-            if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+            show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}remove_from_portfolio(): exception: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1853,14 +1919,14 @@ def remove_from_portfolio(coins_sold):
 def write_signallsell(symbol):
 	with open('signalsell_tickers.txt','a+') as f:
 		f.write(f'{symbol}\n')
-	if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 def remove_external_signals(fileext):
 	signals = glob.glob(f'signals/*.{fileext}')
 	for filename in signals:
 		if os.path.exists(filename):
 			os.remove(filename)
-	if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
 def load_signal_threads():
     try:
@@ -1884,7 +1950,7 @@ def load_signal_threads():
                         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Module {module} does not exist... continuing to load other modules{txcolors.DEFAULT}')
             else:
                 write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}{"load_signal_threads"}: No modules to load {SIGNALLING_MODULES}{txcolors.DEFAULT}')
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}load_signal_threads(): Loading external signals exception: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -1902,15 +1968,15 @@ def stop_signal_threads():
                     with open("signal.sig", "w") as f:
                         f.write("0")
           
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         #else:
             #if menu() == True: sys.exit(0)
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}stop_signal_threads(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
-    except KeyboardInterrupt as ki:
-        print()
+    #except KeyboardInterrupt as ki:
+        #print()
         #pass
 
 def truncate(number, decimals=0):
@@ -1929,143 +1995,151 @@ def truncate(number, decimals=0):
 	return math.trunc(number * factor) / factor
 
 def load_settings():
-	# set to false at Start
-    global bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds, client, DEFAULT_CREDS_FILE, DEFAULT_CONFIG_FILE
-    bot_paused = False
+    try:
+        # set to false at Start
+        global bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds, client, DEFAULT_CREDS_FILE, DEFAULT_CONFIG_FILE
+        bot_paused = False
 
-    DEFAULT_CONFIG_FILE = 'config.yml'
-    DEFAULT_CREDS_FILE = 'creds.yml'    
+        DEFAULT_CONFIG_FILE = 'config.yml'
+        DEFAULT_CREDS_FILE = 'creds.yml'    
 
-    config_file = args.config if args.config else DEFAULT_CONFIG_FILE
-    parsed_config = load_config(config_file)
-    
+        config_file = args.config if args.config else DEFAULT_CONFIG_FILE
+        parsed_config = load_config(config_file)
+        
 
-	# Default no debugging
-    global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE
-    global BACKTESTING_MODE_TIME_START, BACKTESTING_MODE_TIME_END, BOT_TIMEFRAME, LOG_TRADES, TRADES_LOG_FILE
-    global DEBUG_SETTING, AMERICAN_USER, PAIR_WITH, QUANTITY, MAX_COINS, FIATS, TIME_DIFFERENCE, RECHECK_INTERVAL, CHANGE_IN_PRICE
-    global STOP_LOSS, TAKE_PROFIT, CUSTOM_LIST, TICKERS_LIST, USE_TRAILING_STOP_LOSS, TRAILING_STOP_LOSS, TRAILING_TAKE_PROFIT, TRADING_FEE
-    global SIGNALLING_MODULES, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
-    global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
-    global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
-    global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY, ALLOW_NEGATIVE_SELLING
-    global REVERSE_SORT, MAX_HOLDING_TIME, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
-    global LOG_FILE, PANIC_STOP, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
-    global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, SELL_PART, MODE
-    
-	# Default no debugging
-    DEBUG = False
+        # Default no debugging
+        global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE
+        global BACKTESTING_MODE_TIME_START, BACKTESTING_MODE_TIME_END, BOT_TIMEFRAME, LOG_TRADES, TRADES_LOG_FILE
+        global DEBUG_SETTING, AMERICAN_USER, PAIR_WITH, QUANTITY, MAX_COINS, FIATS, TIME_DIFFERENCE, RECHECK_INTERVAL, CHANGE_IN_PRICE
+        global STOP_LOSS, TAKE_PROFIT, CUSTOM_LIST, TICKERS_LIST, USE_TRAILING_STOP_LOSS, TRAILING_STOP_LOSS, TRAILING_TAKE_PROFIT, TRADING_FEE
+        global SIGNALLING_MODULES, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
+        global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
+        global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
+        global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY, ALLOW_NEGATIVE_SELLING
+        global REVERSE_SORT, MAX_HOLDING_TIME, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
+        global LOG_FILE, PANIC_STOP, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
+        global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, SELL_PART, MODE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
+        global REMOTE_INSPECTOR_BOT_PORT
+        
+        # Default no debugging
+        DEBUG = False
 
-	# Load system vars
-    #TEST_MODE = parsed_config['script_options']['TEST_MODE']
-    #USE_TESNET_IN_ONLINEMODE = parsed_config['script_options']['USE_TESNET_IN_ONLINEMODE']
-    LANGUAGE = parsed_config['script_options']['LANGUAGE']
-    USERID = 'Pantersxx3' #parsed_config['script_options']['USERID']
-    #BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
-    MODE = parsed_config['script_options']['MODE']
-    BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
-    BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
-    BACKTESTING_MODE_TIME_END = parsed_config['script_options']['BACKTESTING_MODE_TIME_END']
-    USE_VOLATILE_METOD = parsed_config['script_options']['USE_VOLATILE_METOD']
-    #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
-    #USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
-    TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
-    TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
-    TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
-    USE_TRADES_INDICATORS = parsed_config['script_options'].get('USE_TRADES_INDICATORS')
-    FILE_SYMBOL_INFO = parsed_config['script_options'].get('FILE_SYMBOL_INFO')
-    LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
-    JSON_REPORT  = parsed_config['script_options'].get('JSON_REPORT')
-    COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
-    BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
-    DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
-    
-    ENABLE_FUNCTION_NAME = True #parsed_config['script_options'].get('ENABLE_FUNCTION_NAME')
-    SAVE_FUNCTION_NAME = True #parsed_config['script_options'].get('SAVE_FUNCTION_NAME')
-    SHOW_FUNCTION_NAME = False #parsed_config['script_options'].get('SHOW_FUNCTION_NAME')
-    SHOW_VARIABLES_AND_VALUE = False #parsed_config['script_options'].get('SHOW_VARIABLES_AND_VALUE')
-    SAVE_VARIABLES_AND_VALUE = False #parsed_config['script_options'].get('SAVE_VARIABLES_AND_VALUE')    
-   
-    MICROSECONDS = parsed_config['script_options'].get('MICROSECONDS')
-    AMERICAN_USER = parsed_config['script_options'].get('AMERICAN_USER')
+        # Load system vars
+        #TEST_MODE = parsed_config['script_options']['TEST_MODE']
+        #USE_TESNET_IN_ONLINEMODE = parsed_config['script_options']['USE_TESNET_IN_ONLINEMODE']
+        LANGUAGE = parsed_config['script_options']['LANGUAGE']
+        USERID = 'Pantersxx3' #parsed_config['script_options']['USERID']
+        #BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
+        MODE = parsed_config['script_options']['MODE']
+        BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
+        BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
+        BACKTESTING_MODE_TIME_END = parsed_config['script_options']['BACKTESTING_MODE_TIME_END']
+        USE_VOLATILE_METOD = parsed_config['script_options']['USE_VOLATILE_METOD']
+        #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
+        #USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
+        TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
+        TRADES_GRAPH = parsed_config['script_options'].get('TRADES_GRAPH')
+        TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
+        USE_TRADES_INDICATORS = parsed_config['script_options'].get('USE_TRADES_INDICATORS')
+        FILE_SYMBOL_INFO = parsed_config['script_options'].get('FILE_SYMBOL_INFO')
+        LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
+        JSON_REPORT  = parsed_config['script_options'].get('JSON_REPORT')
+        COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
+        BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
+        DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
+        REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_MEGATRONMOD_PORT']
+        REMOTE_INSPECTOR_BOT_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_BOT_PORT']
+        ENABLE_FUNCTION_NAME = True #parsed_config['script_options'].get('ENABLE_FUNCTION_NAME')
+        SAVE_FUNCTION_NAME = True #parsed_config['script_options'].get('SAVE_FUNCTION_NAME')
+        SHOW_FUNCTION_NAME = False #parsed_config['script_options'].get('SHOW_FUNCTION_NAME')
+        SHOW_VARIABLES_AND_VALUE = False #parsed_config['script_options'].get('SHOW_VARIABLES_AND_VALUE')
+        SAVE_VARIABLES_AND_VALUE = False #parsed_config['script_options'].get('SAVE_VARIABLES_AND_VALUE')    
+       
+        MICROSECONDS = parsed_config['script_options'].get('MICROSECONDS')
+        AMERICAN_USER = parsed_config['script_options'].get('AMERICAN_USER')
 
-	# Load trading vars
-    PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
-    COMPOUND_INTEREST = parsed_config['trading_options']['COMPOUND_INTEREST']
-    TRADE_TOTAL = parsed_config['trading_options']['TRADE_TOTAL']            
-    TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']	
-	#FIATS = parsed_config['trading_options']['FIATS']
-    EXCLUDE_PAIRS = parsed_config['trading_options']['EXCLUDE_PAIRS']
-	
-    TIME_DIFFERENCE = parsed_config['trading_options']['TIME_DIFFERENCE']
-    RECHECK_INTERVAL = parsed_config['trading_options']['RECHECK_INTERVAL']
-	
-    CHANGE_IN_PRICE = parsed_config['trading_options']['CHANGE_IN_PRICE']
-    STOP_LOSS = parsed_config['trading_options']['STOP_LOSS']
-    TAKE_PROFIT = parsed_config['trading_options']['TAKE_PROFIT']
-	
-	#COOLOFF_PERIOD = parsed_config['trading_options']['COOLOFF_PERIOD']
+        # Load trading vars
+        PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
+        COMPOUND_INTEREST = parsed_config['trading_options']['COMPOUND_INTEREST']
+        TRADE_TOTAL = parsed_config['trading_options']['TRADE_TOTAL']            
+        TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']	
+        #FIATS = parsed_config['trading_options']['FIATS']
+        EXCLUDE_PAIRS = parsed_config['trading_options']['EXCLUDE_PAIRS']
+        
+        TIME_DIFFERENCE = parsed_config['trading_options']['TIME_DIFFERENCE']
+        RECHECK_INTERVAL = parsed_config['trading_options']['RECHECK_INTERVAL']
+        
+        CHANGE_IN_PRICE = parsed_config['trading_options']['CHANGE_IN_PRICE']
+        STOP_LOSS = parsed_config['trading_options']['STOP_LOSS']
+        TAKE_PROFIT = parsed_config['trading_options']['TAKE_PROFIT']
+        
+        #COOLOFF_PERIOD = parsed_config['trading_options']['COOLOFF_PERIOD']
 
-    CUSTOM_LIST = parsed_config['trading_options']['CUSTOM_LIST']
-    TICKERS_LIST = parsed_config['trading_options']['TICKERS_LIST']
-	
-    USE_TRAILING_STOP_LOSS = parsed_config['trading_options']['USE_TRAILING_STOP_LOSS']
-    TRAILING_STOP_LOSS = parsed_config['trading_options']['TRAILING_STOP_LOSS']
-    TRAILING_TAKE_PROFIT = parsed_config['trading_options']['TRAILING_TAKE_PROFIT']
-	 
-	# Code modified from DJCommie fork
-	# Load Session OVERRIDE values - used to STOP the bot when current session meets a certain STP or SSL value
-    SESSION_TPSL_OVERRIDE = parsed_config['trading_options']['SESSION_TPSL_OVERRIDE']
-    SESSION_TAKE_PROFIT = parsed_config['trading_options']['SESSION_TAKE_PROFIT']
-    SESSION_STOP_LOSS = parsed_config['trading_options']['SESSION_STOP_LOSS']
+        CUSTOM_LIST = parsed_config['trading_options']['CUSTOM_LIST']
+        TICKERS_LIST = parsed_config['trading_options']['TICKERS_LIST']
+        
+        USE_TRAILING_STOP_LOSS = parsed_config['trading_options']['USE_TRAILING_STOP_LOSS']
+        TRAILING_STOP_LOSS = parsed_config['trading_options']['TRAILING_STOP_LOSS']
+        TRAILING_TAKE_PROFIT = parsed_config['trading_options']['TRAILING_TAKE_PROFIT']
+         
+        # Code modified from DJCommie fork
+        # Load Session OVERRIDE values - used to STOP the bot when current session meets a certain STP or SSL value
+        SESSION_TPSL_OVERRIDE = parsed_config['trading_options']['SESSION_TPSL_OVERRIDE']
+        SESSION_TAKE_PROFIT = parsed_config['trading_options']['SESSION_TAKE_PROFIT']
+        SESSION_STOP_LOSS = parsed_config['trading_options']['SESSION_STOP_LOSS']
 
-	# Borrowed from DJCommie fork
-	# If TRUE, coin will only sell based on an external SELL signal
-    SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
+        # Borrowed from DJCommie fork
+        # If TRUE, coin will only sell based on an external SELL signal
+        SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
 
-	# Discord integration
-	# Used to push alerts, messages etc to a discord channel
-    MSG_DISCORD = parsed_config['trading_options']['MSG_DISCORD']
-	
-    sell_all_coins = False
-    sell_specific_coin = False
-	
-	# Functionality to "reset / restart" external signal modules(code os OlorinSledge)
-    RESTART_MODULES = parsed_config['trading_options']['RESTART_MODULES']
-	
-    STATIC_MAIN_INFO = parsed_config['trading_options']['STATIC_MAIN_INFO']
-    DISABLE_TIMESTAMPS = parsed_config['trading_options']['DISABLE_TIMESTAMPS']
-    TRADING_FEE = parsed_config['trading_options']['TRADING_FEE']
-    SELL_PART = parsed_config['trading_options']['SELL_PART']
-    ALLOW_NEGATIVE_SELLING = parsed_config['trading_options']['ALLOW_NEGATIVE_SELLING']
-    SIGNALLING_MODULES = parsed_config['trading_options']['SIGNALLING_MODULES']
-	
-    SHOW_INITIAL_CONFIG = parsed_config['trading_options']['SHOW_INITIAL_CONFIG']
-    SHOW_TABLE_COINS_BOUGHT = parsed_config['trading_options']['SHOW_TABLE_COINS_BOUGHT']
+        # Discord integration
+        # Used to push alerts, messages etc to a discord channel
+        MSG_DISCORD = parsed_config['trading_options']['MSG_DISCORD']
+        
+        sell_all_coins = False
+        sell_specific_coin = False
+        
+        # Functionality to "reset / restart" external signal modules(code os OlorinSledge)
+        RESTART_MODULES = parsed_config['trading_options']['RESTART_MODULES']
+        
+        STATIC_MAIN_INFO = parsed_config['trading_options']['STATIC_MAIN_INFO']
+        DISABLE_TIMESTAMPS = parsed_config['trading_options']['DISABLE_TIMESTAMPS']
+        TRADING_FEE = parsed_config['trading_options']['TRADING_FEE']
+        SELL_PART = parsed_config['trading_options']['SELL_PART']
+        ALLOW_NEGATIVE_SELLING = parsed_config['trading_options']['ALLOW_NEGATIVE_SELLING']
+        SIGNALLING_MODULES = parsed_config['trading_options']['SIGNALLING_MODULES']
+        
+        SHOW_INITIAL_CONFIG = parsed_config['trading_options']['SHOW_INITIAL_CONFIG']
+        SHOW_TABLE_COINS_BOUGHT = parsed_config['trading_options']['SHOW_TABLE_COINS_BOUGHT']
 
-    USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
-    COINS_MAX_VOLUME = parsed_config['trading_options']['COINS_MAX_VOLUME']
-    COINS_MIN_VOLUME = parsed_config['trading_options']['COINS_MIN_VOLUME']
-	
-    SORT_TABLE_BY = parsed_config['trading_options']['SORT_TABLE_BY']
-    REVERSE_SORT = parsed_config['trading_options']['REVERSE_SORT']
-	
-    MAX_HOLDING_TIME = parsed_config['trading_options']['MAX_HOLDING_TIME']
-	
-    PROXY_HTTP = parsed_config['script_options']['PROXY_HTTP']
-    PROXY_HTTPS = parsed_config['script_options']['PROXY_HTTPS']
-	
-    PANIC_STOP = parsed_config['trading_options']['PANIC_STOP']
-    BUY_PAUSED = parsed_config['script_options']['BUY_PAUSED']
-	
-    UPDATE_MOST_VOLUME_COINS = parsed_config['trading_options']['UPDATE_MOST_VOLUME_COINS']
-    VOLATILE_VOLUME = parsed_config['trading_options']['VOLATILE_VOLUME']
-	#BNB_FEE = parsed_config['trading_options']['BNB_FEE']
-	#TRADING_OTHER_FEE = parsed_config['trading_options']['TRADING_OTHER_FEE']
-    set_correct_mode("","")
-    load_credentials()
-    update_data_coin()
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
+        COINS_MAX_VOLUME = parsed_config['trading_options']['COINS_MAX_VOLUME']
+        COINS_MIN_VOLUME = parsed_config['trading_options']['COINS_MIN_VOLUME']
+        
+        SORT_TABLE_BY = parsed_config['trading_options']['SORT_TABLE_BY']
+        REVERSE_SORT = parsed_config['trading_options']['REVERSE_SORT']
+        
+        MAX_HOLDING_TIME = parsed_config['trading_options']['MAX_HOLDING_TIME']
+        
+        PROXY_HTTP = parsed_config['script_options']['PROXY_HTTP']
+        PROXY_HTTPS = parsed_config['script_options']['PROXY_HTTPS']
+        
+        PANIC_STOP = parsed_config['trading_options']['PANIC_STOP']
+        BUY_PAUSED = parsed_config['script_options']['BUY_PAUSED']
+        
+        UPDATE_MOST_VOLUME_COINS = parsed_config['trading_options']['UPDATE_MOST_VOLUME_COINS']
+        VOLATILE_VOLUME = parsed_config['trading_options']['VOLATILE_VOLUME']
+        #BNB_FEE = parsed_config['trading_options']['BNB_FEE']
+        #TRADING_OTHER_FEE = parsed_config['trading_options']['TRADING_OTHER_FEE']
+        set_correct_mode("","")
+        load_credentials()
+        update_data_coin()
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}load_settings(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
 
 def set_correct_mode(lang, mode, Ext = False):
     try:
@@ -2124,7 +2198,7 @@ def load_credentials(force=False):
             access_key, secret_key = load_correct_creds(parsed_creds)
             print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Cargando credenciales de la red BINANCE...{txcolors.DEFAULT}')        
         
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}load_credentials(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
@@ -2147,7 +2221,7 @@ def CheckIfAliveStation(ip_address):
             #print(f'output= {p}')
             if ("PING" in p):
                 alive = True
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}CheckIfAliveStation(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2181,7 +2255,7 @@ def lost_connection(error, origin):
             while lostconnection:
 				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}')
                 time.sleep(5) #lostconnection
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     
 def renew_list(in_init=False):
     try:
@@ -2271,7 +2345,7 @@ def renew_list(in_init=False):
                         # f.writelines(new_lines_tickers)
 					
             #tickers=[line.strip() for line in open(TICKERS_LIST)]
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}renew_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2286,7 +2360,7 @@ def remove_by_extension(extension):
             if os.path.exists(file): 
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Remove {file}{txcolors.DEFAULT}')
                 os.remove(file)
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2299,7 +2373,7 @@ def remove_by_file_name(name):
         if file_exists1: 
             print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Remove {file1}{txcolors.DEFAULT}')
             os.remove(file1)
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}remove_by_extension(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2346,7 +2420,7 @@ def new_or_continue():
             else:
                 remove_by_file_name("signal.sig")
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Press the y key or the n key ...{txcolors.DEFAULT}')
-    if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     
 def get_order_info():
     try:
@@ -2374,7 +2448,7 @@ def get_order_info():
                     LOOP = False
         else:
             print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Please enable online mode or Tesnet.{txcolors.DEFAULT}')
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} Exception in get_order_info(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2438,11 +2512,11 @@ def end_bot():
         menu()
         pass
     except Exception as e:
-        print()
+        print("end_bot:", e)
         
 def menu(banner1=True):
     try:
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         global COINS_MAX_VOLUME, COINS_MIN_VOLUME, LOG_FILE
         global PAUSEBOT_MANUAL, BUY_PAUSED, TRADE_TOTAL
 
@@ -2550,7 +2624,7 @@ def menu(banner1=True):
             else:
                 print(f'wrong choice: {x}')
 
-        if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} Exception in menu(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2619,7 +2693,9 @@ if __name__ == '__main__':
         print(f'{txcolors.YELLOW}BOT: {txcolors.DEFAULT}Initializing, wait a moment...{txcolors.DEFAULT}')
         discord_msg_balance_data = ""
         last_msg_discord_balance_date = datetime.now()
+        
         global client
+        
         load_settings()
         if not BACKTESTING_MODE:
             if not CheckIfAliveStation("google.com"):
@@ -2738,18 +2814,22 @@ if __name__ == '__main__':
             if not args.notimeout: # if notimeout skip this (fast for dev tests)
                 write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Test mode is disabled in the configuration, you are using _LIVE_ funds.{txcolors.DEFAULT}')
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Waiting 10 seconds before live trading as a security measure!{txcolors.DEFAULT}')
-                set_progress_bar("Esperando " + str(10) + " segundos", 55 , 10)
+                set_progress_bar("Esperando " + str(10) + " segundos", 50 , 10)
                 #time.sleep(10) #Waiting 10 seconds before live trading
 
         #remove_external_signals('buy')
         #remove_external_signals('sell')
         #remove_external_signals('pause')
-
-        #load_signal_threads()
+        
+        if REMOTE_INSPECTOR_BOT_PORT > 0:
+            telnet_thread = threading.Thread(target=start_telnet_server)
+            telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
+            telnet_thread.start()
+        
         load_signal_threads()
 
         # seed initial prices
-        #get_price() #main
+        get_price() #main
         TIMEOUT_COUNT=0
         READ_CONNECTERR_COUNT=0
         BINANCE_API_EXCEPTION=0	
@@ -2760,7 +2840,7 @@ if __name__ == '__main__':
         while is_bot_running:
             try:
                 coins_sold = {}
-                if ENABLE_FUNCTION_NAME: show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+                show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
                 time_init = datetime.now()
                 orders, last_price, volume = buy()
 
@@ -2776,9 +2856,6 @@ if __name__ == '__main__':
                 time_end = datetime.now()
                 time_speed = time_end - time_init 
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]} Time speed: {time_speed.total_seconds()} seconds{txcolors.DEFAULT}')
-                #coins_sold = sell_coins()
-                #remove_from_portfolio(coins_sold)
-                #update_bot_stats()
                 
                 if FLAG_PAUSE == False:
                     #extract of code of OlorinSledge, Thanks
