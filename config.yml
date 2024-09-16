@@ -4,16 +4,10 @@ script_options:
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
-  MODE: "ONLINE"
-  #TEST_MODE: True
-  #In this mode, the price information of a cryptocurrency will be downloaded during a given period of time. 
-  #TEST_MODE is required to be true for Backtest.
-  #Backtest mode
-  #BACKTESTING_MODE: False
-  #USE_TESNET_IN_ONLINEMODE: False
+  MODE: "BACKTESTING"
   BOT_TIMEFRAME: "1m"
-  BACKTESTING_MODE_TIME_START: "01/04/24 00:00:00" #"01/05/22 00:00:00" #
-  BACKTESTING_MODE_TIME_END: "23/04/24 00:00:00" #"15/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_START: "01/08/24 00:00:00" #"01/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_END: "15/08/24 00:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
   JSON_REPORT: 'report.json'
   MICROSECONDS: 0.3
@@ -29,7 +23,8 @@ script_options:
   BOT_STATS: 'bot_stats.json'
   USE_VOLATILE_METOD: False
   DEBUG: True
-  REMOTE_INSPECTOR_BOT_PORT: 0
+  #through telnet it is possible to obtain the value of this or that variable in a function
+  REMOTE_INSPECTOR_BOT_PORT: 0 #9998
   #if 0 remote server is disabled
   REMOTE_INSPECTOR_MEGATRONMOD_PORT: 0 #9999
   #all binance requests from our bot will be proxied

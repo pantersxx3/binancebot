@@ -344,7 +344,6 @@ def download_data(coin):
     try:
         global client
         c = pd.DataFrame([])
-        print("Download Data...")
         load_credentials(True)
         create_conection_binance(True)
         print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG3[LANGUAGE]}...{txcolors.DEFAULT}')
@@ -532,9 +531,7 @@ def get_price(add_to_historical=True, prices = []):
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_price: {languages_bot.MSG1[LANGUAGE]} get_price(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
-    except KeyboardInterrupt as ki:
-        print()
-		#pass
+
     return initial_price
 
 def get_volume_list():
@@ -1326,9 +1323,7 @@ def convert_volume():
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         lost_connection(e, "convert_volume")        
         pass
-    except KeyboardInterrupt as ki:
-        print()
-		#pass
+
     return volume, last_price
 
 def buy():
@@ -1646,9 +1641,6 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         lost_connection(e, "sell_coins")
         pass
-    except KeyboardInterrupt as ki:
-        print()
-        #pass
 
     return coins_sold
 	
@@ -2163,7 +2155,7 @@ def set_correct_mode(lang, mode, Ext = False):
             USE_TESNET_IN_ONLINEMODE = False
             USE_SIGNALLING_MODULES = True
         elif MODE == "BACKTESTING":
-            TEST_MODE = False
+            TEST_MODE = True
             BACKTESTING_MODE = True
             USE_TESNET_IN_ONLINEMODE = False
             USE_SIGNALLING_MODULES = False
@@ -2629,10 +2621,6 @@ def menu(banner1=True):
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} Exception in menu(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
-    except KeyboardInterrupt as ki:
-        print()
-        #pass
-        #menu(False)
 
 def create_conection_binance(force=False):
     try:
@@ -2873,9 +2861,8 @@ if __name__ == '__main__':
             except BinanceAPIException as bapie:
                 BINANCE_API_EXCEPTION += 1
                 write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}We got an API error from Binance. Re-loop. API Errors so far: {BINANCE_API_EXCEPTION}.\nException:\n{bapie}{txcolors.DEFAULT}')											
-            except KeyboardInterrupt as ki:
-                print()
-                #pass
+            except KeyboardInterrupt as e:
+                menu()
         try:
             if not is_bot_running:
                 if SESSION_TPSL_OVERRIDE:
@@ -2888,10 +2875,6 @@ if __name__ == '__main__':
             write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} Exception in main(): {e}{txcolors.DEFAULT}')
             write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
             pass
-        except KeyboardInterrupt as ki:
-            print()
-            #menu()
-            #pass
             
     except Exception as e:
             write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} Exception in main(): {e}{txcolors.DEFAULT}')
