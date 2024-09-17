@@ -16,9 +16,13 @@
 INFORMATION
 ------------
 
-Megatronmod.py It is the main module of the bot, it can be executed as a signal or as another function depending on what you need.
-megatronmod_functions.py Contains all functions and indicators used by MegratronMod.
-megatronmod_strategy.py Here the strategy that the bot will use is established.
+  > megatronmod.py It is the main module of the bot, it can be executed as a signal or as another function depending on what you need.
+  > megatronmod_functions.py Contains all functions and indicators used by MegratronMod.
+  > megatronmod_strategy.py Here the strategy that the bot will use is established.
+  > languages_bot.py There are the translations of the bot into Spanish (partially) for now.
+  > config.yml There are all the bot configurations.
+  > tickers.txt In this file saved the quote cryptocurrencies and the base crypto in the configuration file.
+  > The volatile list file will change depending on the day and time of creation, I recommend not using such a large list (this is created from the configuration file) because     it will make the bot slow.
 
 LAST CLARIFICATION
 -------------------
