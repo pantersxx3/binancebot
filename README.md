@@ -15,6 +15,7 @@
 
 INFORMATION
 ------------
+Pressing Crtl + D will display the menu with options.
 
   > megatronmod.py It is the main module of the bot, it can be executed as a signal or as another function depending on what you need.
 
