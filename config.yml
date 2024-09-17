@@ -4,7 +4,7 @@ script_options:
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
-  MODE: "BACKTESTING"
+  MODE: "ONLINETESNET"
   BOT_TIMEFRAME: "1m"
   BACKTESTING_MODE_TIME_START: "01/08/24 00:00:00" #"01/05/22 00:00:00" #
   BACKTESTING_MODE_TIME_END: "15/08/24 00:00:00" #"15/05/22 00:00:00" #
@@ -90,7 +90,8 @@ trading_options:
   TRADING_FEE: 0 #0.075    
   #sells the percentage that is placed on it, this serves to save a part of what was purchased.
   #If get error APIError(code=-1013), change percentage 
-  SELL_PART: 99  
+  #If it is at 100 it will sell everything, if it is less it will keep the difference of the added value minus 100
+  SELL_PART: 100 
   ALLOW_NEGATIVE_SELLING: False
   # Discord integration
   # Used to push alerts, messages etc to a discord channel
@@ -106,16 +107,18 @@ trading_options:
   SORT_TABLE_BY: "Time Held"
   REVERSE_SORT: False 
   #Enables the use of currencies with greater or lesser volume
+  #This method is only compatible in ONLINE and ONLINETESNET mode
   USE_MOST_VOLUME_COINS: False
   #the list is updated every n number of minutes. by default it is updated every 24 hours (1440 minutes). 
   #Sweethackercasper's idea, thanks mate.
   UPDATE_MOST_VOLUME_COINS: 1440
   #It should not be touched here, used as record.
-  VOLATILE_VOLUME: volatile_volume_14-10-2022(08_57_06)
+  VOLATILE_VOLUME: volatile_volume_17-09-2024(00_02_21)
   #idea from my psychologist, thanks Sebastian V.
   #Two different currencies can be used as a range (within the market table in Binance ordered from highest to lowest)
-  COINS_MAX_VOLUME: BTC #ETH  #5000000000
-  COINS_MIN_VOLUME: ASTR #100000000  
+  #https://www.binance.com/es-AR/markets/spot_margin-USDT sort by volume
+  COINS_MAX_VOLUME: BTC 
+  COINS_MIN_VOLUME: TIA 
   #if the losses are equal to or greater than the established percentage, the bot will stop completely. if it is 0 it is deactivated.
   PANIC_STOP: 0
   

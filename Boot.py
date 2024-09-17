@@ -320,26 +320,31 @@ def extract_last_record(csv_file):
     return last_row[0]
     
 def update_data_coin():
-    global c_data
-    if USE_MOST_VOLUME_COINS == True:
-        TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
-    else:
-        TICKERS = 'tickers.txt'            
-    for line in open(TICKERS):
-        pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
-		
-    for coin in pairs:
-        filecsv = coin + ".csv"
-        x = os.path.exists(filecsv)
-        if x and TEST_MODE and not USE_TESNET_IN_ONLINEMODE:
-            fr1 = int(extract_first_record(filecsv))/1000
-            os1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) - 59940.0)
-            lr1 = int(extract_last_record(filecsv))/1000
-            oe1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()))
-            if fr1 != os1 or lr1 != oe1:
-                os.remove(filecsv)
-                c_data = pd.DataFrame([])                
-    
+    try:
+        global c_data
+        if USE_MOST_VOLUME_COINS == True:
+            TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+        else:
+            TICKERS = 'tickers.txt'            
+        for line in open(TICKERS):
+            pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
+            
+        for coin in pairs:
+            filecsv = coin + ".csv"
+            if os.path.exists(filecsv) and TEST_MODE and not USE_TESNET_IN_ONLINEMODE:
+                fr1 = int(extract_first_record(filecsv))/1000
+                os1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_START, "%d/%m/%y %H:%M:%S").timetuple()) - 59940.0)
+                lr1 = int(extract_last_record(filecsv))/1000
+                oe1 = int(time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple()))
+                if fr1 != os1 or lr1 != oe1:
+                    os.remove(filecsv)
+                    c_data = pd.DataFrame([])                
+
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}update_data_coin: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
+        
 def download_data(coin):
     try:
         global client
@@ -355,6 +360,7 @@ def download_data(coin):
         c.to_csv(coin + '.csv', index=False)
         c = pd.DataFrame([])
         show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+        
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}download_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -506,7 +512,7 @@ def get_price(add_to_historical=True, prices = []):
         renew_list()
 
         for coin in prices:
-            if CUSTOM_LIST and USE_MOST_VOLUME_COINS == False:
+            if CUSTOM_LIST and not USE_MOST_VOLUME_COINS:
                 tickers=[line.strip() for line in open(TICKERS_LIST)]
                 for item1 in tickers:
                     if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
@@ -543,22 +549,22 @@ def get_volume_list():
         if USE_MOST_VOLUME_COINS:
             today = "volatile_volume_" + str(date.today()) + ".txt"
             now = datetime.now()
-            now_str = now.strftime("%d/%m/%y %H_%M_%S")
-            dt_string = datetime.strptime(now_str,"%Y-%d/%m %H_%M_%S")
+            now_str = now.strftime("%d-%m-%Y %H_%M_%S")
+            dt_string = datetime.strptime(now_str,"%d-%m-%Y %H_%M_%S")
             if VOLATILE_VOLUME == "":
                 volatile_volume_empty = True
             else:
                 tuple1 = dt_string.timetuple()
                 timestamp1 = time.mktime(tuple1)
 				
-                dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%y-%m-%d %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)               
+                dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%d-%m-%Y %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)               
                 tuple2 = dt_string_old.timetuple()
                 timestamp2 = time.mktime(tuple2)                    
 				
                 if timestamp1 > timestamp2:
                     volatile_volume_time = True
 						
-            if volatile_volume_empty or volatile_volume_time or os.path.exists(today) == False:             
+            if volatile_volume_empty or volatile_volume_time or not os.path.exists(today):             
                 VOLATILE_VOLUME = "volatile_volume_" + str(dt_string)				
                 most_volume_coins = {}
                 tickers_all = []				
@@ -569,10 +575,10 @@ def get_volume_list():
                         tickers_all.append(coin['symbol'].replace(PAIR_WITH, ""))
 
                 c = 0
-                if os.path.exists(VOLATILE_VOLUME + ".txt") == False:
+                if not os.path.exists(VOLATILE_VOLUME + ".txt"):
                     load_settings()            
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG35[LANGUAGE]}...{txcolors.DEFAULT}')
-                    if COINS_MAX_VOLUME.isnumeric() == False and COINS_MIN_VOLUME.isnumeric() == False:
+                    if not COINS_MAX_VOLUME.isnumeric() and not COINS_MIN_VOLUME.isnumeric():
                         infocoinMax = client.get_ticker(symbol=COINS_MAX_VOLUME + PAIR_WITH) #get_volume_list
                         infocoinMin = client.get_ticker(symbol=COINS_MIN_VOLUME + PAIR_WITH) #get_volume_list
                         COINS_MAX_VOLUME1 = float(infocoinMax['quoteVolume']) #math.ceil(float(infocoinMax['quoteVolume']))
@@ -598,7 +604,7 @@ def get_volume_list():
                     sortedVolumeList = sorted(most_volume_coins.items(), key=lambda x: x[1], reverse=True)
 					
                     now = datetime.now()
-                    now_str = now.strftime("%y-%m-%d(%H_%M_%S)")
+                    now_str = now.strftime("%d-%m-%Y(%H_%M_%S)")
                     VOLATILE_VOLUME = "volatile_volume_" + now_str
 					
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG10[LANGUAGE]} {str(c)} {languages_bot.MSG11[LANGUAGE]} {today} ...{txcolors.DEFAULT}')
@@ -1092,7 +1098,7 @@ def pause_bot():
 			# do NOT accept any external signals to buy while in pausebot mode
             remove_external_signals('buy')
 
-            if bot_paused == False:
+            if not bot_paused:
                 if PAUSEBOT_MANUAL:
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Purchase paused manually, stop loss and take profit will continue to work...{txcolors.DEFAULT}')
                     msg = str(datetime.now()) + ' | PAUSE{languages_bot.MSG5[LANGUAGE]}.Purchase paused manually, stop loss and take profit will continue to work...'
@@ -1167,7 +1173,7 @@ def set_exparis(pairs):
 			break
 		else:
 			e = False
-	if e == False:
+	if not e:
 		print(f'The exception has been saved in EX_PAIR in the configuration file...{txcolors.DEFAULT}')
 		EXCLUDE_PAIRS.append(pairs)
 		data[c-1] = "  EXCLUDE_PAIRS: " + str(EXCLUDE_PAIRS) + "\n"
@@ -2123,9 +2129,9 @@ def load_settings():
         VOLATILE_VOLUME = parsed_config['trading_options']['VOLATILE_VOLUME']
         #BNB_FEE = parsed_config['trading_options']['BNB_FEE']
         #TRADING_OTHER_FEE = parsed_config['trading_options']['TRADING_OTHER_FEE']
+
         set_correct_mode("","")
-        load_credentials()
-        update_data_coin()
+        
         show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         
     except Exception as e:
@@ -2151,7 +2157,7 @@ def set_correct_mode(lang, mode, Ext = False):
             USE_SIGNALLING_MODULES = True
         elif MODE == "TESTMODE":
             TEST_MODE = True
-            BACKTESTING_MODE = True
+            BACKTESTING_MODE = False
             USE_TESNET_IN_ONLINEMODE = False
             USE_SIGNALLING_MODULES = True
         elif MODE == "BACKTESTING":
@@ -2225,7 +2231,7 @@ def lost_connection(error, origin):
     if "HTTPSConnectionPool" in str(error) or "Connection aborted" in str(error):
 		#print(f"HTTPSConnectionPool - {origin}")
         stop_signal_threads() #lost_connection
-        if lostconnection == False:
+        if not lostconnection:
             lostconnection = True
             write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {origin} - Lost connection, waiting until it is restored...{txcolors.DEFAULT}')
             while lostconnection:
@@ -2259,18 +2265,21 @@ def renew_list(in_init=False):
             if VOLATILE_VOLUME == "":
                 volatile_volume_empty = True
             else:
+                VOLATILE_VOLUME = VOLATILE_VOLUME. replace("(", " ").replace(")","") #re.sub(r"\(.*$", "", VOLATILE_VOLUME)
                 now = datetime.now()
-                dt_string = datetime.strptime(now.strftime("%y-%m-%d %H_%M_%S"),"%y-%m-%y %H_%M_%S")
+                dt_string = datetime.strptime(now.strftime("%d-%m-%Y %H_%M_%S"), "%d-%m-%Y %H_%M_%S")
                 tuple1 = dt_string.timetuple()
                 timestamp1 = time.mktime(tuple1)
-                dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%y-%m-%d %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)               
+                #dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""),"%y-%m-%d %H_%M_%S") + timedelta(minutes = UPDATE_MOST_VOLUME_COINS)  
+                #dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""), "%Y-%m-%d %H_%M_%S") + timedelta(minutes=UPDATE_MOST_VOLUME_COINS)
+                dt_string_old = datetime.strptime(VOLATILE_VOLUME.replace("(", " ").replace(")", "").replace("volatile_volume_", ""), "%d-%m-%Y %H_%M_%S") + timedelta(minutes=UPDATE_MOST_VOLUME_COINS)
                 tuple2 = dt_string_old.timetuple()
                 timestamp2 = time.mktime(tuple2)
                 
                 if timestamp1 > timestamp2:
                     volatile_volume_time = True
 
-            if volatile_volume_time or volatile_volume_empty or os.path.exists(today) == False:
+            if volatile_volume_time or volatile_volume_empty or not os.path.exists(today):
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}A new Volatily Volume list will be created...{txcolors.DEFAULT}')
                 stop_signal_threads() #renew_list
                 FLAG_PAUSE = True
@@ -2385,7 +2394,7 @@ def new_or_continue():
                     break
                 else:
                     print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Deleting previous sessions ...{txcolors.DEFAULT}')
-                    if USE_MOST_VOLUME_COINS == False:
+                    if not USE_MOST_VOLUME_COINS:
                         if os.path.exists(TICKERS_LIST.replace(".txt",".backup")):
                             with open(TICKERS_LIST.replace(".txt",".backup") ,'r') as f:
                                 lines_tickers = f.readlines()                            
@@ -2520,7 +2529,7 @@ def menu(banner1=True):
             print(f'{txcolors.WHITE}[A]{txcolors.YELLOW}Reload Configuration{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[B]{txcolors.YELLOW}Reload modules{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[C]{txcolors.YELLOW}Reload Volatily Volume List{txcolors.DEFAULT}')
-            if BUY_PAUSED == False: #PAUSE{languages_bot.MSG5[LANGUAGE]}_MANUAL == False or 
+            if not BUY_PAUSED: #PAUSE{languages_bot.MSG5[LANGUAGE]}_MANUAL == False or 
                 print(f'{txcolors.WHITE}[D]{txcolors.YELLOW}Stop Purchases{txcolors.DEFAULT}')
             else:
                 print(f'{txcolors.WHITE}[D]{txcolors.YELLOW}Start Purchases{txcolors.DEFAULT}')
@@ -2561,7 +2570,7 @@ def menu(banner1=True):
                 load_signal_threads()
                 break
             elif x == "D" or x == "d":
-                if BUY_PAUSED == False:
+                if not BUY_PAUSED:
                     set_config("BUY_PAUSED", True)
                     PAUSEBOT_MANUAL = True
                     BUY_PAUSED = True
@@ -2682,9 +2691,10 @@ if __name__ == '__main__':
         discord_msg_balance_data = ""
         last_msg_discord_balance_date = datetime.now()
         
-        global client
+        global client        
         
         load_settings()
+        
         if not BACKTESTING_MODE:
             if not CheckIfAliveStation("google.com"):
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}You not have internet, Exit...{txcolors.DEFAULT}')
@@ -2725,13 +2735,13 @@ if __name__ == '__main__':
         sell_all_coins = False
         sell_specific_coin = False
         
-        create_conection_binance()
+        load_credentials()
+        create_conection_binance()       
         
-        #menu(False)
+        renew_list()
+        update_data_coin()
 
-        new_or_continue()
-        
-        renew_list(True)
+        new_or_continue()       
 
         #null = get_historical_price()
         
@@ -2845,7 +2855,7 @@ if __name__ == '__main__':
                 time_speed = time_end - time_init 
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]} Time speed: {time_speed.total_seconds()} seconds{txcolors.DEFAULT}')
                 
-                if FLAG_PAUSE == False:
+                if not FLAG_PAUSE:
                     #extract of code of OlorinSledge, Thanks
                     if RESTART_MODULES and thehour != datetime.now().hour :
                         stop_signal_threads() #Main - Restart Module
