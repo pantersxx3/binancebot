@@ -34,8 +34,12 @@ def buy(Data, CLOSE, pair):
         SMA1 = MF.Sma(Data, 9)
         SMA2 = MF.Sma(Data, 200)
         #SMA2 = MF.Sma(Data, 50)
-        #SMA3 = MF.Sma(Data, 25)      
-        
+        #SMA3 = MF.Sma(Data, 25)
+        #price = MF.red_sell_value(pair)
+        #if price > 0:         
+            #buySignal = CLOSE <= price - ((3 * price)/100)
+        #else:
+            #buySignal = True
         buySignal = CLOSE < SMA1 and CLOSE > SMA2
         #random.choice([True, False])
         #CLOSE > SMA1 and ZIGZAG_RESULT # #and CLOSE > SMA3 and CLOSE > SMA2
@@ -68,8 +72,9 @@ def sell(Data, CLOSE, pair):
         #BA, BM, BB = MF.BollingerBands(Data, 2, 2)
         SMA1 = MF.Sma(Data, 9)
         B = MF.Bought_at(pair)
-        
-        sellSignal1 = CLOSE > B and CLOSE > SMA1
+        #print( CLOSE, B + ((3 * B)/100))
+        #sellSignal1 = CLOSE >= B + ((3 * B)/100)
+        sellSignal1 = CLOSE > B and CLOSE > SMA1 
         #CLOSE > B and random.choice([True, False]) 
         #ZIGZAG_RESULT #MF.Tp(pair, CLOSE) or MF.Sl(pair, CLOSE)
 

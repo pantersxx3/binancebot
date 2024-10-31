@@ -189,28 +189,28 @@ MSG38 = {
     }
 
 MSG39 = {
-    "es" : "",
-    "en" : ""
+    "es" : "MONEDAS GUARDADAS",
+    "en" : "SAVED COINS"
     }
 
 MSG40 = {
-    "es" : "",
-    "en" : ""
+    "es" : "FINAL",
+    "en" : "END"
     }
 
 MSG41 = {
-    "es" : "",
-    "en" : ""
+    "es" : "Presione Ctrl-C para detener el script y abrir el menu.",
+    "en" : "Press Ctrl-C to stop the script and open menu."
     }
 
-MSG41 = {
-    "es" : "",
-    "en" : ""
+MSG42 = {
+    "es" : "El modo de prueba está deshabilitado en la configuración, estás usando fondos _REALES_.",
+    "en" : "Test mode is disabled in the configuration, you are using _LIVE_ funds."
     }
 
-MSG41 = {
-    "es" : "",
-    "en" : ""
+MSG43 = {
+    "es" : "¡Esperar 10 segundos antes de operar en vivo como medida de seguridad!",
+    "en" : "Waiting 10 seconds before live trading as a security measure!"
     }
 
 MSG42 = {

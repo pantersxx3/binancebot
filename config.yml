@@ -5,17 +5,17 @@ script_options:
   # Setting this to False will use REAL funds, use at your own risk
   #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
   MODE: "ONLINETESNET"
-  BOT_TIMEFRAME: "1m"
-  BACKTESTING_MODE_TIME_START: "01/08/24 00:00:00" #"01/05/22 00:00:00" #
-  BACKTESTING_MODE_TIME_END: "15/08/24 00:00:00" #"15/05/22 00:00:00" #
+  BOT_TIMEFRAME: "3m"
+  BACKTESTING_MODE_TIME_START: "01/10/24 00:00:00" #"01/05/22 00:00:00" #
+  BACKTESTING_MODE_TIME_END: "29/10/24 00:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
   JSON_REPORT: 'report.json'
   MICROSECONDS: 0.3
   LOG_FILE: 'log.txt'
   TRADES_LOG_FILE: 'trades.csv'
   TRADES_GRAPH: 'graphics.html'
-  USE_TRADES_INDICATORS: False
-  TRADES_INDICATORS: 'indicators.csv'
+  #USE_TRADES_INDICATORS: False
+  #TRADES_INDICATORS: 'indicators.csv'
   FILE_SYMBOL_INFO: 'symbol.info'
   #if it is empty no information will be saved
   #HISTORY_LOG_FILE: '' #'history.html'
@@ -42,11 +42,11 @@ trading_options:
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
   #it will be bought with all the capital in the wallet.
   #The method works....
-  COMPOUND_INTEREST: True
+  COMPOUND_INTEREST: False
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 21
+  TRADE_TOTAL: 20
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.
@@ -87,12 +87,11 @@ trading_options:
   # Trading fee in % per trade.
   # If using 0.075% (using BNB for fees) you must have BNB in your account to cover trading fees.
   # If using BNB for fees, it MUST be enabled in your Binance 'Dashboard' page (checkbox).  
-  TRADING_FEE: 0 #0.075    
+  TRADING_FEE: 0.075    
   #sells the percentage that is placed on it, this serves to save a part of what was purchased.
   #If get error APIError(code=-1013), change percentage 
-  #If it is at 100 it will sell everything, if it is less it will keep the difference of the added value minus 100
-  SELL_PART: 100 
-  ALLOW_NEGATIVE_SELLING: False
+  #sell what you bought with TRADE_TOTAL and save the profits. Only for BOT_TIMEFRAME >= 3m
+  SELL_PART: True
   # Discord integration
   # Used to push alerts, messages etc to a discord channel
   MSG_DISCORD: False  

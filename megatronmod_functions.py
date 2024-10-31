@@ -124,7 +124,7 @@ def read_position_csv(coin):
         pass
     return pos1
 
-def get_analysis(d, tf, p, position1=0, el_profe=False, num_records=1000):
+def get_analysis(d, tf, p, position1=0, num_records=1000):
     try:
         global BACKTESTING_MODE, BACKTESTING_MODE_TIME_START
         c = pd.DataFrame([])
@@ -195,6 +195,27 @@ def isNone(var):
     else:
         r = var
     return r
+
+def red_sell_value(coin):
+    try:
+        if os.path.exists('test_trades.csv'):
+            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT"]
+            df = pd.read_csv('test_trades.csv', header=1, names=column_names)
+            #Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
+            filtered = df[(df["Type"] ==' Sell') & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
+            if len(filtered) > 1:
+                return filtered["Sell Price"].iloc[-1]
+            elif len(filtered) == 1:
+                return filtered["Sell Price"].iloc[0]
+            else:
+                return 0
+        else:
+            return 0
+    except Exception as e:
+        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: red_sell_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+
     
 def load_json(p):
     try:
@@ -285,31 +306,31 @@ def ret_time(df):
         time_1MIN = TIME_1M
     return time_1MIN
     
-def save_indicator(items):
-    try:
+# def save_indicator(items):
+    # try:
 
-        if TEST_MODE:
-                file_prefix = 'test_'
-        else:
-            file_prefix = 'live_'                
+        # if TEST_MODE:
+                # file_prefix = 'test_'
+        # else:
+            # file_prefix = 'live_'                
          
-        data_indicator = pd.DataFrame([]) 
-        csv_indicators = file_prefix + TRADES_INDICATORS
+        # data_indicator = pd.DataFrame([]) 
+        # csv_indicators = file_prefix + TRADES_INDICATORS
         
-        for name, myvalue in list(items):
-            if name.endswith('_IND'): # or name == 'time_1MIN':
-                myvalue = str(myvalue).strip()
-                data_indicators = pd.DataFrame([])
-                data_indicators[name] = [myvalue] 
+        # for name, myvalue in list(items):
+            # if name.endswith('_IND'): # or name == 'time_1MIN':
+                # myvalue = str(myvalue).strip()
+                # data_indicators = pd.DataFrame([])
+                # data_indicators[name] = [myvalue] 
                    
-                if not data_indicators.empty:
-                    data_indicators.to_csv(csv_indicators.replace('.csv', '') + "_" + name + '.csv', mode='a', index=False, header=False)
+                # if not data_indicators.empty:
+                    # data_indicators.to_csv(csv_indicators.replace('.csv', '') + "_" + name + '.csv', mode='a', index=False, header=False)
 
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        pass
+    # except Exception as e:
+        # write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: #save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
+        # exc_type, exc_obj, exc_tb = sys.exc_info()
+        # write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+        # pass
 
 # def save_strategy(items):
     # try:
@@ -333,7 +354,7 @@ def save_indicator(items):
                     # data_strategy.to_csv(csv_strategy, mode='a', index=False, header=False)
 
     # except Exception as e:
-        # write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
+        # write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: #save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
         # exc_type, exc_obj, exc_tb = sys.exc_info()
         # write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
         # pass
@@ -347,7 +368,7 @@ def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
     kijun_sen_IND = round(df['kijun_sen'], 6)
     chikou_span_IND = round(df['chikou_span'], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
     
 def BollingerBands(DF_Data, LENGHT, STD):
@@ -357,7 +378,7 @@ def BollingerBands(DF_Data, LENGHT, STD):
     BM_IND = round(df['middle'].iloc[-1], 6)
     B2_IND = round(df['lower'].iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return B1_IND, BM_IND, B2_IND
 
 def Supertrend(DF_Data, LENGHT, MULT):
@@ -367,25 +388,25 @@ def Supertrend(DF_Data, LENGHT, MULT):
     SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 6)
     SUPERTREND_IND = round(df['supertrend'].iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return SUPERTREND_IND, SUPERTRENDDOWN_IND, SUPERTRENDUP_IND
 
 def Momentum(DF_Data, LENGHT):
     MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)    
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return MOMENTUM_IND
     
 def Ema(DF_Data, LENGHT):
     EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return EMA_IND
 
 def Sma(DF_Data, LENGHT):
     SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())    
+    #save_indicator(locals().items())    
     return SMA_IND
 
 def Stochastic(DF_Data, LENGHT, K, D):
@@ -394,25 +415,25 @@ def Stochastic(DF_Data, LENGHT, K, D):
     STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 6)
     STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return STOCHK_IND, STOCHD_IND
     
 def Rsi(DF_Data, LENGHT):
     RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return RSI_IND
 
 def Wma(DF_Data, LENGHT):
     WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return WMA_IND
     
 def Hma(DF_Data, LENGHT):
     HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return HMA_IND
     
 def Heikinashi(DF_Data):
@@ -423,19 +444,19 @@ def Heikinashi(DF_Data):
     HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 6)
     HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_close'], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
 
 def Macd(DF_Data, FAST, SLOW, SIGNAL):
     MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return MACD_IND, MACDHIST_IND, MACDSIG_IND
     
 def Cci(DF_Data, LENGHT):
     CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 6)
     #time_1MIN = ret_time(DF_Data)
-    save_indicator(locals().items())
+    #save_indicator(locals().items())
     return CCI_IND
 
 def Sl(PAIR, CLOSE_1MIN):
@@ -478,3 +499,6 @@ def zigzag(DF_Data, LENGHT):
         print('zigzag Error on line ' + str(exc_tb.tb_lineno))
         pass        
     return r
+ 
+def comision(monto):
+    return (monto*0.075)/100

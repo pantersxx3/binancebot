@@ -29,7 +29,7 @@ variables_funciones = {}
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
 global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args, BACKTESTING_MODE_TIME_START, USE_MOST_VOLUME_COINS
-global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE
+global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE, BOT_TIMEFRAME
 
 class txcolors:
     BUY = '\033[92m'
@@ -51,6 +51,7 @@ config_file = args.config if args.config else DEFAULT_CONFIG_FILE
 parsed_config = load_config(config_file)
  
 global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
+
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 MODE = parsed_config['script_options']['MODE']
@@ -59,6 +60,7 @@ LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
 LANGUAGE = parsed_config['script_options']['LANGUAGE']
 REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_MEGATRONMOD_PORT']
+BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
 #USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
 
 MICROSECONDS = 2
@@ -154,7 +156,7 @@ def analyze(d, pairs, buy=True):
                     else:
                         print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
                         
-            analysis1MIN = MF.get_analysis(d, '1m', pair, position2, True, 1000)
+            analysis1MIN = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 1000)
 
             if not analysis1MIN.empty:
                 CLOSE_1MIN = round(float(analysis1MIN['Close'].iloc[-1]),6)
@@ -198,9 +200,24 @@ def analyze(d, pairs, buy=True):
         pass
     return signal_coins1, signal_coins2
 
+def timeframe_to_seconds(timeframe):
+    multipliers = {
+        's': 1,        # segundos
+        'm': 60,       # minutos
+        'h': 3600,     # horas
+        'd': 86400,    # días
+        'w': 604800,   # semanas
+    }
+    unit = timeframe[-1]
+    value = int(timeframe[:-1])
+    if unit in multipliers:
+        return value * multipliers[unit]
+    else:
+        return 0
+
 def do_work():
     try:
-        global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
+        global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, BOT_TIMEFRAME
         signalcoins1 = []
         signalcoins2 = []
         pairs = {}
@@ -209,9 +226,9 @@ def do_work():
         
         TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
         
-        telnet_thread = threading.Thread(target=start_telnet_server)
-        telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
-        telnet_thread.start()
+        #telnet_thread = threading.Thread(target=start_telnet_server)
+        #telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
+        #telnet_thread.start()
         
         if USE_MOST_VOLUME_COINS == True:
             TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
@@ -239,11 +256,19 @@ def do_work():
             time.sleep(MICROSECONDS) #do_work
             if len(signalcoins1) > 0:
                 print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                time.sleep(MICROSECONDS)
+                #time.sleep(MICROSECONDS)
             else:
                 print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                time.sleep(MICROSECONDS)
-                
+                #time.sleep(MICROSECONDS)            
+            
+            if "s" in BOT_TIMEFRAME:
+                time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
+            else:
+                current_time = time.localtime()
+                seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
+                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
+                time.sleep(seconds_until_next_minute)    
+            
             register_func_name("do_work", locals().items())
     except Exception as e:
         MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: do_work(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
