@@ -633,7 +633,12 @@ def get_volume_list():
 def print_table_coins_saved():
     try:
         global SAVED_COINS
-        if len(SAVED_COINS) > 0 and SELL_PART:
+        printTable = False
+        for coin in SAVED_COINS:
+            if SAVED_COINS[coin] > 0:
+                printTable = True
+                break
+        if printTable and SELL_PART:
             my_table = PrettyTable()
             my_table.format = True
             my_table.border = True
@@ -1597,8 +1602,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                         #q = round((SELL_PART * q)/100, 3)
                         savedcoin = coins_bought[coin]['volume'] - q 
                         SAVED_COINS[coin] = float(SAVED_COINS.get(coin, 0)) + savedcoin
-                        #print("Sell ", SELL_PART, "% of ", coins_bought[coin]['volume'], ". Sell ", q, "not sell ", coins_bought[coin]['volume'] - q)
-                    
+
                     # try to create a real order          
                     try:
                         if not TEST_MODE:
@@ -1787,18 +1791,15 @@ def extract_order_data(order_details):
         FILLS_QTY = 0
         FILLS_FEE = 0
         BNB_YELLOW = 0
-        print(order_details)
         for fills in order_details['fills']:
             FILL_PRICE = float(fills['price'])
             FILL_QTY = float(fills['qty'])
             FILLS_FEE += float(fills['commission'])
-            if fills['commissionAsset'] == 'BNB':
-                symbol = "BNB"
-                USED_BNB_IN_SESSION[symbol] = float(USED_BNB_IN_SESSION[symbol]) + float(fills['commission'])
+            if fills['commissionAsset'] == 'BNB':                
+                USED_BNB_IN_SESSION['BNB'] = float(USED_BNB_IN_SESSION.get('BNB', 0)) + float(fills['commission'])
             else:
                 symbol = order_details["symbol"]
-                USED_BNB_IN_SESSION[symbol] = float(USED_BNB_IN_SESSION[symbol]) + float(fills['commission'])
-                
+                USED_BNB_IN_SESSION[symbol] = float(USED_BNB_IN_SESSION.get('BNB', 0)) + float(fills['commission'])                
             if (fills['commissionAsset'] != 'BNB') and (TRADING_FEE == 0.075) and (BNB_YELLOW == 0):
 				#print(f"YELLOW: BNB not used for trading fee, please ")
                 BNB_YELLOW += 1
