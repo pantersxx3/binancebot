@@ -1599,7 +1599,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     q = coins_bought[coin]['volume']
                     if SELL_PART:
                         pre = TRADE_TOTAL/LastPriceBR
-                        q = GetPresicion(coin, pre)
+                        q = get_presicion(coin, pre)
                         #q = round((SELL_PART * q)/100, 3)
                         savedcoin = coins_bought[coin]['volume'] - q 
                         SAVED_COINS[coin] = float(SAVED_COINS.get(coin, 0)) + savedcoin
@@ -2042,7 +2042,7 @@ def truncate(number, decimals=0):
 	factor = 10.0 ** decimals
 	return math.trunc(number * factor) / factor
 
-def GetPresicion(coin, volume):
+def get_presicion(coin, volume):
     global client
     info = client.get_symbol_info(coin)   
     for filt in info['filters']:
@@ -2052,7 +2052,7 @@ def GetPresicion(coin, volume):
     if lot_size < 0: lot_size = 0         
 
     if lot_size == 0:
-        volume = float(volume)
+        volume = int(volume)
     else:
         volume = truncate(volume, lot_size)
     return volume
