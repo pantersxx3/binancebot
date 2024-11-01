@@ -1369,7 +1369,7 @@ def convert_volume():
             else:
 					# if lot size has 0 decimal points, make the volume an integer
                 if lot_size[coin] == 0:
-                    volume[coin] = float(volume[coin])
+                    volume[coin] = int(volume[coin])
                 else:
                     volume[coin] = truncate(volume[coin], lot_size[coin])
         
@@ -1598,11 +1598,12 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     
                     q = coins_bought[coin]['volume']
                     if SELL_PART:
-                        q = GetPresicion(coin, TRADE_TOTAL/LastPriceBR)
+                        pre = TRADE_TOTAL/LastPriceBR
+                        q = GetPresicion(coin, pre)
                         #q = round((SELL_PART * q)/100, 3)
                         savedcoin = coins_bought[coin]['volume'] - q 
                         SAVED_COINS[coin] = float(SAVED_COINS.get(coin, 0)) + savedcoin
-
+                        #print(pre, q, savedcoin)
                     # try to create a real order          
                     try:
                         if not TEST_MODE:
