@@ -5,7 +5,7 @@ script_options:
   # Setting this to False will use REAL funds, use at your own risk
   #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
   MODE: "ONLINETESNET"
-  BOT_TIMEFRAME: "3m"
+  BOT_TIMEFRAME: "1m"
   BACKTESTING_MODE_TIME_START: "01/10/24 00:00:00" #"01/05/22 00:00:00" #
   BACKTESTING_MODE_TIME_END: "29/10/24 00:00:00" #"15/05/22 00:00:00" #
   LOG_TRADES: True
@@ -91,7 +91,7 @@ trading_options:
   #sells the percentage that is placed on it, this serves to save a part of what was purchased.
   #If get error APIError(code=-1013), change percentage 
   #sell what you bought with TRADE_TOTAL and save the profits.
-  SELL_PART: True
+  SELL_PART: False
   # Discord integration
   # Used to push alerts, messages etc to a discord channel
   MSG_DISCORD: False  
