@@ -33,7 +33,8 @@ Pressing Crtl + D will display the menu with options.
 
 LAST CLARIFICATION
 -------------------
-https://github.com/cgohlke/talib-build/releases
 I have been carrying out this project for more than 3 years, and although it disappointed more than one, I must say that there is no infallible bot. There is no bot that works as a fixed term, there are great limitations just by using trading indicators since these do not predict the future. Obviously, technology will advance, it will be able to come close, but it will not be infallible either. 
 
 I'm tired, I've been working alone on this project for a long time....
+
+For install ta-lib: https://github.com/cgohlke/talib-build/releases
