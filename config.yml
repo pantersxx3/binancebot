@@ -21,6 +21,7 @@ script_options:
   #HISTORY_LOG_FILE: '' #'history.html'
   COINS_BOUGHT: 'coins_bought.json'
   BOT_STATS: 'bot_stats.json'
+  PRINT_TABLE_COMMISSIONS: True
   USE_VOLATILE_METOD: False
   DEBUG: True
   #through telnet it is possible to obtain the value of this or that variable in a function
@@ -38,7 +39,7 @@ script_options:
 # These options apply to the trading methods the script executes
 trading_options: 
   # select your base currency to use for trading (trade for example USDT pairs)
-  PAIR_WITH: USDT  
+  PAIR_WITH: USDT #FDUSD  
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
   #it will be bought with all the capital in the wallet.
   #The method works....
@@ -46,7 +47,7 @@ trading_options:
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 20
+  TRADE_TOTAL: 21
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.

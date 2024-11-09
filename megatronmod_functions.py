@@ -196,26 +196,80 @@ def isNone(var):
         r = var
     return r
 
-def red_sell_value(coin):
+def read_volume_value(coin, type):
     try:
-        if os.path.exists('test_trades.csv'):
-            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT"]
-            df = pd.read_csv('test_trades.csv', header=1, names=column_names)
+        if TEST_MODE:
+            file_prefix = 'test_'
+        else:
+            file_prefix = 'live_' 
+            
+        if os.path.exists(file_prefix + 'trades.csv'):
+            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
+            df = pd.read_csv(file_prefix + 'trades.csv', delimiter=',', names=column_names)
+            #Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
+            filtered = df[(df["Type"] == " " + type) & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
+            if len(filtered) > 1:
+                return round(float(filtered["Volume"].iloc[-1]),8)
+            elif len(filtered) == 1:
+                return round(float(filtered["Volume"].iloc[0]), 8)
+            else:
+                return 0.0
+        else:
+            return 0.0            
+    except Exception as e:
+        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_comission_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+        
+def read_commission_value(coin, type):
+    try:
+        if TEST_MODE:
+            file_prefix = 'test_'
+        else:
+            file_prefix = 'live_'
+            
+        if os.path.exists(file_prefix + 'trades.csv'):
+            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
+            df = pd.read_csv(file_prefix + 'trades.csv', names=column_names)
+            #Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
+            filtered = df[(df["Type"] == " " + type) & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
+            if len(filtered) > 1:
+                return round(float(filtered["Commission"].iloc[-1]), 8)
+            elif len(filtered) == 1:
+                return round(float(filtered["Commission"].iloc[0]), 8)
+            else:
+                return 0.0
+        else:
+            return 0.0
+    except Exception as e:
+        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_commission_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+        
+def read_sell_value(coin):
+    try:
+        if TEST_MODE:
+            file_prefix = 'test_'
+        else:
+            file_prefix = 'live_'
+            
+        if os.path.exists(file_prefix + 'trades.csv'):
+            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
+            df = pd.read_csv(file_prefix + 'trades.csv', names=column_names)
             #Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
             filtered = df[(df["Type"] ==' Sell') & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
             if len(filtered) > 1:
-                return filtered["Sell Price"].iloc[-1]
+                return round(float(filtered["Sell Price"].iloc[-1]), 8)
             elif len(filtered) == 1:
-                return filtered["Sell Price"].iloc[0]
+                return round(float(filtered["Sell Price"].iloc[0]), 8)
             else:
-                return 0
+                return 0.0
         else:
-            return 0
+            return 0.0
     except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: red_sell_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_sell_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-
     
 def load_json(p):
     try:

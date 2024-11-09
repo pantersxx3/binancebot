@@ -176,8 +176,9 @@ def analyze(d, pairs, buy=True):
                     if coins_bought < TRADE_SLOTS and bought_at == 0:                
                         if buySignal00:
                             signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
-                            MF.write_log(f'BUY {CLOSE_1MIN} {position2}', LOG_FILE, False, False)
+                            #MF.write_log(f'BUY {CLOSE_1MIN} {position2}', LOG_FILE, False, False)
                             if USE_SIGNALLING_MODULES:
+                                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Buy signal detected...{txcolors.DEFAULT}')
                                 with open(SIGNAL_FILE_BUY,'w+') as f:
                                     f.write(pair + '\n') 
                                 #break
@@ -187,7 +188,8 @@ def analyze(d, pairs, buy=True):
                     if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE_1MIN) != 0:                       
                         if sellSignal00 and float(bought_at) != 0:
                             signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
-                            MF.write_log(f'SELL {CLOSE_1MIN} {bought_at} {position2}', LOG_FILE, False, False)
+                            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Sell signal detected...{txcolors.DEFAULT}')
+                            #MF.write_log(f'SELL {CLOSE_1MIN} {bought_at} {position2}', LOG_FILE, False, False)
                             if USE_SIGNALLING_MODULES:
                                 with open(SIGNAL_FILE_SELL,'w+') as f:
                                     f.write(pair + '\n')
@@ -254,20 +256,21 @@ def do_work():
             else:
                 signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
             time.sleep(MICROSECONDS) #do_work
-            if len(signalcoins1) > 0:
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                #time.sleep(MICROSECONDS)
-            else:
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                #time.sleep(MICROSECONDS)            
-            
-            if "s" in BOT_TIMEFRAME:
-                time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
-            else:
-                current_time = time.localtime()
-                seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
-                time.sleep(seconds_until_next_minute)    
+            # if len(signalcoins1) > 0:
+                # print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
+                # #time.sleep(MICROSECONDS)
+            # else:
+                # print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
+                # #time.sleep(MICROSECONDS)            
+            DISABLE_WAI = False
+            if not DISABLE_WAI:
+                if "s" in BOT_TIMEFRAME:
+                    time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
+                else:
+                    current_time = time.localtime()
+                    seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
+                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
+                    time.sleep(seconds_until_next_minute)    
             
             register_func_name("do_work", locals().items())
     except Exception as e:

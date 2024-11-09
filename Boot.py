@@ -132,7 +132,7 @@ class txcolors:
 global session_profit_incfees_perc, session_profit_incfees_total, session_tpsl_override_msg, is_bot_running, session_USDT_EARNED, sell_all_coins
 global session_USDT_LOSS, session_USDT_WON, last_msg_discord_balance_date, session_USDT_EARNED_TODAY, parsed_creds, TUP,PUP, TDOWN, c_data
 global PDOWN, TNEUTRAL, PNEUTRAL, renewlist, DISABLE_TIMESTAMPS, signalthreads, VOLATILE_VOLUME_LIST, FLAG_PAUSE, coins_up,coins_down, client
-global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_BNB_IN_SESSION, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection, FLAG_FILE_READ
+global coins_unchanged, SHOW_TABLE_COINS_BOUGHT, USED_COMMISSIONS, PAUSEBOT_MANUAL, sell_specific_coin, lostconnection, FLAG_FILE_READ
 global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_total, trade_wins, trade_losses, bot_started_datetime, EXIT_BOT
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
@@ -159,7 +159,7 @@ renewlist = 0
 FLAG_PAUSE = True
 FLAG_FILE_READ = False
 FLAG_FILE_WRITE = False
-USED_BNB_IN_SESSION = {}
+USED_COMMISSIONS = {}
 PAUSEBOT_MANUAL = False
 sell_specific_coin = False
 sell_all_coins = False
@@ -630,6 +630,36 @@ def get_volume_list():
         exit(1)
     return VOLATILE_VOLUME
 
+def print_table_commissions():
+    try:
+        global USED_COMMISSIONS, PRINT_TABLE_COMMISSIONS
+        printTable = False
+        for coin in USED_COMMISSIONS:
+            if USED_COMMISSIONS[coin] > 0:
+                printTable = True
+                break
+        if printTable and PRINT_TABLE_COMMISSIONS:
+            my_table = PrettyTable()
+            my_table.format = True
+            my_table.border = True
+            my_table.align = "c"
+            my_table.valign = "m"
+            my_table.left_padding_width = 1
+            my_table. right_padding_width = 1
+            my_table.title = f'{txcolors.YELLOW}Commisions{txcolors.DEFAULT}'
+            #my_table.field_names = ['Pantersxx3']
+            my_table.field_names = ["coin", "commission"]
+            for coin, coin_commission in USED_COMMISSIONS.items():
+                my_table.add_row([f"{coin}", f"{coin_commission:.6f}"])
+            print(" " * 50 + my_table.get_string().replace("\n", "\n" + " " * 50))
+            #print(my_table)
+            my_table = PrettyTable()    
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}print_table_commissions: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        lost_connection(e, "print_table_commissions")
+        pass        
+        
 def print_table_coins_saved():
     try:
         global SAVED_COINS
@@ -801,6 +831,7 @@ def balance_report(last_price):
         my_table = PrettyTable()
         print_table_coins_bought()
         print_table_coins_saved()
+        print_table_commissions()
         print("\n")
 		
         if MSG_DISCORD:
@@ -1044,7 +1075,7 @@ def write_log_trades(logline):
 		with open(file_prefix + TRADES_LOG_FILE,'a') as f:
 			file_stats = os.stat(file_prefix + TRADES_LOG_FILE)
 			if file_stats.st_size == 0:
-				HEADER = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy" + " " + PAIR_WITH, "Sell Price", "Amount of Sell" + " " + PAIR_WITH, "Sell Reason", "Profit $" + " " + PAIR_WITH]
+				HEADER = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy" + " " + PAIR_WITH, "Sell Price", "Amount of Sell" + " " + PAIR_WITH, "Sell Reason", "Profit $" + " " + PAIR_WITH, "Commission"]
 				f.write(str(HEADER).replace("'","").replace("[","").replace("]","") + '\n')
 			f.write(str(logline) + '\n')
 	except Exception as e:
@@ -1149,9 +1180,10 @@ def pause_bot():
 
 			# Sell function needs to work even while paused
             coins_sold = {}
-            coins_sold = sell_coins()
-            remove_from_portfolio(coins_sold)
             last_price = get_price(True) #pause_bot
+            coins_sold = sell_coins(last_price=last_price)
+            remove_from_portfolio(coins_sold)
+            
             
 			# pausing here
             if hsp_head == 1: 
@@ -1384,6 +1416,32 @@ def convert_volume():
 
     return volume, last_price
 
+def simulate_commission(volume, coin):
+    global client
+    r = 0
+    try:
+        symbol1 = client.get_symbol_ticker(symbol=coin.preplace(PAIR_WITH, "") + "BNB")
+    except:
+        symbol1 = ""
+    try:    
+        symbol2 = client.get_symbol_ticker(symbol="BNB" + coin.preplace(PAIR_WITH, ""))
+    except:
+        symbol2 = ""
+    
+    if not symbol1 == "":
+        symbol_price = float(symbol1['price'])
+    if not symbol2 == "":
+        symbol_price = float(symbol2['price'])
+    
+    if TRADING_FEE == 0.075:
+        try:
+            r = (0.00075 * volume)/symbol_price
+        except:
+            r = 0
+    else:
+        r = (0.001 * volume)
+    return r
+    
 def buy():
     try:
         global coins_bought, client
@@ -1391,7 +1449,7 @@ def buy():
         '''Place Buy market orders for each volatile coin found'''        
         volume, last_price = convert_volume() #buy
         orders = {}
-		#global USED_BNB_IN_SESSION        
+		#global USED_COMMISSIONS        
         for coin in volume: 
             if coin not in coins_bought and coin.replace(PAIR_WITH,'') not in EXCLUDE_PAIRS:
                 print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.GREEN}Preparing to buy {volume[coin]} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
@@ -1409,13 +1467,15 @@ def buy():
                     
                     last_price_buy = last_price[coin]['price']
                     volumeBuy = volume[coin] #format(volume[coin], '.6f')
-                    BuyUSDT = str(float(volumeBuy) * float(last_price_buy)).zfill(9)
+                    coin_commission = simulate_commission(volumeBuy)
+                    USED_COMMISSIONS[coin.replace(PAIR_WITH, "")] = float(USED_COMMISSIONS.get(coin.replace(PAIR_WITH, ""), 0)) + coin_commission
+                    #BuyUSDT = str(float(volumeBuy) * float(last_price_buy)).zfill(9)
                     
-													#"Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy", "Sell Price", "Amount of Sell", "Sell Reason", "Profit $")
+													#"Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy", "Sell Price", "Amount of Sell", "Sell Reason", "Profit $", "Commission")
                     if BACKTESTING_MODE:
-                        write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), RandOrderId, "Buy", coin.replace(PAIR_WITH,""), round(float(volumeBuy),8), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)), 0, 0, "-", 0]) #buy               
+                        write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), RandOrderId, "Buy", coin.replace(PAIR_WITH,""), round(float(volumeBuy),8), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)), 0, 0, "-", 0, coin_commission]) #buy               
                     else:
-                        write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), RandOrderId, "Buy", coin.replace(PAIR_WITH,""), round(float(volumeBuy),8), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)), 0, 0, "-", 0]) #buy               
+                        write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), RandOrderId, "Buy", coin.replace(PAIR_WITH,""), round(float(volumeBuy),8), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)), 0, 0, "-", 0, coin_commission]) #buy               
                     
                     #if USE_SIGNALLING_MODULES:
                         #write_signallsell(coin.removesuffix(PAIR_WITH))
@@ -1451,37 +1511,39 @@ def buy():
                         print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order returned, saving order to file.{txcolors.DEFAULT}')
                         if not TEST_MODE: #or not BACKTESTING_MODE:
                             orders[coin] = extract_order_data(order_details) #buy not TESTMODE
-                            BuyUSDT = str(orders[coin]['volume'] * orders[coin]['avgPrice'])
+                            #BuyUSDT = str(orders[coin]['volume'] * orders[coin]['avgPrice'])
                             volumeBuy = float(volume[coin])
                             last_price_buy = orders[coin]['avgPrice']
                             last_price[coin]["price"] = float(orders[coin]['avgPrice'])
+                            coin_commission = simulate_commission(volumeBuy, coin) if orders[coin]['tradeFeeBNB'] == 0 else orders[coin]['tradeFeeBNB']
 							#BuyUSDT = format(BuyUSDT, '.14f')
 							#improving the presentation of the log file
                             #coin = '{0:<9}'.format(coin)
 							#buyFeeTotal1 = (volumeBuy * last_price_buy) * float(TRADING_FEE/100)
 							
-									 #["Datetime",                                 "Type", "Coin", "Volume",              "Buy Price", "Amount of Buy", "Sell Price", "Amount of Sell", "Sell Reason", "Profit $"] "USDTdiff"])
+									 #["Datetime",                                 "Type", "Coin", "Volume",              "Buy Price", "Amount of Buy", "Sell Price", "Amount of Sell", "Sell Reason", "Profit $", "commission"] "USDTdiff"])
                             if BACKTESTING_MODE:
-                                write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(orders[coin]['orderId']), "Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)) , "0", "0", "-", "0"]) #buy
+                                write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(orders[coin]['orderId']), "Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)) , "0", "0", "-", "0",  coin_commission]) #buy
                             else:
-                                write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(orders[coin]['orderId']), "Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)) , "0", "0", "-", "0"]) #buy
+                                write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(orders[coin]['orderId']), "Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price_buy),8)), str(round(float(get_balance_test_mode()),8)) , "0", "0", "-", "0",  coin_commission]) #buy
 			
                         else:
 							#adding the price in USDT
-                            BuyUSDT = volume[coin] * last_price[coin]['price']
+                            #BuyUSDT = volume[coin] * last_price[coin]['price']
                             volumeBuy = volume[coin] #format(float(volume[coin]), '.6f')
-                            last_price_buy = float(last_price[coin]['price']) #format(float(last_price[coin]['price']), '.3f')
+                            coin_commission = simulate_commission(VolumeBuy, coin) if orders[coin]['tradeFeeBNB'] == 0 else orders[coin]['tradeFeeBNB']
+                            #last_price_buy = float(last_price[coin]['price']) #format(float(last_price[coin]['price']), '.3f')
 							#BuyUSDT = str(format(BuyUSDT, '.14f')).zfill(4)
                             last_price[coin]["price"] = float(orders[coin]['avgPrice'])
 							#improving the presentation of the log file
                             coin = '{0:<9}'.format(coin)
                             #buyFeeTotal1 = (volumeBuy * last_price_buy) * float(TRADING_FEE/100)
 							
-									#(["Datetime", "Type", "Coin", "Volume", "Buy Price", "Sell Price", "Sell Reason", "Profit $"]) "USDTdiff"])
+									#(["Datetime", "Type", "Coin", "Volume", "Buy Price", "Sell Price", "Sell Reason", "Profit $", "commission"]) "USDTdiff"])
                             if BACKTESTING_MODE:
-                                write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(RandOrderId),"Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price[coin]['price']),8)), str(round(float(get_balance_test_mode()),8)), "0", "0", "-", "0"]) #buy
+                                write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(RandOrderId),"Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price[coin]['price']),8)), str(round(float(get_balance_test_mode()),8)), "0", "0", "-", "0", coin_commission]) #buy
                             else:
-                                write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(RandOrderId),"Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price[coin]['price']),8)), str(round(float(get_balance_test_mode()),8)), "0", "0", "-", "0"]) #buy
+                                write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(RandOrderId),"Buy", coin.replace(PAIR_WITH,""), str(round(float(volumeBuy),8)), str(round(float(last_price[coin]['price']),8)), str(round(float(get_balance_test_mode()),8)), "0", "0", "-", "0", coin_commission]) #buy
                         #write_signallsell(coin)
             else:
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Signal detected, but there is already an active trade on {coin}{txcolors.DEFAULT}')
@@ -1493,12 +1555,12 @@ def buy():
     return orders, last_price, volume
 
 
-def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
+def sell_coins(tpsl_override = False, specific_coin_to_sell = "", last_price={}):
     try:
         '''sell coins that have reached the STOP LOSS or TAKE PROFIT threshold'''
         global hsp_head, session_profit_incfees_perc, session_profit_incfees_total, coin_order_id, trade_wins
         global trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins, client
-        global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_BNB_IN_SESSION, TRADE_TOTAL, sell_specific_coin
+        global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_COMMISSIONS, TRADE_TOTAL, sell_specific_coin
         global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS, coins_bought, SELL_PART
         global SAVED_COINS
    
@@ -1513,7 +1575,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
         coins_sold = {}
         if len(coins_bought) > 0:
             externals = sell_external_signals() #sell_coins
-            last_price = get_price(False, externals) #sell_coins
+            #last_price = get_price(False, externals) #sell_coins
             #print("last_price=", last_price)
             BUDGET = get_balance_test_mode() * TRADE_SLOTS        
             for coin in list(coins_bought):  
@@ -1628,6 +1690,8 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                             #sellFee = coins_sold[coin]['tradeFeeUnit']
                             coins_sold[coin]['orderid'] = coins_bought[coin]['orderid']
                             priceChange = float((LastPriceBR - BuyPriceBR) / BuyPriceBR * 100)
+                            coin_commission = simulate_commission(coins_sold[coin]['volume'], coin) if coins_sold[coin]['tradeFeeBNB'] == 0 else coins_sold[coin]['tradeFeeBNB']
+                            USED_COMMISSIONS[PAIR_WITH] = float(USED_COMMISSIONS.get(PAIR_WITH, 0)) + coin_commission
                             # update this from the actual Binance sale information
                             #PriceChangeIncFees_Unit = float((LastPriceBR+sellFee) - (BuyPriceBR+buyFee))
                         else:     
@@ -1635,6 +1699,8 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                             coins = {}
                             coins[coin] = coin + PAIR_WITH						
                             OrderID = coins_bought[coin]['orderid']
+                            coin_commission = simulate_commission(coins_bought[coin]['volume'], coin)
+                            USED_COMMISSIONS[PAIR_WITH] = float(USED_COMMISSIONS.get(PAIR_WITH, 0)) + coin_commission
                         
                         time_held = (timedelta(seconds=datetime.now().timestamp()-int(str(coins_bought[coin]['timestamp'])[:10])).total_seconds())/3600
                         
@@ -1663,11 +1729,11 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                         VolumeSell = format(float(coins_bought[coin]['volume']), '.6f')
                         BuyPriceCoin = format(BuyPriceBR, '.8f')
                         SellUSDT = str(format(SellUSDT, '.14f')).zfill(4)
-                                        #["Datetime",                                              "OrderID",            "Type",          "Coin",                        "Volume",                  "Buy Price",      "Amount of Buy", "Sell Price",    "Amount of Sell",                            "Sell Reason",          "Profit $"] "USDTdiff"])
+                                        #["Datetime",                                              "OrderID",            "Type",          "Coin",                        "Volume",                  "Buy Price",      "Amount of Buy", "Sell Price",    "Amount of Sell",                            "Sell Reason",          "Profit $", "commission"] "USDTdiff"])
                         if BACKTESTING_MODE:
-                            write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(OrderID), "Sell", coin.replace(PAIR_WITH, ""), str(round(float(VolumeSell),8)), str(round(float(BuyPriceBR),8)), read_log_trades(str(OrderID)), str(round(float(LastPriceBR),8)), str(round(float(get_balance_test_mode()),8)), sell_reason, str(round(float(USDTdiff),8))]) #sell_coins
+                            write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime("%d/%m/%y %H:%M:%S"), str(OrderID), "Sell", coin.replace(PAIR_WITH, ""), str(round(float(VolumeSell),8)), str(round(float(BuyPriceBR),8)), read_log_trades(str(OrderID)), str(round(float(LastPriceBR),8)), str(round(float(get_balance_test_mode()),8)), sell_reason, str(round(float(USDTdiff),8)), coin_commission]) #sell_coins
                         else:
-                            write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(OrderID), "Sell", coin.replace(PAIR_WITH, ""), str(round(float(VolumeSell),8)), str(round(float(BuyPriceBR),8)), read_log_trades(str(OrderID)), str(round(float(LastPriceBR),8)), str(round(float(get_balance_test_mode()),8)), sell_reason, str(round(float(USDTdiff),8))]) #sell_coins
+                            write_log_trades([datetime.now().strftime("%d/%m/%y %H:%M:%S"), str(OrderID), "Sell", coin.replace(PAIR_WITH, ""), str(round(float(VolumeSell),8)), str(round(float(BuyPriceBR),8)), read_log_trades(str(OrderID)), str(round(float(LastPriceBR),8)), str(round(float(get_balance_test_mode()),8)), sell_reason, str(round(float(USDTdiff),8)), coin_commission]) #sell_coins
                         
                         #this is good
                         #session_profit_incfees_total = session_profit_incfees_total + profit_incfees_total
@@ -1691,10 +1757,10 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = ""):
                     #order_details= {'symbol': 'BNBUSDT', 'orderId': 2713807, 'orderListId': -1, 'clientOrderId': 'uyoChruda6ri2cn7s9Ntv6', 'transactTime': 1711481770052, 'price': '0.00000000', 'origQty': '0.03600000', 'executedQty': '0.03600000', 'cummulativeQuoteQty': '20.76480000', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'MARKET', 'side': 'SELL', 'workingTime': 1711481770052, 'fills': [{'price': '576.80000000', 'qty': '0.03600000', 'commission': '0.00000000', 'commissionAsset': 'USDT', 'tradeId': 175744}], 'selfTradePreventionMode': 'EXPIRE_MAKER'}
                     # sometimes get "rate limited" errors from Binance if we try to sell too many coins at once
                     # so wait 1 second in between sells
-                    if not TEST_MODE:
-                        time.sleep(1) #wait for sell, evited rate limited
-                    else:
-                        time.sleep(MICROSECONDS)
+                    # if not TEST_MODE:
+                        # time.sleep(1) #wait for sell, evited rate limited
+                    # else:
+                        # time.sleep(MICROSECONDS)
                     
                     continue
             show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
@@ -1718,11 +1784,12 @@ def sell_all(msgreason, session_tspl_ovr = False):
 	# sell all coins NOW!
     sell_all_coins = True
 
-    coins_sold = sell_coins(session_tspl_ovr)
+    last_price = get_price() #sell_all
+    coins_sold = sell_coins(session_tspl_ovr, ast_price=last_price)
     remove_from_portfolio(coins_sold)
 	
 	# display final info to screen
-    last_price = get_price() #sell_all
+    
     #print("sell_all: last_price= ", last_price)
     discordmsg = balance_report(last_price)
     msg_discord(discordmsg)
@@ -1736,7 +1803,7 @@ def sell_coin(coin):
     msg_discord(f'{str(datetime.now())} | SELL SPECIFIC COIN: {coin}')
 	# sell all coins NOW!
     sell_specific_coin = True
-    coins_sold = sell_coins(False, coin)
+    coins_sold = sell_coins(False, coin, ast_price=get_price())
     remove_from_portfolio(coins_sold)
     sell_specific_coin = False
     show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
@@ -1786,24 +1853,30 @@ def sell_external_signals():
 
 def extract_order_data(order_details):
     try:
-        global TRADING_FEE, STOP_LOSS, TAKE_PROFIT, USED_BNB_IN_SESSION
+        global TRADING_FEE, STOP_LOSS, TAKE_PROFIT, USED_COMMISSIONS
         transactionInfo = {}
         FILLS_TOTAL = 0
         FILLS_QTY = 0
         FILLS_FEE = 0
-        BNB_YELLOW = 0
+        BNB_YELLOW = 0        
         for fills in order_details['fills']:
             FILL_PRICE = float(fills['price'])
             FILL_QTY = float(fills['qty'])
             FILLS_FEE += float(fills['commission'])
-            if fills['commissionAsset'] == 'BNB':                
-                USED_BNB_IN_SESSION['BNB'] = float(USED_BNB_IN_SESSION.get('BNB', 0)) + float(fills['commission'])
-            else:
-                symbol = order_details["symbol"]
-                USED_BNB_IN_SESSION[symbol] = float(USED_BNB_IN_SESSION.get('BNB', 0)) + float(fills['commission'])                
-            if (fills['commissionAsset'] != 'BNB') and (TRADING_FEE == 0.075) and (BNB_YELLOW == 0):
+            # if fills['commissionAsset'] == 'BNB':  
+                # if float(fills['commission']) < 0:
+                    # USED_COMMISSIONS['BNB'] = float(USED_COMMISSIONS.get('BNB', 0)) + float(fills['commission'])
+                # else:
+                    # USED_COMMISSIONS['BNB'] = float(USED_COMMISSIONS.get('BNB', 0)) + simulate_commission(FILL_QTY)
+            # else:
+                # symbol = fills['commissionAsset']
+                # if float(fills['commission']) < 0:
+                    # USED_COMMISSIONS[symbol] = float(USED_COMMISSIONS.get(symbol, 0)) + float(fills['commission'])
+                # else:
+                    # USED_COMMISSIONS[symbol] = float(USED_COMMISSIONS.get(symbol, 0)) + simulate_commission(FILL_QTY)
+            # if (fills['commissionAsset'] != 'BNB') and (TRADING_FEE == 0.075) and (BNB_YELLOW == 0):
 				#print(f"YELLOW: BNB not used for trading fee, please ")
-                BNB_YELLOW += 1
+                # BNB_YELLOW += 1
 			# quantity of fills * price
             FILLS_TOTAL += (FILL_PRICE * FILL_QTY)
 			# add to running total of fills quantity
@@ -1895,8 +1968,8 @@ def update_portfolio(orders, last_price, volume):
 			   'bought_at': orders[coin]['avgPrice'],
 			   'volume': orders[coin]['volume'],
 			   'volume_debug': volume[coin],
-			   'buyFeeBNB': orders[coin]['tradeFeeBNB'],
-			   'buyFee': orders[coin]['tradeFeeUnit'] * orders[coin]['volume'],
+			   #'buyFeeBNB': orders[coin]['tradeFeeBNB'],
+			   #'buyFee': orders[coin]['tradeFeeUnit'] * orders[coin]['volume'],
 			   'stop_loss': -STOP_LOSS,
 			   'take_profit': TAKE_PROFIT,
 			   'step_size': float(coin_step_size),
@@ -1924,7 +1997,7 @@ def update_portfolio(orders, last_price, volume):
 
 def update_bot_stats():
     try:
-        global TRADE_TOTAL, trade_wins, trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, USED_BNB_IN_SESSION
+        global TRADE_TOTAL, trade_wins, trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, USED_COMMISSIONS
         bot_stats = {
             'total_capital' : str(TRADE_SLOTS * TRADE_TOTAL),
             'botstart_datetime' : str(bot_started_datetime),
@@ -1936,7 +2009,7 @@ def update_bot_stats():
             'session_'+ PAIR_WITH + '_LOSS': format(session_USDT_LOSS, ".14f"),
             'session_'+ PAIR_WITH + '_WON': format(session_USDT_WON, ".14f"),
             'saved_coins': SAVED_COINS,
-            'used_bnb_in_session': USED_BNB_IN_SESSION,
+            'used_commissions': USED_COMMISSIONS,
         }
 
         #save session info for through session portability
@@ -2078,7 +2151,7 @@ def load_settings():
         global SIGNALLING_MODULES, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
         global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
         global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
-        global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY
+        global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY, PRINT_TABLE_COMMISSIONS
         global REVERSE_SORT, MAX_HOLDING_TIME, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
         global LOG_FILE, PANIC_STOP, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
         global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, SELL_PART, MODE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
@@ -2108,6 +2181,7 @@ def load_settings():
         LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
         JSON_REPORT  = parsed_config['script_options'].get('JSON_REPORT')
         COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
+        PRINT_TABLE_COMMISSIONS = parsed_config['script_options'].get('PRINT_TABLE_COMMISSIONS')
         BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
         DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
         REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_MEGATRONMOD_PORT']
@@ -2609,7 +2683,7 @@ def menu(banner1=True):
         stop_signal_threads() #menu
         while True:
             if banner1: banner()
-            time.sleep(5) #menu
+            #time.sleep(5) #menu
             print(f'\n')
             print(f'{txcolors.WHITE}[A]{txcolors.YELLOW}Reload Configuration{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[B]{txcolors.YELLOW}Reload modules{txcolors.DEFAULT}')
@@ -2879,7 +2953,7 @@ if __name__ == '__main__':
                 session_USDT_LOSS = float(bot_stats['session_' + PAIR_WITH + '_LOSS'])
                 session_USDT_WON = float(bot_stats['session_' + PAIR_WITH + '_WON'])
                 SAVED_COINS = bot_stats['saved_coins']
-                USED_BNB_IN_SESSION = bot_stats['used_bnb_in_session']
+                USED_COMMISSIONS = bot_stats['used_commissions']
                 
                 if total_capital != total_capital_config:
                     historic_profit_incfees_perc = (historic_profit_incfees_total / total_capital_config) * 100
@@ -2914,7 +2988,7 @@ if __name__ == '__main__':
         load_signal_threads()
 
         # seed initial prices
-        get_price() #main
+        #get_price() #main
         TIMEOUT_COUNT=0
         READ_CONNECTERR_COUNT=0
         BINANCE_API_EXCEPTION=0	
@@ -2934,7 +3008,7 @@ if __name__ == '__main__':
                 if SESSION_TPSL_OVERRIDE:
                     check_total_session_profit(coins_bought, last_price)
                     
-                coins_sold = sell_coins()
+                coins_sold = sell_coins(last_price=last_price)
                 remove_from_portfolio(coins_sold)
                 update_bot_stats()
                 
@@ -2951,13 +3025,15 @@ if __name__ == '__main__':
                         print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Modules Realoaded Completed{txcolors.DEFAULT}')
                 
                 if not MODE == "BACKTESTING":
-                    if "s" in BOT_TIMEFRAME:
-                        time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
-                    else:
-                        current_time = time.localtime()
-                        seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec  # Calcular los segundos restantes hasta el siguiente minuto
-                        print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
-                        time.sleep(seconds_until_next_minute) 
+                    DISABLE_WAI = False
+                    if not DISABLE_WAI:
+                        if "s" in BOT_TIMEFRAME:
+                            time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
+                        else:
+                            current_time = time.localtime()
+                            seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec  # Calcular los segundos restantes hasta el siguiente minuto
+                            print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
+                            time.sleep(seconds_until_next_minute) 
                 
             except ReadTimeout as rt:
                 TIMEOUT_COUNT += 1

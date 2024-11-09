@@ -30,18 +30,18 @@ def buy(Data, CLOSE, pair):
                 #ZIGZAG_RESULT = True
                 #break
                 
-        #BA, BM, BB = MF.BollingerBands(Data, 2, 2)
-        SMA1 = MF.Sma(Data, 9)
-        SMA2 = MF.Sma(Data, 200)
+        #BA, BM, BB = MF.BollingerBands(Data, 20, 2)
+        #SMA1 = MF.Sma(Data, 9)
+        #SMA2 = MF.Sma(Data, 200)
         #SMA2 = MF.Sma(Data, 50)
         #SMA3 = MF.Sma(Data, 25)
-        #price = MF.red_sell_value(pair)
-        #if price > 0:         
-            #buySignal = CLOSE <= price - ((3 * price)/100)
-        #else:
-            #buySignal = True
-        buySignal = CLOSE < SMA1 and CLOSE > SMA2
-        #random.choice([True, False])
+        price = MF.read_sell_value(pair)
+        if price > 0:         
+            buySignal = True if CLOSE <= (price - ((3 * price)/100)) else False
+        else:
+            buySignal = True
+        # buySignal = CLOSE < SMA1 and CLOSE > SMA2
+        #buySignal = random.choice([True, False])
         #CLOSE > SMA1 and ZIGZAG_RESULT # #and CLOSE > SMA3 and CLOSE > SMA2
         #print("buySignal=", buySignal, "CLOSE=", CLOSE, "SMA1=", SMA1, "SMA2=", SMA2)
         #random.choice([True, False]) #
@@ -69,12 +69,28 @@ def sell(Data, CLOSE, pair):
             #if zigzag_data.loc[i] < zigzag_data.loc[i - 1] and zigzag_data.loc[i] < 0:
                 #ZIGZAG_RESULT = True
                 #break
-        #BA, BM, BB = MF.BollingerBands(Data, 2, 2)
-        SMA1 = MF.Sma(Data, 9)
+        #BA, BM, BB = MF.BollingerBands(Data, 20, 2)
+        #SMA1 = MF.Sma(Data, 9)
         B = MF.Bought_at(pair)
+        # CV = MF.read_volume_value(pair, "Buy")
+        # CB = MF.read_commission_value(pair, "Buy")
+        # CS = MF.read_commission_value(pair, "Sell")
+        
+        # S = CLOSE*CV
+        # NC = S * 0.001
+        # if CS > 0: 
+            # CT = round(CB + CS + NC, 8)
+        # else:
+            # CT = round(CB + NC, 8)
+        # GS = S + CT
+        # GB = B * CV        
+        # print("CLOSE=", CLOSE, "Objetivo=", GS, "GananciaCompra=", GB, "volumen=", CV, "ComisionCompra=", CB, "ComisionVenta=", CS, "NuevaComision=", NC, "ComisionTotal=", CT, "Venta=", S)
         #print( CLOSE, B + ((3 * B)/100))
-        #sellSignal1 = CLOSE >= B + ((3 * B)/100)
-        sellSignal1 = CLOSE > B and CLOSE > SMA1 
+        sellSignal1 = CLOSE >= B + ((3 * B)/100) #and CLOSE >  SMA1
+        #sellSignal1 = GS > GB
+        #sellSignal1 = CLOSE > B and CLOSE > BA
+        #sellSignal1 = CLOSE > B and CLOSE > SMA1 
+        #sellSignal1 = random.choice([True, False])
         #CLOSE > B and random.choice([True, False]) 
         #ZIGZAG_RESULT #MF.Tp(pair, CLOSE) or MF.Sl(pair, CLOSE)
 
