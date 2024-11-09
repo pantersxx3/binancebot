@@ -1467,7 +1467,7 @@ def buy():
                     
                     last_price_buy = last_price[coin]['price']
                     volumeBuy = volume[coin] #format(volume[coin], '.6f')
-                    coin_commission = simulate_commission(volumeBuy)
+                    coin_commission = simulate_commission(volumeBuy, coin)
                     USED_COMMISSIONS[coin.replace(PAIR_WITH, "")] = float(USED_COMMISSIONS.get(coin.replace(PAIR_WITH, ""), 0)) + coin_commission
                     #BuyUSDT = str(float(volumeBuy) * float(last_price_buy)).zfill(9)
                     
