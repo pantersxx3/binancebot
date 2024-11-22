@@ -86,7 +86,7 @@ import megatronmod
 #import tp_pausebotmod
 
 #module to control the outputs of the bot
-import atexit
+#import atexit
 
 #print banner
 from art import *
