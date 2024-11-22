@@ -186,7 +186,7 @@ def Crossover(arr1, arr2):
     return CrossOver
     
 def Cross(arr1, arr2):
-    if round(arr1,5) == round(arr2,5):
+    if round(arr1, 8) == round(arr2, 8):
         Cross = True
     else:
         Cross = False
@@ -291,8 +291,8 @@ def load_json(p):
             for analysis1MIN in bought_analysis1MIN.keys():
                 value3 = value3 + 1                
             if p in bought_analysis1MIN:
-                value1 = round(float(bought_analysis1MIN[p]['bought_at']),5)
-                value2 = round(float(bought_analysis1MIN[p]['timestamp']),5)
+                value1 = round(float(bought_analysis1MIN[p]['bought_at']),8)
+                value2 = round(float(bought_analysis1MIN[p]['timestamp']),8)
                 bought_analysis1MIN = {}
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: load_json(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
@@ -314,14 +314,14 @@ def print_dic(dic, with_key=False, with_value=True):
             if with_key == False:
                 if not value == {}:
                     if isfloat(value):
-                        str1 = str1 + str(round(float(value),5)) + ','
+                        str1 = str1 + str(round(float(value),8)) + ','
                     else:
                         str1 = str1 + str(value) + ','
             else:
                 if with_value:
                     if not value == {}:
                         if isfloat(value):    
-                            str1 = str1 + str(key) + ':' + str(round(float(value),5)) + ','
+                            str1 = str1 + str(key) + ':' + str(round(float(value),8)) + ','
                         else:
                             str1 = str1 + str(key) + ':' + str(value) + ','
                 else:
@@ -338,7 +338,7 @@ def list_indicators():
         all_variables = dir()
         for name in all_variables:
             if name.endswith('_1MIN') and not name.endswith('_5MIN'):
-                myvalue = round(float(eval(name)), 5)
+                myvalue = round(float(eval(name)), 8)
                 #list_variables = {name : myvalue}
                 list_variables = {myvalue}
     except Exception as e:
@@ -419,11 +419,11 @@ def ret_time(df):
 def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
     df = pd.DataFrame(DF_Data)
     df[['spanA', 'spanB', 'tenkan_sen', 'kijun_sen', 'chikou_span']] = ta.ichimoku(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], TENKA, KIJUN, SENKU)
-    spanA = round(df['spanA'], 6)
-    spanB = round(df['spanB'], 6)
-    tenkan_sen_IND = round(df['tenkan_sen'], 6)
-    kijun_sen_IND = round(df['kijun_sen'], 6)
-    chikou_span_IND = round(df['chikou_span'], 6)
+    spanA = round(df['spanA'], 8)
+    spanB = round(df['spanB'], 8)
+    tenkan_sen_IND = round(df['tenkan_sen'], 8)
+    kijun_sen_IND = round(df['kijun_sen'], 8)
+    chikou_span_IND = round(df['chikou_span'], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
@@ -431,9 +431,9 @@ def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
 def BollingerBands(DF_Data, LENGHT, STD):
     df = pd.DataFrame()
     df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(DF_Data['Close'], length=LENGHT, std=STD)
-    B1_IND = round(df['upper'].iloc[-1], 6)
-    BM_IND = round(df['middle'].iloc[-1], 6)
-    B2_IND = round(df['lower'].iloc[-1], 6)
+    B1_IND = round(df['upper'].iloc[-1], 8)
+    BM_IND = round(df['middle'].iloc[-1], 8)
+    B2_IND = round(df['lower'].iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return B1_IND, BM_IND, B2_IND
@@ -441,27 +441,27 @@ def BollingerBands(DF_Data, LENGHT, STD):
 def Supertrend(DF_Data, LENGHT, MULT):
     df = pd.DataFrame()
     df[['supertrend', 'supertrend_direc', 'supertrend_down', 'supertrend_up']] = ta.supertrend(pd.to_numeric(DF_Data['High']), pd.to_numeric(DF_Data['Low']), pd.to_numeric(DF_Data['Close']), length=LENGHT, multiplier=MULT)
-    SUPERTRENDUP_IND = round(df['supertrend_up'].iloc[-1], 6)
-    SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 6)
-    SUPERTREND_IND = round(df['supertrend'].iloc[-1], 6)
+    SUPERTRENDUP_IND = round(df['supertrend_up'].iloc[-1], 8)
+    SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 8)
+    SUPERTREND_IND = round(df['supertrend'].iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return SUPERTREND_IND, SUPERTRENDDOWN_IND, SUPERTRENDUP_IND
 
 def Momentum(DF_Data, LENGHT):
-    MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 6)
+    MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)    
     #save_indicator(locals().items())
     return MOMENTUM_IND
     
 def Ema(DF_Data, LENGHT):
-    EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 6)
+    EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return EMA_IND
 
 def Sma(DF_Data, LENGHT):
-    SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 6)
+    SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())    
     return SMA_IND
@@ -469,26 +469,26 @@ def Sma(DF_Data, LENGHT):
 def Stochastic(DF_Data, LENGHT, K, D):
     STOCHK_1M_DATA = pd.DataFrame()
     STOCHK_1M_DATA[['k', 'd']] = ta.stoch(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], LENGHT, K, D)
-    STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 6)
-    STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 6)
+    STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 8)
+    STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return STOCHK_IND, STOCHD_IND
     
 def Rsi(DF_Data, LENGHT):
-    RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 6)
+    RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return RSI_IND
 
 def Wma(DF_Data, LENGHT):
-    WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 6)
+    WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return WMA_IND
     
 def Hma(DF_Data, LENGHT):
-    HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 6)
+    HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return HMA_IND
@@ -496,22 +496,22 @@ def Hma(DF_Data, LENGHT):
 def Heikinashi(DF_Data):
     HEIKINASHI_1M_DATA = pd.DataFrame()
     HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
-    HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 6)
-    HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 6)
-    HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 6)
-    HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_close'], 6)
+    HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 8)
+    HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 8)
+    HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 8)
+    HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_close'], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
 
 def Macd(DF_Data, FAST, SLOW, SIGNAL):
-    MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 6)
+    MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return MACD_IND, MACDHIST_IND, MACDSIG_IND
     
 def Cci(DF_Data, LENGHT):
-    CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 6)
+    CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return CCI_IND
@@ -557,5 +557,5 @@ def Zigzag(DF_Data, LENGHT):
         pass        
     return r
  
-def comision(monto):
-    return (monto*0.075)/100
+#def comision(monto):
+    #return (monto*0.075)/100

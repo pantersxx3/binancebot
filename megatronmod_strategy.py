@@ -74,7 +74,7 @@ def sell(Data, CLOSE, pair):
         ####Strategy Bollinger Metod 1####
         BA, BM, BB = MF.BollingerBands(Data, 20, 2)
         sellSignal1 = CLOSE > B and CLOSE > BM
-        print(sellSignal1, CLOSE > B, CLOSE > BM)
+        print(sellSignal1, CLOSE > B, CLOSE > BM, CLOSE, B)
         ####Strategy Bollinger Metod 1####
         
         ####Strategy Bollinger Metod 2####

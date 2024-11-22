@@ -130,7 +130,7 @@ def analyze(d, pairs, buy=True):
 
         signal_coins1 = []
         signal_coins2 = []
-        analysis1MIN = {}
+        analysis = {}
         buySignal00 = False
         sellSignal00 = False
         position2 = 0
@@ -156,27 +156,27 @@ def analyze(d, pairs, buy=True):
                     else:
                         print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
                         
-            analysis1MIN = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 1000)
+            analysis = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 1000)
 
-            if not analysis1MIN.empty:
-                CLOSE_1MIN = round(float(analysis1MIN['Close'].iloc[-1]),6)
-                #OPEN_1MIN = round(float(analysis1MIN['Open'].iloc[-1]),6) 
-                #CLOSE_1MIN_ANT = round(float(analysis1MIN['Close'].iloc[-2]),6)
+            if not analysis.empty:
+                CLOSE = float(analysis['Close'].iloc[-1]) #round(float(analysis['Close'].iloc[-1]),6)
+                #OPEN_1MIN = round(float(analysis['Open'].iloc[-1]),6) 
+                #CLOSE_ANT = round(float(analysis['Close'].iloc[-2]),6)
                 time1 = 0
-                #TIME_1M = analysis1MIN['time'].iloc[-1]
+                #TIME_1M = analysis['time'].iloc[-1]
                 #time1 = int(TIME_1M)/1000
                 #time_1MIN = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S") 
-                buySignal00 = MS.buy(analysis1MIN, CLOSE_1MIN, pair)
-                sellSignal00 = MS.sell(analysis1MIN, CLOSE_1MIN, pair)
+                buySignal00 = MS.buy(analysis, CLOSE, pair)
+                sellSignal00 = MS.sell(analysis, CLOSE, pair)
 
-                analysis1MIN = {}
+                analysis = {}
                 
                 if buy:
                     bought_at, timeHold, coins_bought = MF.load_json(pair)            
                     if coins_bought < TRADE_SLOTS and bought_at == 0:                
                         if buySignal00:
-                            signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
-                            #MF.write_log(f'BUY {CLOSE_1MIN} {position2}', LOG_FILE, False, False)
+                            signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
+                            #MF.write_log(f'BUY {CLOSE} {position2}', LOG_FILE, False, False)
                             if USE_SIGNALLING_MODULES:
                                 print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Buy signal detected...{txcolors.DEFAULT}')
                                 with open(SIGNAL_FILE_BUY,'w+') as f:
@@ -185,11 +185,11 @@ def analyze(d, pairs, buy=True):
                 
                 if SELL_ON_SIGNAL_ONLY:
                     bought_at, timeHold, coins_bought = MF.load_json(pair)
-                    if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE_1MIN) != 0:                       
+                    if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:                       
                         if sellSignal00 and float(bought_at) != 0:
-                            signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE_1MIN})
+                            signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
                             print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Sell signal detected...{txcolors.DEFAULT}')
-                            #MF.write_log(f'SELL {CLOSE_1MIN} {bought_at} {position2}', LOG_FILE, False, False)
+                            #MF.write_log(f'SELL {CLOSE} {bought_at} {position2}', LOG_FILE, False, False)
                             if USE_SIGNALLING_MODULES:
                                 with open(SIGNAL_FILE_SELL,'w+') as f:
                                     f.write(pair + '\n')
