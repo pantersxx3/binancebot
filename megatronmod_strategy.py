@@ -5,7 +5,10 @@
 #
 # No future support offered, use this script at own risk - test before using real funds
 # If you lose money using this MOD (and you will at some point) you've only got yourself to blame!
-#CLOSE_1MIN > SMA200_1MIN and CLOSE_1MIN < SMA5_1MIN and RSI2_1MIN
+
+#Inficators avaibles:
+#MF.Crossover, MF.Crossunder, MF.Cross, MF.Ichimoku, MF.Bollinger MF.Bands, MF.Supertrend, MF.Momentum, MF.Hikinashi
+#MF.Macd, MF.Cci, MF.SL, MF.TP, MF.Bought_at, MF.Zigzag, MF.Ema, MF.Sma, MF.Stochastic, MF.Rsi, MF.Wma, MF.Hma
 
 import megatronmod_functions as MF
 import sys
@@ -19,32 +22,33 @@ def buy(Data, CLOSE, pair):
         # PORT = 10000
         # tn = telnetlib.Telnet(HOST, PORT)
         
-        buySignal = False
-        #zigzag_data = []
-        #ZIGZAG_RESULT = False
-        #ZIGZAG = MF.zigzag(Data, 2)
-        #zigzag_data.append(ZIGZAG)
-        #for i in range(len(zigzag_data)):
-            # Si el valor actual de Zigzag es mayor que el anterior y la pendiente es positiva
-            #if zigzag_data.loc[i] > zigzag_data.loc[i - 1] and zigzag_data.loc[i] > 0:
-                #ZIGZAG_RESULT = True
-                #break
-                
-        #BA, BM, BB = MF.BollingerBands(Data, 20, 2)
-        #SMA1 = MF.Sma(Data, 9)
-        #SMA2 = MF.Sma(Data, 200)
-        #SMA2 = MF.Sma(Data, 50)
-        #SMA3 = MF.Sma(Data, 25)
-        price = MF.read_sell_value(pair)
-        if price > 0:         
-            buySignal = True if CLOSE <= (price - ((3 * price)/100)) else False
-        else:
-            buySignal = True
-        # buySignal = CLOSE < SMA1 and CLOSE > SMA2
+        buySignal = False                
+        
+        ####Strategy Bollinger and SMA200 METOD 1####
+        BA, BM, BB = MF.BollingerBands(Data, 20, 2)
+        SMA200 = MF.Sma(Data, 200)
+        buySignal = CLOSE < BB and CLOSE > SMA200
+        ####Strategy Bollinger and SMA200 METOD 1####
+        
+        ####Strategy Elaskar####
+        #price = MF.read_sell_value(pair)
+        #if price > 0:         
+        #    buySignal = True if CLOSE <= (price - ((1 * price)/100)) else False
+        #else:
+        #    buySignal = True
+        ####Strategy Elaskar####
+        
+        ####Strategy SMA9 and SMA200####
+        #SMA9 = MF.Sma(Data, 9)
+        #SMA200 = MF.Sma(Data, 200)
+        #buySignal = CLOSE < SMA9 and CLOSE > SMA200
+        ####Strategy SM9####
+        
+        ####Strategy Random####
         #buySignal = random.choice([True, False])
-        #CLOSE > SMA1 and ZIGZAG_RESULT # #and CLOSE > SMA3 and CLOSE > SMA2
-        #print("buySignal=", buySignal, "CLOSE=", CLOSE, "SMA1=", SMA1, "SMA2=", SMA2)
-        #random.choice([True, False]) #
+        ####Strategy Random####        
+
+
         #cmmd = f'buySignal: {buySignal} CLOSE: {CLOSE} SMA9: {SMA1} SMA200: {SMA2}'
         #tn.write(cmmd.encode('utf-8'))
         
@@ -60,41 +64,33 @@ def sell(Data, CLOSE, pair):
         # HOST = "localhost"
         # PORT = 10000
         # tn = telnetlib.Telnet(HOST, PORT)
-        sellSignal1 = False
-        #zigzag_data = []
-        #ZIGZAG_RESULT = False
-        #ZIGZAG = MF.zigzag(Data, 2)
-        #zigzag_data.append(ZIGZAG)
-        #for i in range(len(zigzag_data)):
-            #if zigzag_data.loc[i] < zigzag_data.loc[i - 1] and zigzag_data.loc[i] < 0:
-                #ZIGZAG_RESULT = True
-                #break
-        #BA, BM, BB = MF.BollingerBands(Data, 20, 2)
-        #SMA1 = MF.Sma(Data, 9)
+        sellSignal1 = False        
         B = MF.Bought_at(pair)
-        # CV = MF.read_volume_value(pair, "Buy")
-        # CB = MF.read_commission_value(pair, "Buy")
-        # CS = MF.read_commission_value(pair, "Sell")
-        
-        # S = CLOSE*CV
-        # NC = S * 0.001
-        # if CS > 0: 
-            # CT = round(CB + CS + NC, 8)
-        # else:
-            # CT = round(CB + NC, 8)
-        # GS = S + CT
-        # GB = B * CV        
-        # print("CLOSE=", CLOSE, "Objetivo=", GS, "GananciaCompra=", GB, "volumen=", CV, "ComisionCompra=", CB, "ComisionVenta=", CS, "NuevaComision=", NC, "ComisionTotal=", CT, "Venta=", S)
-        #print( CLOSE, B + ((3 * B)/100))
-        sellSignal1 = CLOSE >= B + ((3 * B)/100) #and CLOSE >  SMA1
-        #sellSignal1 = GS > GB
-        #sellSignal1 = CLOSE > B and CLOSE > BA
-        #sellSignal1 = CLOSE > B and CLOSE > SMA1 
-        #sellSignal1 = random.choice([True, False])
-        #CLOSE > B and random.choice([True, False]) 
-        #ZIGZAG_RESULT #MF.Tp(pair, CLOSE) or MF.Sl(pair, CLOSE)
 
-        #random.choice([True, False]) #
+        ####Strategy Take Profit 3% and Strategy Elaskar####
+        #sellSignal1 = CLOSE >= B + ((1 * B)/100)
+        ####Strategy Take Profit 3%####
+
+        ####Strategy Bollinger Metod 1####
+        BA, BM, BB = MF.BollingerBands(Data, 20, 2)
+        sellSignal1 = CLOSE > B and CLOSE > BM
+        print(sellSignal1, CLOSE > B, CLOSE > BM)
+        ####Strategy Bollinger Metod 1####
+        
+        ####Strategy Bollinger Metod 2####
+        #SMA9 = MF.Sma(Data, 9)
+        #sellSignal1 = CLOSE > B and CLOSE > SMA9 
+        ####Strategy Bollinger Metod 1####        
+        
+        ####Strategy Random Metod 1####
+        #sellSignal1 = random.choice([True, False])
+        ####Strategy Random Metod 1####
+        
+        ####Strategy Random Metod 2####
+        #sellSignal1 = CLOSE > B and random.choice([True, False])
+        ####Strategy Random Metod 2####
+
+
         #cmmd = f'sellSignal1: {sellSignal1} CLOSE: {CLOSE} SMA9: {SMA1} B: {B}'
         #tn.write(cmmd.encode('utf-8'))
         

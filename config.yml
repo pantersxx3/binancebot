@@ -4,7 +4,7 @@ script_options:
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
-  MODE: "ONLINETESNET"
+  MODE: "BACKTESTING"
   BOT_TIMEFRAME: "1m"
   BACKTESTING_MODE_TIME_START: "01/10/24 00:00:00" #"01/05/22 00:00:00" #
   BACKTESTING_MODE_TIME_END: "29/10/24 00:00:00" #"15/05/22 00:00:00" #
@@ -21,9 +21,10 @@ script_options:
   #HISTORY_LOG_FILE: '' #'history.html'
   COINS_BOUGHT: 'coins_bought.json'
   BOT_STATS: 'bot_stats.json'
-  PRINT_TABLE_COMMISSIONS: True
+  PRINT_TABLE_COMMISSIONS: False
   USE_VOLATILE_METOD: False
   DEBUG: True
+  SILENT_MODE: True
   #through telnet it is possible to obtain the value of this or that variable in a function
   REMOTE_INSPECTOR_BOT_PORT: 0 #9998
   #if 0 remote server is disabled
@@ -47,19 +48,12 @@ trading_options:
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 21
+  TRADE_TOTAL: 20
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.
   # Anything added here will be excluded from coin withdrawal and will not be sold.
   EXCLUDE_PAIRS: ['PAX', 'EUR', 'GBP', 'JPY', 'USD', 'AUD', 'DOWN', 'UP', 'ONE', 'USDC', 'SHIB', 'VET', 'AXS', 'NEAR', 'GRT', 'CHR', 'BUSD', 'TUSD', 'LUNA', 'UST', 'BTTC', 'USDP', 'POLY']
-  # the amount of time in MINUTES to calculate the difference from the current price (minimum: 1).
-  TIME_DIFFERENCE: 1
-  # Number of times to check for TP/SL during each TIME_DIFFERENCE (minimum: 1).
-  # Don't spam the Binance API, you will be banned (max 1200 requests per minute per IP). default 6
-  RECHECK_INTERVAL: 6
-  # the difference in % between the first and second checks for the price. default 0.25
-  CHANGE_IN_PRICE: 100
   # define in % when to sell a coin that's not making a profit.
   STOP_LOSS: 0.5
   # define in % when to take profit on a profitable coin. default 0.25
@@ -126,48 +120,4 @@ trading_options:
     # NOTE: Only use the "os_xxxxxxxxx" or "nigec_xxxxxxxxx" etc signal/pause modules with this fork as 
     # the default ones WILL NOT work due to customisations for my specific purposes
     #
-    #- Ak_Scalp
-    #- Ak_Scalp_v2
-    #- Ak_Scalp_v3
-    #- Ak_Scalp_v4
-    #- three_musketeers
-    #- triple_rsi_v1
-    #- HMA
     - megatronmod
-    #- tp_pausebotmod
-    #- CCI
-    #- Superdupermod
-    #- Superdupermod_v1
-    #- RSI_Algo
-    #- RSI_Algo_v2
-    #- RSI_Algo_v3
-    #- RSI_Algo_v4
-    #- RSI_Algo_v5
-    #- RSI_Algo_v666
-    #- ScalperPro
-    #- supertrend
-    #- custsignalmod
-    #- btc_pause
-    #- btc_pause_v1
-    #- djcommie_signalbuy_rsi_stoch
-    #- djcommie_signalsell_rsi_stoch
-    #- nigec_signalbuy_RSI
-    #- nigec_signalsell_RSI
-    #- os_pausebot_MA
-    #- os_pausebot_MAOSC
-    #- os_pausebot_MAv2
-    #- VolScan
-    #- the_snail_test
-    #- the_snail_v2
-    #- os_signalbuy_3SMA
-    #- os_signalbuy_3SMAv2
-    #- os_signalbuy_RECOMM
-    #- os_signalsell_RECOMM
-    #- os_signalsell_3SMA
-    #- os_signalsell_3SMAv2
-    #- os_signalbuy_RECOMM_SBUY
-    #- pausebotmod
-    #- rsi-mod
-    #- webserver
-    #- signalsample
-    #- signalsamplemod

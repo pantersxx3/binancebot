@@ -94,7 +94,7 @@ from art import *
 #make graphics
 import matplotlib.pyplot as plt
 
-from progressbar import set_progress_bar
+from progressbar import set_progress_bar, progressBar
 
 from dash import Dash, dcc, html, Input, Output
 #import plotly.express as px
@@ -137,7 +137,7 @@ global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_to
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key, parsed_creds
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
 global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-global SAVED_COINS
+global SAVED_COINS, SILENT_MODE
 
 SAVED_COINS = {}
 parsed_creds = []
@@ -174,7 +174,6 @@ trade_wins = 0
 trade_losses = 0
 bot_started_datetime = ""
 function_variables = {}
-
 
 def convertir_a_str(value):
     if isinstance(value, dict):
@@ -233,43 +232,10 @@ def start_telnet_server():
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}start_telnet_server: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass  
-        
-def show_func_name(function_name, items):
-    try:
-        global ENABLE_FUNCTION_NAME, LANGUAGE, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT, SHOW_VARIABLES_AND_VALUE
-        global SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, LANGUAGE
-        
-        if REMOTE_INSPECTOR_BOT_PORT > 0 or REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0: 
-            function_variables[function_name] = {k: v for k, v in items}
-        if ENABLE_FUNCTION_NAME:
-            fn = str(datetime.now()) + "_" + function_name
-            if SHOW_FUNCTION_NAME:  
-                if SHOW_VARIABLES_AND_VALUE:
-					#all_variables = dir()
-					#for name in all_variables:
-                    for name, myvalue in items:
-						#if not name.startswith('__'):
-                        #myvalue = eval(name)
-                        print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}function_name = {name}: {myvalue} {sys.getsizeof(name)}{txcolors.DEFAULT}')
-                else:
-                    print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}function_name {name}{txcolors.DEFAULT}')
-            if ENABLE_FUNCTION_NAME and SAVE_FUNCTION_NAME and SAVE_VARIABLES_AND_VALUE:
-                    #all_variables = dir()
-					#for name in all_variables:
-                    for name, value in items:
-						#myvalue = eval(name)
-                        write_log(function_name + "= \n \t" + name + ": " + str(value) + " \n \t sizeof: " + str(sys.getsizeof(value)), False, False, "list_functions.txt")
-                #else:
-                    #write_log(fn, False, True, "list_functions.txt")
-    except Exception as e:
-        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}func_name: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
-        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-        pass       
-	#return fn
 	
 def is_fiat():
 	# check if we are using a fiat as a base currency
-	global hsp_head
+	#global hsp_head
 	PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 	#list below is in the order that Binance displays them, apologies for not using ASC order
 	fiats = ['USDT', 'BUSD', 'AUD', 'BRL', 'EUR', 'GBP', 'RUB', 'TRY', 'TUSD', 'USDC', 'PAX', 'BIDR', 'DAI', 'IDRT', 'UAH', 'NGN', 'VAI', 'BVND', 'USDP']
@@ -326,8 +292,11 @@ def update_data_coin():
             TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
         else:
             TICKERS = 'tickers.txt'            
-        for line in open(TICKERS):
-            pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
+        #for line in open(TICKERS, "r"):
+        #pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")]
+        with open(TICKERS, "r") as file:
+            lines = file.readlines() 
+        pairs = [line.strip() + PAIR_WITH for line in lines]
             
         for coin in pairs:
             filecsv = coin + ".csv"
@@ -367,30 +336,28 @@ def download_data(coin):
         pass
 
 def write_position_csv(coin, position):
-	try:
-		f = open(coin + '.position', 'w')
-		f.write(str(position).replace(".0", ""))
-		f.close()
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass
+    try:
+        with open(coin + '.position', 'w') as f:
+            f.write(str(position).replace(".0", ""))
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
 
 def read_position_csv(coin):
-	try:
-		pos1 = 0
-		if os.path.exists(coin + '.position'):
-			f = open(coin + '.position', 'r')
-			r = f.read().replace(".0", "")
-			pos1 = int(r)
-			f.close()
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass
-	return pos1
+    try:
+        pos1 = 0
+        if os.path.exists(coin + '.position'):
+            with open(coin + '.position', 'r') as f:
+                r = f.read().replace(".0", "")
+                pos1 = int(r)
+        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass
+    return pos1
 
 def read_next_row_csv(coin, nonext=False):
     try:
@@ -425,7 +392,7 @@ def read_next_row_csv(coin, nonext=False):
                         price = row.Close
                         break
                     locate = True
-            if not locate and not nonext: sys.exit(0)
+            if not locate and not nonext: menu() #sys.exit(0)
             
             #with open(csv_indicators.replace('.csv', '') + "_time_" + BOT_TIMEFRAME.replace("m", "MIN") + ".csv", mode="a") as f:
                 #f.write(datetime.fromtimestamp(int(int(time1)/1000)).strftime("%d/%m/%y %H:%M:%S") + '\n')
@@ -465,8 +432,11 @@ def get_all_tickers(nonext=False):
             TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
         else:
             TICKERS = 'tickers.txt'            
-        for line in open(TICKERS):
-            pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)]    
+        #for line in open(TICKERS):
+        #pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")]  
+        with open(TICKERS, "r") as file:
+            lines = file.readlines() 
+        pairs = [line.strip() + PAIR_WITH for line in lines]        
 		
         for coin in pairs:
             if BACKTESTING_MODE or TEST_MODE:
@@ -499,7 +469,7 @@ def get_all_tickers(nonext=False):
 def get_price(add_to_historical=True, prices = []):
     try:
         '''Return the current price for all coins on binance'''
-        global historical_prices, hsp_head
+        #global historical_prices, hsp_head
 		
         prices = []
         data = {}
@@ -514,7 +484,10 @@ def get_price(add_to_historical=True, prices = []):
 
         for coin in prices:
             if CUSTOM_LIST and not USE_MOST_VOLUME_COINS:
-                tickers=[line.strip() for line in open(TICKERS_LIST)]
+                #tickers=[line.strip() for line in open(TICKERS_LIST, "r")]
+                with open(TICKERS_LIST, "r") as file:
+                    lines = file.readlines()
+                tickers = [line.strip() for line in lines]   
                 for item1 in tickers:
                     if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
                         if BACKTESTING_MODE:
@@ -523,16 +496,19 @@ def get_price(add_to_historical=True, prices = []):
                             initial_price[coin['symbol']] = { 'price': coin['price'], 'time': datetime.now()} 
             else:
                 today = "volatile_volume_" + str(date.today()) + ".txt"
-                VOLATILE_VOLUME_LIST=[line.strip() for line in open(today)]
+                #VOLATILE_VOLUME_LIST=[line.strip() for line in open(today)]
+                with open(today, "r") as file:
+                    lines = file.readlines()
+                VOLATILE_VOLUME_LIST = [line.strip() for line in lines]
                 for item1 in VOLATILE_VOLUME_LIST:
                     if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
                         initial_price[coin['symbol']] = { 'price': coin['price'], 'time': datetime.now()} 
 
-        if add_to_historical:
-            hsp_head += 1
-            if hsp_head == RECHECK_INTERVAL:
-                hsp_head = 0
-            historical_prices[hsp_head] = initial_price
+        # if add_to_historical:
+            # hsp_head += 1
+            # if hsp_head == RECHECK_INTERVAL:
+                # hsp_head = 0
+            # historical_prices[hsp_head] = initial_price
         show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_price: {languages_bot.MSG1[LANGUAGE]} get_price(): {e}{txcolors.DEFAULT}')
@@ -600,7 +576,7 @@ def get_volume_list():
 							
                     if c <= 0: 
                         print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG9[LANGUAGE]}...{txcolors.DEFAULT}')
-                        sys.exit()
+                        menu() #sys.exit(0)
 						
                     sortedVolumeList = sorted(most_volume_coins.items(), key=lambda x: x[1], reverse=True)
 					
@@ -622,23 +598,27 @@ def get_volume_list():
                 VOLATILE_VOLUME = "volatile_volume_" + dt_string
                 return VOLATILE_VOLUME
         else:
-            tickers=[line.strip() for line in open(TICKERS_LIST)]
+            #tickers=[line.strip() for line in open(TICKERS_LIST, "r")]
+            with open(TICKERS_LIST, "r") as file:
+                lines = file.readlines() 
+            pairs = [line.strip() for line in lines]
+            
         show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_volume_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}{txcolors.DEFAULT}")
-        exit(1)
+        menu() #sys.exit(0)
     return VOLATILE_VOLUME
 
 def print_table_commissions():
     try:
-        global USED_COMMISSIONS, PRINT_TABLE_COMMISSIONS
+        global USED_COMMISSIONS, print_TABLE_COMMISSIONS
         printTable = False
         for coin in USED_COMMISSIONS:
             if USED_COMMISSIONS[coin] > 0:
                 printTable = True
                 break
-        if printTable and PRINT_TABLE_COMMISSIONS:
+        if printTable and print_TABLE_COMMISSIONS:
             my_table = PrettyTable()
             my_table.format = True
             my_table.border = True
@@ -771,14 +751,16 @@ def balance_report(last_price):
         msg1 = ""
         msg2 = "" 
         pair = ""
-        BUDGET = TRADE_SLOTS * get_balance_test_mode()
+        BUDGET = TRADE_SLOTS * get_balance_test_mode() #balance_report
         exposure_calcuated = 0
         if TRADE_SLOTS == 1:
             if USE_MOST_VOLUME_COINS == True:
                 TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
             else:
                 TICKERS = 'tickers.txt' 
-            pair=str([line.strip() for line in open(TICKERS)]).replace("[","").replace("]", "").replace("'", "")
+            #pair=str([line.strip() for line in open(TICKERS, "r")]).replace("[","").replace("]", "").replace("'", "")
+            with open(TICKERS, "r") as file:
+                pair = ", ".join(line.strip() for line in file)
         
         for coin in list(coins_bought):
             LastPriceBR = float(last_price[coin]['price'])
@@ -796,7 +778,7 @@ def balance_report(last_price):
 
         DECIMALS = int(decimals())
         CURRENT_EXPOSURE = round(exposure_calcuated, 0)
-        INVESTMENT_TOTAL = round((get_balance_test_mode() * TRADE_SLOTS), DECIMALS)
+        INVESTMENT_TOTAL = round((get_balance_test_mode() * TRADE_SLOTS), DECIMALS) #balance_report
 		
 		# truncating some of the above values to the correct decimal places before printing
         WIN_LOSS_PERCENT = 0
@@ -874,7 +856,8 @@ def write_log(logline, show=True, showtime=False, LOGFILE=""):
         file_prefix = prefix_type()
 		 
         if LOGFILE == "": 
-            LOGFILE = LOG_FILE
+            LOGFILE = file_prefix + LOGFILE
+        
         with open(file_prefix + LOGFILE,'a') as f:
             ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
             result = ansi_escape.sub('', logline)
@@ -887,7 +870,7 @@ def write_log(logline, show=True, showtime=False, LOGFILE=""):
     except Exception as e:
         print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}write_log(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         print("Error on line {}".format(sys.exc_info()[-1].tb_lineno))
-        exit(1)
+        menu() #sys.exit(0)
 		
 def read_log_trades(OrderID):
 	try:
@@ -1046,7 +1029,10 @@ def convert_csv_to_html(filecsv):
         my_table.valign = "m"
         my_table.field_names = [languages_bot.MSG32[LANGUAGE], languages_bot.MSG23[LANGUAGE], languages_bot.MSG29[LANGUAGE], languages_bot.MSG31[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG38[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG37[LANGUAGE] + languages_bot.MSG36[LANGUAGE], PAIR_WITH + " " + languages_bot.MSG32[LANGUAGE], languages_bot.MSG33[LANGUAGE]]
         my_table.add_row(["TOTAL " + str(float(bot_stats["total_capital"]) + float(bot_stats["session_USDT_EARNED"])), datetime.fromtimestamp(float(bot_stats["botstart_datetime"])).strftime("%d/%m/%y %H:%M:%S"), bot_stats["tradeWins"], bot_stats["tradeLosses"], bot_stats["session_USDT_EARNED"], bot_stats["session_USDT_LOSS"], bot_stats["session_USDT_WON"], len(coins_bought)])
-        for line in open("megatronmod_strategy.py"):
+        #for line in open("megatronmod_strategy.py", "r"):
+        with open("megatronmod_strategy.py", "r") as f:
+            lines = f.readlines()
+        for line in lines:
             if "buySignal" in line and "return" not in line:
                  data1 = line
             if "sellSignal" in line and "return" not in line:
@@ -1097,7 +1083,13 @@ def get_balance_test_mode():
         if COMPOUND_INTEREST:
             value1 = TRADE_TOTAL + value1
         else:
-            value1 = TRADE_TOTAL
+            value1 = TRADE_TOTAL + value1
+            if value1 >= TRADE_TOTAL:
+                value1 = TRADE_TOTAL
+            else:
+                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Insufficient balance[{value1}]...Exit{txcolors.DEFAULT}')
+                 menu() #sys.exit(0)
+
         show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_balance_test_mode(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
@@ -1139,7 +1131,7 @@ def panic_bot(invest, lost):
 			print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}PANIC_STOP activated.{txcolors.DEFAULT}')
 			stop_signal_threads() #panic_bot
 			print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}The percentage of losses is greater than or equal to the established one. Bot Stopped.{txcolors.DEFAULT}')
-			exit(1)
+			menu() #sys.exit(0)
 
 def chek_files_paused():
 	files = []
@@ -1157,7 +1149,7 @@ def chek_files_paused():
 def pause_bot():
     try:
         '''Pause the script when external indicators detect a bearish trend in the market'''
-        global bot_paused, session_profit_incfees_perc, hsp_head, session_profit_incfees_total, PAUSEBOT_MANUAL
+        global bot_paused, session_profit_incfees_perc, hsp_head, session_profit_incfees_total, PAUSEBOT_MANUAL, BUY_PAUSED
         PAUSEBOT = False
 		# start counting for how long the bot has been paused
         start_time = time.perf_counter()
@@ -1186,9 +1178,9 @@ def pause_bot():
             
             
 			# pausing here
-            if hsp_head == 1: 
-                balance_report(last_price) 
-            time.sleep((TIME_DIFFERENCE * 10) / RECHECK_INTERVAL) #wait for pause_bot
+            # if hsp_head == 1: 
+                # balance_report(last_price) 
+            # time.sleep((TIME_DIFFERENCE * 10) / RECHECK_INTERVAL) #wait for pause_bot
 			
         else:
 			# stop counting the pause time
@@ -1260,8 +1252,11 @@ def buy_external_signals():
 
 	#signals = glob.glob(mask)  #"signals/*.buy")
 	#print("signals: ", signals)
+    
     for filename in files: #signals:
-        for line in open(filename):
+        with open(filename, "r") as f:
+            lines = f.readlines()
+        for line in lines:
             symbol = line.strip()
             if symbol.replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
                 #external_list.append(symbol)
@@ -1305,8 +1300,11 @@ def wait_for_price():
                 TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
             else:
                 TICKERS = 'tickers.txt'            
-            for line in open(TICKERS):
-                pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
+            #for line in open(TICKERS):
+            #pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")] 
+            with open(TICKERS, "r") as file:
+                lines = file.readlines()
+            pairs = [line.strip() + PAIR_WITH for line in lines]
             for pair in pairs:
                 coins1.append(pair)
             externals1, externals2 = megatronmod.analyze(c_data, coins1, True) #wait_for_price
@@ -1332,6 +1330,7 @@ def wait_for_price():
     
 def get_info(coin, file):
     try:
+        info = ""
         client = Client(access_key, secret_key)
         info = client.get_symbol_info(coin)
         with open(file, "a") as f:
@@ -1341,15 +1340,17 @@ def get_info(coin, file):
     except Exception as e:
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_info() exception: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")       
-        pass
-    return ret  
+        pass 
     
 def get_symbol_info(coin1):
     try:
         global FILE_SYMBOL_INFO, client
         ret = {}
         if BACKTESTING_MODE:
-            for line in open(FILE_SYMBOL_INFO):
+            #for line in open(FILE_SYMBOL_INFO, "r"):
+            with open(FILE_SYMBOL_INFO, "r") as f:
+                lines = f.readlines()
+            for line in lines:
                 if coin1 in line:
                     #print("line=", line)
                     ret = eval(line)
@@ -1393,7 +1394,7 @@ def convert_volume():
             #print("volume[coin]",volume[coin],"lot_size[coin]", lot_size[coin], "type", type(lot_size[coin]))
 			# calculate the volume in coin from TRADE_TOTAL in PAIR_WITH (default)            
 
-            volume[coin] = float(get_balance_test_mode() / float(last_price[coin]['price']))
+            volume[coin] = float(get_balance_test_mode() / float(last_price[coin]['price'])) #convert_volume
 
 			# define the volume with the correct step size
             if coin not in lot_size:
@@ -1418,13 +1419,14 @@ def convert_volume():
 
 def simulate_commission(volume, coin):
     global client
+    client = Client(access_key, secret_key)
     r = 0
     try:
-        symbol1 = client.get_symbol_ticker(symbol=coin.preplace(PAIR_WITH, "") + "BNB")
+        symbol1 = client.get_symbol_ticker(symbol=coin.replace(PAIR_WITH, "") + "BNB")
     except:
         symbol1 = ""
     try:    
-        symbol2 = client.get_symbol_ticker(symbol="BNB" + coin.preplace(PAIR_WITH, ""))
+        symbol2 = client.get_symbol_ticker(symbol="BNB" + coin.replace(PAIR_WITH, ""))
     except:
         symbol2 = ""
     
@@ -1433,7 +1435,7 @@ def simulate_commission(volume, coin):
     if not symbol2 == "":
         symbol_price = float(symbol2['price'])
     
-    if TRADING_FEE == 0.075:
+    if TRADING_FEE == 0.075 and not MODE == "BACKTESTING":
         try:
             r = (0.00075 * volume)/symbol_price
         except:
@@ -1577,7 +1579,7 @@ def sell_coins(tpsl_override = False, specific_coin_to_sell = "", last_price={})
             externals = sell_external_signals() #sell_coins
             #last_price = get_price(False, externals) #sell_coins
             #print("last_price=", last_price)
-            BUDGET = get_balance_test_mode() * TRADE_SLOTS        
+            BUDGET = get_balance_test_mode() * TRADE_SLOTS  #sell_coins      
             for coin in list(coins_bought):  
                 #if sell_specific_coin and not specific_coin_to_sell == coin: continue                 
                 LastPriceBR = float(last_price[coin]['price'])		
@@ -1818,7 +1820,9 @@ def sell_external_signals():
         # check directory and load pairs from files into external_list
         signals = glob.glob("signals/*.sell")
         for filename in signals:
-            for line in open(filename):
+            with open(filename, "r") as f:
+                lines = f.readlines()
+            for line in lines:
                 symbol = line.strip()
                 #signals2.append(symbol)
                 signals2.append({'symbol': symbol})
@@ -1837,9 +1841,11 @@ def sell_external_signals():
         else:
             TICKERS = 'tickers.txt'  
             
-        for line in open(TICKERS):
-            symbols=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
-            
+        #for line in open(TICKERS):
+        #symbols=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")] 
+        with open(TICKERS, "r") as file:
+            lines = file.readlines()
+        symbols = [line.strip() + PAIR_WITH for line in lines]    
         for symbol in symbols:
             coins1.append(symbol)
 
@@ -1928,7 +1934,7 @@ def check_total_session_profit(coins_bought, last_price):
 	global is_bot_running, session_tpsl_override_msg, SESSION_TAKE_PROFIT, SESSION_STOP_LOSS, BUDGET
 	unrealised_session_profit_incfees_total = 0
 			
-	BUDGET = TRADE_SLOTS * get_balance_test_mode()
+	BUDGET = TRADE_SLOTS * get_balance_test_mode() #check_total_session_profit
 	
 	for coin in list(coins_bought):
 		LastPrice = float(last_price[coin]['price'])
@@ -2150,12 +2156,12 @@ def load_settings():
         global STOP_LOSS, TAKE_PROFIT, CUSTOM_LIST, TICKERS_LIST, USE_TRAILING_STOP_LOSS, TRAILING_STOP_LOSS, TRAILING_TAKE_PROFIT, TRADING_FEE
         global SIGNALLING_MODULES, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
         global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
-        global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, PRINT_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
-        global ENABLE_PRINT_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY, PRINT_TABLE_COMMISSIONS
+        global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, print_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
+        global ENABLE_print_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY, print_TABLE_COMMISSIONS
         global REVERSE_SORT, MAX_HOLDING_TIME, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
         global LOG_FILE, PANIC_STOP, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
         global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, SELL_PART, MODE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-        global REMOTE_INSPECTOR_BOT_PORT
+        global REMOTE_INSPECTOR_BOT_PORT, SILENT_MODE
         
         # Default no debugging
         DEBUG = False
@@ -2171,6 +2177,7 @@ def load_settings():
         BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
         BACKTESTING_MODE_TIME_END = parsed_config['script_options']['BACKTESTING_MODE_TIME_END']
         USE_VOLATILE_METOD = parsed_config['script_options']['USE_VOLATILE_METOD']
+        SILENT_MODE = parsed_config['script_options']['SILENT_MODE']
         #if BACKTESTING_MODE True use USE_SIGNALLING_MODULES: False
         #USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
         TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
@@ -2181,10 +2188,10 @@ def load_settings():
         LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
         JSON_REPORT  = parsed_config['script_options'].get('JSON_REPORT')
         COINS_BOUGHT = parsed_config['script_options'].get('COINS_BOUGHT')
-        PRINT_TABLE_COMMISSIONS = parsed_config['script_options'].get('PRINT_TABLE_COMMISSIONS')
+        print_TABLE_COMMISSIONS = parsed_config['script_options'].get('print_TABLE_COMMISSIONS')
         BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
         DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
-        REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_MEGATRONMOD_PORT']
+        REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
         REMOTE_INSPECTOR_BOT_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_BOT_PORT']
         ENABLE_FUNCTION_NAME = False #parsed_config['script_options'].get('ENABLE_FUNCTION_NAME')
         SAVE_FUNCTION_NAME = True #parsed_config['script_options'].get('SAVE_FUNCTION_NAME')
@@ -2203,10 +2210,10 @@ def load_settings():
         #FIATS = parsed_config['trading_options']['FIATS']
         EXCLUDE_PAIRS = parsed_config['trading_options']['EXCLUDE_PAIRS']
         
-        TIME_DIFFERENCE = parsed_config['trading_options']['TIME_DIFFERENCE']
-        RECHECK_INTERVAL = parsed_config['trading_options']['RECHECK_INTERVAL']
+        #TIME_DIFFERENCE = parsed_config['trading_options']['TIME_DIFFERENCE']
+        #RECHECK_INTERVAL = parsed_config['trading_options']['RECHECK_INTERVAL']
         
-        CHANGE_IN_PRICE = parsed_config['trading_options']['CHANGE_IN_PRICE']
+        #CHANGE_IN_PRICE = parsed_config['trading_options']['CHANGE_IN_PRICE']
         STOP_LOSS = parsed_config['trading_options']['STOP_LOSS']
         TAKE_PROFIT = parsed_config['trading_options']['TAKE_PROFIT']
         
@@ -2262,7 +2269,7 @@ def load_settings():
         PROXY_HTTPS = parsed_config['script_options']['PROXY_HTTPS']
         
         PANIC_STOP = parsed_config['trading_options']['PANIC_STOP']
-        BUY_PAUSED = parsed_config['script_options']['BUY_PAUSED']
+        BUY_PAUSED = parsed_config['script_options'].get('BUY_PAUSED')
         
         UPDATE_MOST_VOLUME_COINS = parsed_config['trading_options']['UPDATE_MOST_VOLUME_COINS']
         VOLATILE_VOLUME = parsed_config['trading_options']['VOLATILE_VOLUME']
@@ -2274,10 +2281,57 @@ def load_settings():
         show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         
     except Exception as e:
+        #print(e, sys.exc_info()[-1].tb_lineno)
         write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}load_settings(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
-
+        
+def show_func_name(function_name, items):
+    try:
+        global ENABLE_FUNCTION_NAME, LANGUAGE, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT, SHOW_VARIABLES_AND_VALUE
+        global SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, LANGUAGE
+        
+        try:
+            REMOTE_INSPECTOR_BOT_PORT
+        except:
+            DEFAULT_CONFIG_FILE = 'config.yml'   
+            parsed_config = load_config(DEFAULT_CONFIG_FILE)
+            REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
+            REMOTE_INSPECTOR_BOT_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_BOT_PORT']
+            REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
+            ENABLE_FUNCTION_NAME = False
+            SHOW_VARIABLES_AND_VALUE = False
+            SAVE_FUNCTION_NAME = True
+            SAVE_VARIABLES_AND_VALUE = False
+             
+        if REMOTE_INSPECTOR_BOT_PORT > 0 or REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0: 
+            function_variables[function_name] = {k: v for k, v in items}
+        if ENABLE_FUNCTION_NAME:
+            fn = str(datetime.now()) + "_" + function_name
+            if SHOW_FUNCTION_NAME:  
+                if SHOW_VARIABLES_AND_VALUE:
+					#all_variables = dir()
+					#for name in all_variables:
+                    for name, myvalue in items:
+						#if not name.startswith('__'):
+                        #myvalue = eval(name)
+                        print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}function_name = {name}: {myvalue} {sys.getsizeof(name)}{txcolors.DEFAULT}')
+                else:
+                    print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.RED}function_name {name}{txcolors.DEFAULT}')
+            if ENABLE_FUNCTION_NAME and SAVE_FUNCTION_NAME and SAVE_VARIABLES_AND_VALUE:
+                    #all_variables = dir()
+					#for name in all_variables:
+                    for name, value in items:
+						#myvalue = eval(name)
+                        write_log(function_name + "= \n \t" + name + ": " + str(value) + " \n \t sizeof: " + str(sys.getsizeof(value)), False, False, "list_functions.txt")
+                #else:
+                    #write_log(fn, False, True, "list_functions.txt")
+    except Exception as e:
+        write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}func_name: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+        write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+        pass       
+	#return fn
+    
 def set_correct_mode(lang, mode, Ext = False):
     try:
         global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
@@ -2306,7 +2360,7 @@ def set_correct_mode(lang, mode, Ext = False):
             USE_SIGNALLING_MODULES = False
         else:
             print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}MODO incorrecto, modifique en config.yml...{txcolors.DEFAULT}')
-            exit(0)
+            menu() #sys.exit(0)
         
         return TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES
     
@@ -2367,31 +2421,32 @@ def CheckIfAliveStation(ip_address):
 	
 def lost_connection(error, origin):
     global lostconnection
-    if "HTTPSConnectionPool" in str(error) or "Connection aborted" in str(error):
-		#print(f"HTTPSConnectionPool - {origin}")
-        stop_signal_threads() #lost_connection
-        if not lostconnection:
-            lostconnection = True
-            write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {origin} - Lost connection, waiting until it is restored...{txcolors.DEFAULT}')
-            while lostconnection:
+    if not MODE == "BACKTESTING":
+        if "HTTPSConnectionPool" in str(error) or "Connection aborted" in str(error):
+            #print(f"HTTPSConnectionPool - {origin}")
+            stop_signal_threads() #lost_connection
+            if not lostconnection:
                 lostconnection = True
-				#if "HTTPSConnectionPool" in error:
-				#try:
-                response = CheckIfAliveStation("google.com")
-				#print(f"response: {response}")
-                if response == True:
-                    write_log(f'{txcolors.GREEN}{languages_bot.MSG5[LANGUAGE]}: The connection has been reestablished, continuing...{txcolors.DEFAULT}')
-                    lostconnection = False
-                    load_signal_threads()
-                    return
-                else:
-					#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {origin} Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}') 
+                write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {origin} - Lost connection, waiting until it is restored...{txcolors.DEFAULT}')
+                while lostconnection:
                     lostconnection = True
+                    #if "HTTPSConnectionPool" in error:
+                    #try:
+                    response = CheckIfAliveStation("google.com")
+                    #print(f"response: {response}")
+                    if response == True:
+                        write_log(f'{txcolors.GREEN}{languages_bot.MSG5[LANGUAGE]}: The connection has been reestablished, continuing...{txcolors.DEFAULT}')
+                        lostconnection = False
+                        load_signal_threads()
+                        return
+                    else:
+                        #print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {origin} Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}') 
+                        lostconnection = True
+                        time.sleep(5) #lostconnection
+            else:
+                while lostconnection:
+                    #print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}')
                     time.sleep(5) #lostconnection
-        else:
-            while lostconnection:
-				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}')
-                time.sleep(5) #lostconnection
     show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
 def timeframe_to_seconds(timeframe):
@@ -2536,7 +2591,7 @@ def remove_by_file_name(name):
 
 def new_or_continue():
     try:
-        global COINS_BOUGHT, BOT_STATS
+        global COINS_BOUGHT, BOT_STAT, LOG_FILE
         file_prefix = prefix_type()     
 
         if os.path.exists(file_prefix + str(COINS_BOUGHT)) or os.path.exists(file_prefix + str(BOT_STATS)):
@@ -2666,17 +2721,16 @@ def change_key_secretkey():
         write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
         pass
  
-@atexit.register
-def end_bot():
-    try:
-        menu()
-        pass
-    except Exception as e:
-        print("end_bot:", e)
+#@atexit.register
+#def end_bot():
+    #try:
+        #menu()
+        #pass
+    #except Exception as e:
+        #print("end_bot:", e)
         
 def menu(banner1=True):
     try:
-        show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
         global COINS_MAX_VOLUME, COINS_MIN_VOLUME, LOG_FILE
         global PAUSEBOT_MANUAL, BUY_PAUSED, TRADE_TOTAL
 
@@ -2688,12 +2742,26 @@ def menu(banner1=True):
             print(f'{txcolors.WHITE}[A]{txcolors.YELLOW}Reload Configuration{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[B]{txcolors.YELLOW}Reload modules{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[C]{txcolors.YELLOW}Reload Volatily Volume List{txcolors.DEFAULT}')
-            if not BUY_PAUSED: #PAUSE{languages_bot.MSG5[LANGUAGE]}_MANUAL == False or 
+            try:
+                BUY_PAUSED
+            except:
+                DEFAULT_CONFIG_FILE = 'config.yml'   
+                parsed_config = load_config(DEFAULT_CONFIG_FILE)
+                BUY_PAUSED = parsed_config['script_options'].get('BUY_PAUSED')
+                
+            if not BUY_PAUSED:
                 print(f'{txcolors.WHITE}[D]{txcolors.YELLOW}Stop Purchases{txcolors.DEFAULT}')
             else:
                 print(f'{txcolors.WHITE}[D]{txcolors.YELLOW}Start Purchases{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[E]{txcolors.YELLOW}Sell Specific Coin{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[F]{txcolors.YELLOW}Sell All Coins{txcolors.DEFAULT}')
+            try:
+                TRADES_LOG_FILE
+            except:
+                DEFAULT_CONFIG_FILE = 'config.yml'   
+                parsed_config = load_config(DEFAULT_CONFIG_FILE)
+                TRADES_LOG_FILE = parsed_config['script_options'].get('TRADES_LOG_FILE')
+                
             print(f'{txcolors.WHITE}[G]{txcolors.YELLOW}Convert {TRADES_LOG_FILE} to html{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[H]{txcolors.YELLOW}Make Graphics{txcolors.DEFAULT}')
             print(f'{txcolors.WHITE}[I]{txcolors.YELLOW}Get Order Information{txcolors.DEFAULT}')
@@ -2850,14 +2918,15 @@ if __name__ == '__main__':
         discord_msg_balance_data = ""
         last_msg_discord_balance_date = datetime.now()
         
-        global client        
-        
+        global client, REMOTE_INSPECTOR_BOT_PORT, BACKTESTING_MODE, DISABLE_TIMESTAMPS, MSG_DISCORD, LANGUAGE, DISCORD_WEBHOOK
+        global COINS_BOUGHT, BOT_STATS, TRADE_SLOTS
+
         load_settings()
-        
+
         if not BACKTESTING_MODE:
             if not CheckIfAliveStation("google.com"):
                 print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}You not have internet, Exit...{txcolors.DEFAULT}')
-                sys.exit(0)    
+                menu() #sys.exit(0)    
      
         if not DISABLE_TIMESTAMPS:
             # print with timestamps
@@ -2895,9 +2964,11 @@ if __name__ == '__main__':
         sell_specific_coin = False
         
         load_credentials()
+
         create_conection_binance()       
-        
+
         renew_list()
+
         update_data_coin()
 
         new_or_continue()       
@@ -2921,10 +2992,10 @@ if __name__ == '__main__':
         #HISTORY_LOG_FILE = file_prefix + HISTORY_LOG_FILE
                 
         bot_started_datetime = datetime.now().timestamp()
-        total_capital_config = TRADE_SLOTS * get_balance_test_mode()
+        total_capital_config = TRADE_SLOTS * get_balance_test_mode() #main
 
         if os.path.isfile(bot_stats_file_path) and os.stat(bot_stats_file_path).st_size!= 0:
-            with open(bot_stats_file_path) as file:
+            with open(bot_stats_file_path, "r") as file:
                 bot_stats = json.load(file)
                 # load bot stats:
                 try:
@@ -2942,7 +3013,7 @@ if __name__ == '__main__':
                 except Exception as e:
                     write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Exception on reading total_capital from {bot_stats_file_path}. Exception: {e}{txcolors.DEFAULT}')
                     write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-                    total_capital = TRADE_SLOTS * get_balance_test_mode()
+                    total_capital = TRADE_SLOTS * get_balance_test_mode() #main
                     pass
 
                 historic_profit_incfees_perc = float(bot_stats['historicProfitIncFees_Percent'])
@@ -2959,12 +3030,12 @@ if __name__ == '__main__':
                     historic_profit_incfees_perc = (historic_profit_incfees_total / total_capital_config) * 100
 
         # rolling window of prices; cyclical queue
-        historical_prices = [None] * (TIME_DIFFERENCE * RECHECK_INTERVAL)
-        hsp_head = -1
+        #historical_prices = [None] * (TIME_DIFFERENCE * RECHECK_INTERVAL)
+        #hsp_head = -1
 
         # if saved coins_bought json file exists and it's not empty then load it
         if os.path.isfile(coins_bought_file_path) and os.stat(coins_bought_file_path).st_size!= 0:
-            with open(coins_bought_file_path) as file:
+            with open(coins_bought_file_path, "r") as file:
                 coins_bought = json.load(file)
 
         print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG41[LANGUAGE]} {txcolors.DEFAULT}')
@@ -3051,7 +3122,7 @@ if __name__ == '__main__':
                 if SESSION_TPSL_OVERRIDE:
                     print(f'\n \n{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}{session_tpsl_override_msg}{txcolors.DEFAULT}')            
                     sell_all(session_tpsl_override_msg, True)
-                    sys.exit(0)
+                    menu() #sys.exit(0)
                 else:
                     print(f'\n \n{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Bot terminated for some reason.{txcolors.DEFAULT}')
         except Exception as e:

@@ -6,6 +6,9 @@
 # No future support offered, use this script at own risk - test before using real funds
 # If you lose money using this MOD (and you will at some point) you've only got yourself to blame!
 
+#Crossover, Crossunder, Cross, Ichimoku, Bollinger Bands, Supertrend, Momentum, Hikinashi
+#Macd, Cci, SL, TP, Bought_at, Zigzag, Ema, Sma, Stochastic, Rsi, Wma, Hma
+
 from tradingview_ta import TA_Handler, Interval, Exchange
 from binance.client import Client, BinanceAPIException
 from helpers.parameters import parse_args, load_config
@@ -158,7 +161,7 @@ def get_analysis(d, tf, p, position1=0, num_records=1000):
     return c
 
    
-def crossunder(arr1, arr2):
+def Crossunder(arr1, arr2):
     CrossUnder = 0
     if not arr1 == None or not arr2 == None:
         if arr1 != arr2:
@@ -170,7 +173,7 @@ def crossunder(arr1, arr2):
             CrossUnder = False
     return CrossUnder
 
-def crossover(arr1, arr2):
+def Crossover(arr1, arr2):
     CrossOver = 0
     if not arr1 == None or not arr2 == None:
         if arr1 != arr2:
@@ -182,7 +185,7 @@ def crossover(arr1, arr2):
             CrossOver = False
     return CrossOver
     
-def cross(arr1, arr2):
+def Cross(arr1, arr2):
     if round(arr1,5) == round(arr2,5):
         Cross = True
     else:
@@ -513,25 +516,25 @@ def Cci(DF_Data, LENGHT):
     #save_indicator(locals().items())
     return CCI_IND
 
-def Sl(PAIR, CLOSE_1MIN):
+def Sl(PAIR, CLOSE):
     try:
         #r = False
         bought_at, timeHold, coins_bought = load_json(PAIR)
         SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
-        r = float(CLOSE_1MIN) < float(SL) and float(SL) != 0
+        r = float(CLOSE) < float(SL) and float(SL) != 0
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print('Sl Error on line ' + str(exc_tb.tb_lineno))
         pass    
     return r
     
-def Tp(PAIR, CLOSE_1MIN):
+def Tp(PAIR, CLOSE):
     try:
         global TAKE_PROFIT
         sellSignalTP = False
         bought_at, timeHold, coins_bought = load_json(PAIR)
         TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
-        sellSignalTP = (float(CLOSE_1MIN) > float(TP) and float(TP) != 0.0)
+        sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0.0)
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print('Tp Error on line ' + str(exc_tb.tb_lineno))
@@ -542,7 +545,7 @@ def Bought_at(PAIR):
     bought_at, timeHold, coins_bought = load_json(PAIR)
     return bought_at
     
-def zigzag(DF_Data, LENGHT):
+def Zigzag(DF_Data, LENGHT):
     try:
         print("DF_Data=", DF_Data, " len=", len(DF_Data))
         if len(DF_Data) > 999:
