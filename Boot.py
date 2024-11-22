@@ -849,16 +849,16 @@ def prefix_type():
         fileprefix = 'live_'
     return fileprefix
     
-def write_log(logline, show=True, showtime=False, LOGFILE=""):
+def write_log(logline, show=True, showtime=False, logfile=""):
     global LOG_FILE, LANGUAGE
     try:
         timestamp = datetime.now().strftime("%d/%m/%y %H:%M:%S")
         file_prefix = prefix_type()
 		 
-        if LOGFILE == "": 
-            LOGFILE = file_prefix + LOGFILE
+        if logfile == "": 
+            logfile = file_prefix + LOG_FILE
         
-        with open(file_prefix + LOGFILE,'a') as f:
+        with open(logfile,'a') as f:
             ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
             result = ansi_escape.sub('', logline)
             if showtime:
