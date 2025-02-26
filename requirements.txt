@@ -34,3 +34,5 @@ ccxt
 TA-Lib
 dash
 matplotlib
+scipy
+bokeh
