@@ -16,7 +16,6 @@ from datetime import date, datetime, timedelta
 from scipy.special import expit as sigmoid
 from collections import defaultdict
 import pandas_ta as ta #pta
-from Boot import set_correct_mode
 import pandas as pd
 import threading
 import os
@@ -87,29 +86,29 @@ EXCHANGE = 'BINANCE'
 SCREENER = 'CRYPTO'
 
 #JSON_FILE_BOUGHT = SIGNAL_NAME + '.json'
-
-TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
         
 def write_log(logline, LOGFILE = LOG_FILE, show = True, time = False):
-    try:
-        if TEST_MODE:
-            file_prefix = 'test_'
-        else:
-            file_prefix = 'live_'  
-        with open(file_prefix + LOGFILE,'a') as f:
-            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-            result = ansi_escape.sub('', logline)
-            if show: print(f'{logline}')
-            if time:
-                timestamp = datetime.now().strftime('%Y-%d-%m %H:%M:%S') + ','                    
-            else:
-                timestamp = ''
-            f.write(timestamp + result + '\n') 
-    except Exception as e:
-        print(f'{txcolors.DEFAULT}{SIGNAL_NAME} write_log: Exception in function: {e}{txcolors.DEFAULT}')
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        print('Error on line ' + str(exc_tb.tb_lineno))
-        exit(1)
+	try:
+		from Boot import set_correct_mode
+		TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
+		if TEST_MODE:
+			file_prefix = 'test_'
+		else:
+			file_prefix = 'live_'  
+		with open(file_prefix + LOGFILE,'a') as f:
+			ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+			result = ansi_escape.sub('', logline)
+			if show: print(f'{logline}')
+			if time:
+				timestamp = datetime.now().strftime('%Y-%d-%m %H:%M:%S') + ','                    
+			else:
+				timestamp = ''
+			f.write(timestamp + result + '\n') 
+	except Exception as e:
+		print(f'{txcolors.DEFAULT}{SIGNAL_NAME} write_log: Exception in function: {e}{txcolors.DEFAULT}')
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print('Error on line ' + str(exc_tb.tb_lineno))
+		exit(1)
 
 def read_position_csv(coin):
     try:
@@ -128,37 +127,50 @@ def read_position_csv(coin):
     return pos1
 
 def get_analysis(d, tf, p, position1=0, num_records=1000):
-    try:
-        global BACKTESTING_MODE, BACKTESTING_MODE_TIME_START
-        c = pd.DataFrame([])
-        e = 0
-        if BACKTESTING_MODE:
-            if position1 > 0:
-                if d.empty:
-                    d = pd.read_csv(p + '.csv')
-                    d.columns = ['time', 'Open', 'High', 'Low', 'Close']
-                    d['Close'] = d['Close'].astype(float)
-                else:
-                    d['Close'] = d['Close'].astype(float)
-                c = d.query('time < @position1').tail(num_records)
-                inttime = int(position1)/1000            
-                position2 = c['time'].iloc[0]
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{BACKTESTING_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
-                d = pd.DataFrame([])
-        else:            
-            client = Client(access_key, secret_key)
-            klines = client.get_historical_klines(symbol=p, interval=tf, start_str=str(num_records) + 'min ago UTC', limit=num_records)
-            c = pd.DataFrame(klines)
-            c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteAssetVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore']
-            c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
-            c['time'] = pd.to_datetime(c['time'], unit='ms')
-            c['Close'] = c['Close'].astype(float)
+	try:
+		global BACKTESTING_MODE, BACKTESTING_MODE_TIME_START
+		from Boot import set_correct_mode
+		TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
+		c = pd.DataFrame([])
+		e = 0
+		if BACKTESTING_MODE:
+			if position1 > 0:
+				if d.empty:
+					d = pd.read_csv(p + '.csv')
+					d.columns = ['time', 'Open', 'High', 'Low', 'Close']
+					d['Close'] = d['Close'].astype(float)
+				else:
+					d['Close'] = d['Close'].astype(float)
+				c = d.query('time < @position1').tail(num_records)
+				inttime = int(position1)/1000            
+				position2 = c['time'].iloc[0]
+				print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{BACKTESTING_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
+				d = pd.DataFrame([])
+		else:            
+			client = Client(access_key, secret_key)
+			if "m" in tf: 
+				back = 'min ago UTC'
+			elif "h" in tf:
+				back = 'hour ago UTC'
+			elif "d" in tf:
+				back = 'day ago UTC'
+			elif "w" in tf:
+				back = 'week ago UTC'
+			elif "M" in tf:
+				back = 'month ago UTC'				
+
+			klines = client.get_historical_klines(symbol=p, interval=tf, start_str=str(num_records) + back, limit=num_records)
+			c = pd.DataFrame(klines)
+			c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteAssetVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore']
+			c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
+			c['time'] = pd.to_datetime(c['time'], unit='ms')
+			c['Close'] = c['Close'].astype(float)
             #print(c)
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: get_analysis(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, True) 
-    return c
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: get_analysis(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, True) 
+	return c
 
    
 def Crossunder(arr1, arr2):
@@ -275,30 +287,32 @@ def read_sell_value(coin):
         write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
     
 def load_json(p):
-    try:
-        bought_analysis1MIN = {}
-        value1 = 0
-        value2 = 0
-        value3 = 0
-        if TEST_MODE:
-            file_prefix = 'test_'
-        else:
-            file_prefix = 'live_'
-        coins_bought_file_path = file_prefix + COINS_BOUGHT
-        if os.path.exists(coins_bought_file_path) and os.path.getsize(coins_bought_file_path) > 2:
-            with open(coins_bought_file_path,'r') as f:
-                bought_analysis1MIN = json.load(f)
-            for analysis1MIN in bought_analysis1MIN.keys():
-                value3 = value3 + 1                
-            if p in bought_analysis1MIN:
-                value1 = round(float(bought_analysis1MIN[p]['bought_at']),8)
-                value2 = round(float(bought_analysis1MIN[p]['timestamp']),8)
-                bought_analysis1MIN = {}
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: load_json(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-    return value1, value2, value3
+	try:
+		from Boot import set_correct_mode
+		TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
+		bought_analysis1MIN = {}
+		value1 = 0
+		value2 = 0
+		value3 = 0
+		if TEST_MODE:
+			file_prefix = 'test_'
+		else:
+			file_prefix = 'live_'
+		coins_bought_file_path = file_prefix + COINS_BOUGHT
+		if os.path.exists(coins_bought_file_path) and os.path.getsize(coins_bought_file_path) > 2:
+			with open(coins_bought_file_path,'r') as f:
+				bought_analysis1MIN = json.load(f)
+			for analysis1MIN in bought_analysis1MIN.keys():
+				value3 = value3 + 1                
+			if p in bought_analysis1MIN:
+				value1 = round(float(bought_analysis1MIN[p]['bought_at']),8)
+				value2 = round(float(bought_analysis1MIN[p]['timestamp']),8)
+				bought_analysis1MIN = {}
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: load_json(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+	return value1, value2, value3
 
 def isfloat(num):
     try:
@@ -334,13 +348,8 @@ def print_dic(dic, with_key=False, with_value=True):
     
 def list_indicators():
     try:
-        list_variables = {}
-        all_variables = dir()
-        for name in all_variables:
-            if name.endswith('_1MIN') and not name.endswith('_5MIN'):
-                myvalue = round(float(eval(name)), 8)
-                #list_variables = {name : myvalue}
-                list_variables = {myvalue}
+        list_indicators = []
+        list_indicators = ["Bollinger_Bands", "Cci", "Cross", "Crossover", "Crossunder", "Ema", "Heikinashi", "Hma", "Ichimoku", "Macd", "Momentum", "Rsi", "Sl", "Sma", "Stochastic", "Supertrend", "Tp", "Wma", "Zigzag"]
     except Exception as e:
         write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: list_indicators(): {e}', SIGNAL_NAME + '.log', True, False)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -428,7 +437,7 @@ def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
     #save_indicator(locals().items())
     return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
     
-def BollingerBands(DF_Data, LENGHT, STD):
+def Bollinger_Bands(DF_Data, LENGHT, STD):
     df = pd.DataFrame()
     df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(DF_Data['Close'], length=LENGHT, std=STD)
     B1_IND = round(df['upper'].iloc[-1], 8)
@@ -546,16 +555,19 @@ def Bought_at(PAIR):
     return bought_at
     
 def Zigzag(DF_Data, LENGHT):
-    try:
-        print("DF_Data=", DF_Data, " len=", len(DF_Data))
-        if len(DF_Data) > 999:
-            r = zigzag(DF_Data.iloc[-1], LENGHT).iloc[-1]
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        print(e)
-        print('zigzag Error on line ' + str(exc_tb.tb_lineno))
-        pass        
-    return r
+	try:
+		r = ta.zigzag(high=DF_Data['High'], low=DF_Data['Low'], close=DF_Data['Close'], depth=LENGHT).iloc[-1]
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print(e)
+		print('zigzag Error on line ' + str(exc_tb.tb_lineno))
+		pass        
+	return r
  
-#def comision(monto):
-    #return (monto*0.075)/100
+def contar_decimales(numero):
+    numero_str = str(numero)
+    if '.' in numero_str:
+        parte_decimal = numero_str.split('.')[1]
+        return len(parte_decimal)
+    else:
+        return 0

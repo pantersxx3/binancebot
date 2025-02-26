@@ -15,7 +15,6 @@ import time
 import socket
 import threading
 import pandas as pd
-from Boot import set_correct_mode
 import pandas_ta as ta
 import megatronmod_strategy as MS
 import megatronmod_functions as MF
@@ -125,82 +124,83 @@ def start_telnet_server():
             client_handler.start()
         
 def analyze(d, pairs, buy=True):
-    try:
-        global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
+	try:
+		global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
 
-        signal_coins1 = []
-        signal_coins2 = []
-        analysis = {}
-        buySignal00 = False
-        sellSignal00 = False
-        position2 = 0
+		signal_coins1 = []
+		signal_coins2 = []
+		analysis = {}
+		buySignal00 = False
+		sellSignal00 = False
+		position2 = 0
         
-        TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
+		from Boot import set_correct_mode
+		TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
         
-        if TEST_MODE:
-            file_prefix = 'test_'
-        else:
-            file_prefix = 'live_'     
+		if TEST_MODE:
+			file_prefix = 'test_'
+		else:
+			file_prefix = 'live_'     
     
-        print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}')
+		print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}')
         
         
-        for pair in pairs:
-            if BACKTESTING_MODE:
-                position2 = MF.read_position_csv(pair)
-                if not os.path.exists(pair + '.csv'): 
-                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Whaiting for Download Data...{txcolors.DEFAULT}')
-                    if USE_SIGNALLING_MODULES:
-                        while not os.path.exists(pair + '.csv'):
-                            time.sleep(1/1000) #Wait for download 
-                    else:
-                        print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
+		for pair in pairs:
+			if BACKTESTING_MODE:
+				position2 = MF.read_position_csv(pair)
+				if not os.path.exists(pair + '.csv'): 
+					print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Whaiting for Download Data...{txcolors.DEFAULT}')
+					if USE_SIGNALLING_MODULES:
+						while not os.path.exists(pair + '.csv'):
+							time.sleep(1/1000) #Wait for download 
+					else:
+						print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
                         
-            analysis = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 1000)
+			analysis = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 200)
 
-            if not analysis.empty:
-                CLOSE = float(analysis['Close'].iloc[-1]) #round(float(analysis['Close'].iloc[-1]),6)
+			if not analysis.empty:
+				CLOSE = float(analysis['Close'].iloc[-1]) #round(float(analysis['Close'].iloc[-1]),6)
                 #OPEN_1MIN = round(float(analysis['Open'].iloc[-1]),6) 
                 #CLOSE_ANT = round(float(analysis['Close'].iloc[-2]),6)
-                time1 = 0
+				time1 = 0
                 #TIME_1M = analysis['time'].iloc[-1]
                 #time1 = int(TIME_1M)/1000
                 #time_1MIN = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S") 
-                buySignal00 = MS.buy(analysis, CLOSE, pair)
-                sellSignal00 = MS.sell(analysis, CLOSE, pair)
+				buySignal00 = MS.buy(analysis, CLOSE, pair)
+				sellSignal00 = MS.sell(analysis, CLOSE, pair)
 
-                analysis = {}
+				analysis = {}
                 
-                if buy:
-                    bought_at, timeHold, coins_bought = MF.load_json(pair)            
-                    if coins_bought < TRADE_SLOTS and bought_at == 0:                
-                        if buySignal00:
-                            signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
+				if buy:
+					bought_at, timeHold, coins_bought = MF.load_json(pair)            
+					if coins_bought < TRADE_SLOTS and bought_at == 0:                
+						if buySignal00:
+							signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
                             #MF.write_log(f'BUY {CLOSE} {position2}', LOG_FILE, False, False)
-                            if USE_SIGNALLING_MODULES:
-                                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Buy signal detected...{txcolors.DEFAULT}')
-                                with open(SIGNAL_FILE_BUY,'w+') as f:
-                                    f.write(pair + '\n') 
+							if USE_SIGNALLING_MODULES:
+								print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Buy signal detected...{txcolors.DEFAULT}')
+								with open(SIGNAL_FILE_BUY,'w+') as f:
+									f.write(pair + '\n') 
                                 #break
                 
-                if SELL_ON_SIGNAL_ONLY:
-                    bought_at, timeHold, coins_bought = MF.load_json(pair)
-                    if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:                       
-                        if sellSignal00 and float(bought_at) != 0:
-                            signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Sell signal detected...{txcolors.DEFAULT}')
+				if SELL_ON_SIGNAL_ONLY:
+					bought_at, timeHold, coins_bought = MF.load_json(pair)
+					if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:                       
+						if sellSignal00 and float(bought_at) != 0:
+							signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
+							print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Sell signal detected...{txcolors.DEFAULT}')
                             #MF.write_log(f'SELL {CLOSE} {bought_at} {position2}', LOG_FILE, False, False)
-                            if USE_SIGNALLING_MODULES:
-                                with open(SIGNAL_FILE_SELL,'w+') as f:
-                                    f.write(pair + '\n')
+							if USE_SIGNALLING_MODULES:
+								with open(SIGNAL_FILE_SELL,'w+') as f:
+									f.write(pair + '\n')
                                     #break                      
-        register_func_name("analyze", locals().items())
-    except Exception as e:
-        MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        MF.write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        pass
-    return signal_coins1, signal_coins2
+		register_func_name("analyze", locals().items())
+	except Exception as e:
+		MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		MF.write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		pass
+	return signal_coins1, signal_coins2
 
 def timeframe_to_seconds(timeframe):
     multipliers = {
@@ -218,65 +218,66 @@ def timeframe_to_seconds(timeframe):
         return 0
 
 def do_work():
-    try:
-        global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, BOT_TIMEFRAME
-        signalcoins1 = []
-        signalcoins2 = []
-        pairs = {}
-        dataBuy = {}
-        dataSell = {}
+	try:
+		global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, BOT_TIMEFRAME
+		signalcoins1 = []
+		signalcoins2 = []
+		pairs = {}
+		dataBuy = {}
+		dataSell = {}
         
-        TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
+		from Boot import set_correct_mode
+		TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
         
         #telnet_thread = threading.Thread(target=start_telnet_server)
         #telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
         #telnet_thread.start()
         
-        if USE_MOST_VOLUME_COINS == True:
-            TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
-        else:
-            TICKERS = 'tickers.txt'            
+		if USE_MOST_VOLUME_COINS == True:
+			TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+		else:
+			TICKERS = 'tickers.txt'            
 
-        for line in open(TICKERS):
-            pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
+		for line in open(TICKERS):
+			pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
             
-        while True:
+		while True:
             #if not threading.main_thread().is_alive(): exit()
-            if os.path.exists("signal.sig"):
-                print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Exit...{txcolors.DEFAULT}') 
-                os.remove("signal.sig")
-                sys.exit(0)
-            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
-            if BACKTESTING_MODE:
-                while os.path.exists('ok.ok'):
-                    time.sleep(1/1000) #do_work
-                signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-                with open('ok.ok','w') as f:
-                    f.write('1')
-            else:
-                signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-            time.sleep(MICROSECONDS) #do_work
+			if os.path.exists("signal.sig"):
+				print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Exit...{txcolors.DEFAULT}') 
+				os.remove("signal.sig")
+				sys.exit(0)
+			print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
+			if BACKTESTING_MODE:
+				while os.path.exists('ok.ok'):
+					time.sleep(1/1000) #do_work
+				signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
+				with open('ok.ok','w') as f:
+					f.write('1')
+			else:
+				signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
+			time.sleep(MICROSECONDS) #do_work
             # if len(signalcoins1) > 0:
                 # print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
                 # #time.sleep(MICROSECONDS)
             # else:
                 # print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
                 # #time.sleep(MICROSECONDS)            
-            DISABLE_WAI = False
-            if not DISABLE_WAI:
-                if "s" in BOT_TIMEFRAME:
-                    time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
-                else:
-                    current_time = time.localtime()
-                    seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
-                    print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
-                    time.sleep(seconds_until_next_minute)    
+			DISABLE_WAI = False
+			if not DISABLE_WAI:
+				if "s" in BOT_TIMEFRAME:
+					time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
+				else:
+					current_time = time.localtime()
+					seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
+					print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
+					time.sleep(seconds_until_next_minute)    
             
-            register_func_name("do_work", locals().items())
-    except Exception as e:
-        MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: do_work(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        MF.write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        pass
-        #except KeyboardInterrupt as ki:
-            #pass
+			register_func_name("do_work", locals().items())
+	except Exception as e:
+		MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: do_work(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		MF.write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		pass
+		#except KeyboardInterrupt as ki:
+			#pass
