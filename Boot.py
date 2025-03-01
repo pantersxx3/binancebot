@@ -1852,13 +1852,6 @@ def sell_coins(tpsl_override=False, specific_coin_to_sell="", last_price={}):
 						OrderID = coins_sold[coin]['orderid']
                     
 					USED_COMMISSIONS[PAIRWITH] = round(float(USED_COMMISSIONS.get(PAIRWITH, 0)) + coin_commission, 10)
-  
-					if MODE == "BACKTESTING":
-						buy_time = datetime.fromtimestamp(coins_sold[coin]['timestamp'] / 1000)
-						current_time = datetime.fromtimestamp(last_price[coin]['time'] / 1000)    
-						time_held = current_time - buy_time
-					else:
-						time_held = timedelta(seconds=datetime.now().timestamp() - int(str(coins_sold[coin]['timestamp'])[:10]))
 
 					SellUSDT = coins_sold[coin]['volume'] * LastPriceBR
 					USDTdiff = SellUSDT - (BuyPriceBR * coins_sold[coin]['volume'])
