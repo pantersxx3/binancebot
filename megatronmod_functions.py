@@ -38,7 +38,7 @@ from helpers.handle_creds import (
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
 global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITION, args, TEST_MODE, BACKTESTING_MODE
-global USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE
+global USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE, MAX_HOLDING_TIME
 
 
 class txcolors:
@@ -76,6 +76,7 @@ TRADES_INDICATORS = parsed_config['script_options'].get('TRADES_INDICATORS')
 TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 #BACKTESTING_MODE = parsed_config['script_options']['BACKTESTING_MODE']
 BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
+MAX_HOLDING_TIME = parsed_config['trading_options']['MAX_HOLDING_TIME']
 MICROSECONDS = 2
       
 #ACTUAL_POSITION = 0
@@ -571,3 +572,44 @@ def contar_decimales(numero):
         return len(parte_decimal)
     else:
         return 0
+		
+def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
+	try:
+		coinfile = coin + ".st"
+		if Bought_at(coin):
+			#BA, BM, BB = Bollinger_Bands(DF_Data, LENGHT, 2)
+			if os.path.exists(coinfile):
+				if CLOSE > value:
+					os.remove(coinfile)
+					return False
+				
+				if os.path.exists(coin + '.position'):
+					with open(coin + '.position', 'r') as f:
+						last_time = float(f.read().replace(".0", ""))
+				else:
+					return False
+					
+				with open(coinfile, "r") as f:
+					first_time = float(f.read().strip())			
+				time_elapsed = ((last_time - first_time) / 60) / 1000
+
+				if time_elapsed >= time_wait:
+					os.remove(coinfile)
+					return True
+			else:				
+				if CLOSE < value:
+					if os.path.exists(coin + '.position'):
+						with open(coin + '.position', 'r') as f:
+							last_time = float(f.read().replace(".0", ""))
+					else:
+						return False
+						
+					with open(coinfile, 'w') as f:
+						f.write(str(last_time))
+					return False
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print(e)
+		print('check_bollingerLow_and_holding Error on line ' + str(exc_tb.tb_lineno))
+		pass 
+	return False			
