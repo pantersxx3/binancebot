@@ -481,7 +481,7 @@ def read_next_row_csv(coin, nonext=False):
 
 		else:
 			c = pd.read_csv(coin + '.csv', dtype={'Close': float})
-			c.columns = ['time', 'Open', 'High', 'Low', 'Close']
+			c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume']
 			row = c.iloc[200]
 			price = float(row['Close'])
 			time1 = int(row['time'])
