@@ -12,6 +12,20 @@
 from tradingview_ta import TA_Handler, Interval, Exchange
 from binance.client import Client, BinanceAPIException
 from helpers.parameters import parse_args, load_config
+
+import joblib
+from xgboost import XGBClassifier
+from sklearn.linear_model import SGDClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.ensemble import HistGradientBoostingClassifier
+from ta.trend import SMAIndicator, EMAIndicator, CCIIndicator, MACD
+from ta.momentum import RSIIndicator
+from ta.volatility import BollingerBands
+from ta.volume import OnBalanceVolumeIndicator
+
+from arch import arch_model
+
 from datetime import date, datetime, timedelta
 from scipy.special import expit as sigmoid
 from collections import defaultdict
@@ -112,20 +126,21 @@ def write_log(logline, LOGFILE = LOG_FILE, show = True, time = False):
 		exit(1)
 
 def read_position_csv(coin):
-    try:
-        pos1 = 0
-        if os.path.exists(coin + '.position'):
-            f = open(coin + '.position', 'r')
-            pos1 = int(f.read().replace('.0', ''))
-            f.close()
-        else:
-            pos1 = -1
+	try:
+		pos1 = 0
+		if os.path.exists(coin + '.position'):
+			f = open(coin + '.position', 'r')
+			pos1 = int(f.read().replace('.0', ''))
+			f.close()
+		else:
+			pos1 = -1
             #os.remove(coin + '.position')
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_position_csv(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        pass
-    return pos1
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_position_csv(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		pass
+	return pos1
 
 def get_analysis(d, tf, p, position1=0, num_records=1000):
 	try:
@@ -138,7 +153,7 @@ def get_analysis(d, tf, p, position1=0, num_records=1000):
 			if position1 > 0:
 				if d.empty:
 					d = pd.read_csv(p + '.csv')
-					d.columns = ['time', 'Open', 'High', 'Low', 'Close']
+					d.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume']
 					d['Close'] = d['Close'].astype(float)
 				else:
 					d['Close'] = d['Close'].astype(float)
@@ -505,11 +520,11 @@ def Hma(DF_Data, LENGHT):
     
 def Heikinashi(DF_Data):
     HEIKINASHI_1M_DATA = pd.DataFrame()
-    HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
+    HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_Close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
     HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 8)
     HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 8)
     HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 8)
-    HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_close'], 8)
+    HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_Close'], 8)
     #time_1MIN = ret_time(DF_Data)
     #save_indicator(locals().items())
     return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
@@ -555,15 +570,49 @@ def Bought_at(PAIR):
     bought_at, timeHold, coins_bought = load_json(PAIR)
     return bought_at
     
-def Zigzag(DF_Data, LENGHT):
+def Zigzag(DF_data, length):
 	try:
-		r = ta.zigzag(high=DF_Data['High'], low=DF_Data['Low'], close=DF_Data['Close'], depth=LENGHT).iloc[-1]
+		zigzag = pd.Series(np.nan, index=DF_data.index)
+		last_extreme = {'price': DF_data['Close'].iloc[0], 'index': 0, 'type': None}
+		
+		for i in range(1, len(DF_data)):
+			high = DF_data['High'].iloc[i]
+			low = DF_data['Low'].iloc[i]
+			
+			# Cálculo de cambios porcentuales
+			change_from_high = (high - last_extreme['price']) / last_extreme['price'] * 100
+			change_from_low = (last_extreme['price'] - low) / last_extreme['price'] * 100
+			
+			if last_extreme['type'] in [None, 'baja']:
+				if change_from_high >= length:
+					# Nuevo pico confirmado
+					zigzag[last_extreme['index']] = np.nan  # Elimina extremo anterior
+					last_extreme.update({'price': high, 'index': i, 'type': 'alta'})
+					zigzag.iloc[i] = high
+				elif low < last_extreme['price']:
+					# Actualiza valle temporal
+					last_extreme.update({'price': low, 'index': i, 'type': 'baja'})
+					zigzag.iloc[i] = low
+					
+			elif last_extreme['type'] == 'alta':
+				if change_from_low >= length:
+					# Nuevo valle confirmado
+					zigzag[last_extreme['index']] = np.nan  # Elimina extremo anterior
+					last_extreme.update({'price': low, 'index': i, 'type': 'baja'})
+					zigzag.iloc[i] = low
+				elif high > last_extreme['price']:
+					# Actualiza pico temporal
+					last_extreme.update({'price': high, 'index': i, 'type': 'alta'})
+					zigzag.iloc[i] = high
+					
+		return last_extreme
+
 	except Exception as e:
 		exc_type, exc_obj, exc_tb = sys.exc_info()
 		print(e)
 		print('zigzag Error on line ' + str(exc_tb.tb_lineno))
 		pass        
-	return r
+	#return DF_Data
  
 def contar_decimales(numero):
     numero_str = str(numero)
@@ -612,4 +661,798 @@ def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
 		print(e)
 		print('check_bollingerLow_and_holding Error on line ' + str(exc_tb.tb_lineno))
 		pass 
-	return False			
+	return False
+	
+def probabilidad_precio_otro(DF_data, minutos_adelante, close, takeprofit, n_simulaciones=1000000):
+    # Verificar datos
+    if len(DF_data) < 10:
+        raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
+    
+    precios = DF_data['Close'].values
+    retornos = np.log(precios[1:] / precios[:-1]) * 100
+    
+    if len(retornos) < 5:
+        raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
+    
+    if np.std(retornos) < 1e-5:
+        raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
+    
+    # Ajustar modelo GARCH(1,1)
+    retornos_rescalados = retornos * 10
+    #print("Ajustando modelo GARCH(1,1)...")
+    modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
+    resultado = modelo.fit(disp='on')
+    
+    if not resultado.convergence_flag == 0:
+        print("Advertencia: El modelo no convergió correctamente.")
+    
+    # Simular retornos futuros
+    #print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
+    simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
+    
+    if simulaciones.simulations is None or simulaciones.simulations.values is None:
+        raise ValueError("El método forecast no generó simulaciones válidas.")
+    
+    retornos_simulados = simulaciones.simulations.values[-1].T
+    ultimo_precio = precios[-1]
+    precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
+    precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
+    
+    for t in range(1, minutos_adelante):
+        precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
+    
+    # Calcular probabilidades
+    valores_unicos = np.unique(precios)
+    resultados = {}
+    
+    for minuto in range(minutos_adelante):
+        precios_minuto = np.round(precios_simulados[minuto], 2)
+        conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
+        probabilidades = conteos / n_simulaciones
+        resultados[f'Minuto_{minuto + 1}'] = probabilidades
+    
+    # Crear DataFrame y filtrar probabilidades 0
+    df_resultado = pd.DataFrame(resultados, index=valores_unicos)
+    df_resultado.index.name = 'Precio'
+    df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
+    
+    # Analizar probabilidad más alta del último minuto
+    ultima_columna = f'Minuto_{minutos_adelante}'
+    prob_max = df_resultado[ultima_columna].max()
+    precios_max = df_resultado.index[df_resultado[ultima_columna] == prob_max].tolist()
+    
+    if len(precios_max) == len(df_resultado) and prob_max > 0:
+        # Todas las probabilidades son iguales
+        precio_predicho = max(precios_max)  # Tomamos el máximo del rango
+    else:
+        # Tomamos el precio más alto con la probabilidad máxima (si hay varios)
+        precio_predicho = max(precios_max)
+    
+    # Comparar con takeprofit
+    return precio_predicho > takeprofit
+
+def probabilidad_precio_simple(DF_data, minutos_adelante, n_simulaciones=1000000):
+    precios = DF_data['Close'].values
+    retornos = np.log(precios[1:] / precios[:-1]) * 100
+    volatilidad = np.std(retornos)
+    
+    ultimo_precio = precios[-1]
+    precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
+    
+    for t in range(minutos_adelante):
+        retornos_aleatorios = np.random.normal(0, volatilidad, n_simulaciones)
+        if t == 0:
+            precios_simulados[t] = ultimo_precio * np.exp(retornos_aleatorios / 100)
+        else:
+            precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_aleatorios / 100)
+    
+    valores_unicos = np.unique(precios)
+    resultados = {}
+    
+    for minuto in range(minutos_adelante):
+        precios_minuto = np.round(precios_simulados[minuto], 2)
+        conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
+        probabilidades = conteos / n_simulaciones
+        resultados[f'Minuto_{minuto + 1}'] = probabilidades
+    
+    # Crear DataFrame y filtrar filas con todas las probabilidades igual a 0
+    df_resultado = pd.DataFrame(resultados, index=valores_unicos)
+    df_resultado.index.name = 'Precio'
+    df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
+    
+    return df_resultado
+	
+def probabilidad_precio_tp(DF_data, minutos_adelante, close, takeprofit, n_simulaciones=10000000):
+    # Verificar datos
+    if len(DF_data) < 10:
+        raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
+    
+    precios = DF_data['Close'].values
+    retornos = np.log(precios[1:] / precios[:-1]) * 100
+    
+    if len(retornos) < 5:
+        raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
+    
+    if np.std(retornos) < 1e-5:
+        raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
+    
+    # Ajustar modelo GARCH(1,1)
+    retornos_rescalados = retornos * 10
+    #print("Ajustando modelo GARCH(1,1)...")
+    modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
+    resultado = modelo.fit(disp='off')
+    
+    if not resultado.convergence_flag == 0:
+        print("Advertencia: El modelo no convergió correctamente.")
+    
+    # Simular retornos futuros
+    #print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
+    simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
+    
+    if simulaciones.simulations is None or simulaciones.simulations.values is None:
+        raise ValueError("El método forecast no generó simulaciones válidas.")
+    
+    retornos_simulados = simulaciones.simulations.values[-1].T
+    ultimo_precio = precios[-1]
+    precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
+    precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
+    
+    for t in range(1, minutos_adelante):
+        precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
+    
+    # Calcular probabilidades
+    valores_unicos = np.unique(precios)
+    resultados = {}
+    
+    for minuto in range(minutos_adelante):
+        precios_minuto = np.round(precios_simulados[minuto], 2)
+        conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
+        probabilidades = conteos / n_simulaciones
+        resultados[f'Minuto_{minuto + 1}'] = probabilidades
+    
+    # Crear DataFrame y filtrar probabilidades 0
+    df_resultado = pd.DataFrame(resultados, index=valores_unicos)
+    df_resultado.index.name = 'Precio'
+    df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
+    
+    # Verificar si algún minuto supera el takeprofit
+    for minuto in range(minutos_adelante):
+        col = f'Minuto_{minuto + 1}'
+        prob_max = df_resultado[col].max()
+        precios_max = df_resultado.index[df_resultado[col] == prob_max].tolist()
+        
+        if len(precios_max) == len(df_resultado) and prob_max > 0:
+            # Todas las probabilidades son iguales, tomamos el máximo del rango
+            precio_predicho = max(precios_max)
+        else:
+            # Tomamos el precio más alto con la probabilidad máxima
+            precio_predicho = max(precios_max)
+        
+        if precio_predicho > takeprofit:
+            return True
+    
+    return False
+	
+def probabilidad_precio(DF_data, minutos_adelante, close, porcentaje_aumento=0.001, n_simulaciones=1000):
+	try:
+		# 1. Calcular los retornos diarios
+		retornos = DF_data["Close"].pct_change().dropna()
+
+		# 2. Calcular la volatilidad diaria
+		volatilidad = retornos.std()
+
+		# 3. Simulación de Monte Carlo
+		resultados_simulaciones = []
+		ultimo_precio = DF_data["Close"].iloc[-1]
+
+		for _ in range(n_simulaciones):
+			precios_simulados = [ultimo_precio]
+			for _ in range(minutos_adelante):
+				cambio_aleatorio = np.random.normal(0, volatilidad)
+				precio_simulado = precios_simulados[-1] * (1 + cambio_aleatorio)
+				precios_simulados.append(precio_simulado)
+			resultados_simulaciones.append(precios_simulados[-1])
+
+		# 4. Calcular la probabilidad
+		precio_objetivo = ultimo_precio * (1 + porcentaje_aumento)
+		probabilidad = sum(precio_simulado >= precio_objetivo for precio_simulado in resultados_simulaciones) / n_simulaciones
+
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print(e)
+		print('probabilidad_precio Error on line ' + str(exc_tb.tb_lineno))
+		return None, None, None  # Return None, None, None in case of error
+
+	return probabilidad
+	
+def spread_strategy(min_spread, max_spread, DF_Data):
+	open_price = DF_Data['Open'].iloc[-1]   # precio de compra
+	close_price = DF_Data['Close'].iloc[-1] # precio de venta
+
+	spread = (close_price - open_price) / open_price * 100  # % de spread
+	
+	print("spread=", spread)
+
+	if spread <= min_spread:
+		return 1
+	elif spread >= max_spread:
+		return 2
+
+def calculate_fibonacci(data, length=100):
+    """
+    Calcula niveles de retroceso de Fibonacci a partir del máximo y mínimo
+    de los últimos `length` valores de un DataFrame OHLC.
+    
+    Parámetros:
+        data (pd.DataFrame): DataFrame con columnas 'High' y 'Low'.
+        length (int): Cantidad de velas a considerar para calcular el rango.
+    
+    Devuelve:
+        dict: Diccionario con niveles de Fibonacci.
+    """
+    if len(data) < length:
+        raise ValueError("No hay suficientes datos para calcular Fibonacci.")
+    
+    # Seleccionamos los últimos `length` datos
+    sub_data = data[-length:]
+    
+    max_price = sub_data['High'].max()
+    min_price = sub_data['Low'].min()
+    
+    diff = max_price - min_price
+    
+    niveles = {
+        '0.0': max_price,
+        '0.236': max_price - 0.236 * diff,
+        '0.382': max_price - 0.382 * diff,
+        '0.5': max_price - 0.5 * diff,
+        '0.618': max_price - 0.618 * diff,
+        '0.786': max_price - 0.786 * diff,
+        '1.0': min_price
+    }
+    
+    return niveles
+
+def Fibonacci(data, length=100):
+    """
+    Devuelve señal de compra o venta según rompimiento del nivel 0.618 de Fibonacci.
+    """
+    fibo = calculate_fibonacci(data, length)
+    nivel_618 = fibo['0.618']
+    
+    precio_anterior = data['Close'].iloc[-2]
+    precio_actual = data['Close'].iloc[-1]
+
+    if precio_anterior < nivel_618 and precio_actual > nivel_618:
+        return 1 #"COMPRA"
+    elif precio_anterior > nivel_618 and precio_actual < nivel_618:
+        return -1 #"VENTA"
+    else:
+        return 0 #"ESPERAR"	
+# def analizar_mercado_inteligente(DF_Data, entrenar=True):
+	# try:
+		# modelo_tendencia_path="modelo_tendencia.pkl"
+		# modelo_caida_path="modelo_caida.pkl"
+		# df = DF_Data.copy()
+
+		# # === Indicadores técnicos ===
+		# df['sma_20'] = SMAIndicator(close=df['Close'], window=20).sma_indicator()
+		# df['ema_20'] = EMAIndicator(close=df['Close'], window=20).ema_indicator()
+		# df['rsi'] = RSIIndicator(close=df['Close'], window=14).rsi()
+		# df['cci'] = CCIIndicator(high=df['High'], low=df['Low'], close=df['Close'], window=20).cci()
+		# df['macd'] = MACD(close=df['Close']).macd_diff()
+		# boll = BollingerBands(close=df['Close'], window=20, window_dev=2)
+		# df['bollinger_width'] = boll.bollinger_wband()
+
+		# df = df.dropna()
+
+		# # === Targets ===
+		# df['future_close'] = df['Close'].shift(-3)
+
+		# # Cambio de tendencia: ¿el precio sube en 3 velas?
+		# df['target_tendencia'] = (df['future_close'] > df['Close']).astype(int)
+
+		# # Caída fuerte: ¿baja más de 3%?
+		# df['target_caida'] = ((df['future_close'] - df['Close']) / df['Close'] < -0.03).astype(int)
+
+		# features = ['sma_20', 'ema_20', 'rsi', 'cci', 'macd', 'bollinger_width']
+		# X = df[features]
+		# y_tendencia = df['target_tendencia']
+		# y_caida = df['target_caida']
+
+		# # === Modelo cambio de tendencia ===
+		# if os.path.exists(modelo_tendencia_path):
+			# modelo_tendencia = joblib.load(modelo_tendencia_path)
+		# else:
+			# modelo_tendencia = SGDClassifier(loss="log_loss")
+		
+		# # === Modelo caída fuerte ===
+		# if os.path.exists(modelo_caida_path):
+			# modelo_caida = joblib.load(modelo_caida_path)
+		# else:
+			# modelo_caida = SGDClassifier(loss="log_loss")
+
+		# if entrenar:
+			# modelo_tendencia.partial_fit(X, y_tendencia, classes=np.array([0, 1]))
+			# modelo_caida.partial_fit(X, y_caida, classes=np.array([0, 1]))
+			# joblib.dump(modelo_tendencia, modelo_tendencia_path)
+			# joblib.dump(modelo_caida, modelo_caida_path)
+
+		# # === Predicción de la última fila ===
+		# ultima_fila = X.iloc[[-1]]
+
+		# prob_subida = modelo_tendencia.predict_proba(ultima_fila)[0][1]
+		# prob_caida = modelo_caida.predict_proba(ultima_fila)[0][1]
+
+		# decision_subida = "Comprar" if prob_subida > 0.7 else "Mantener"
+		# decision_caida = "Vender" if prob_caida > 0.7 else "Mantener"
+
+		# return {
+			# "tendencia": {
+				# "probabilidad_subida": prob_subida,
+				# "decision": decision_subida
+			# },
+			# "caida": {
+				# "probabilidad_caida": prob_caida,
+				# "decision": decision_caida
+			# }
+		# }
+		
+	# except Exception as e:
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# print(e)
+		# print('funcion inteligente Error on line ' + str(exc_tb.tb_lineno))
+		# return ""  # Return None, None, None in case of error
+		
+# from sklearn.linear_model import SGDClassifier
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.metrics import accuracy_score, classification_report
+# from sklearn.utils.class_weight import compute_class_weight
+# from ta.trend import SMAIndicator, EMAIndicator, MACD, CCIIndicator
+# from ta.momentum import RSIIndicator
+# from ta.volatility import BollingerBands
+# import pandas as pd
+# import numpy as np
+# import joblib
+# import os
+# import sys
+
+# def analizar_mercado_inteligente_1(DF_Data, entrenar=True):
+	# try:
+		# modelo_tendencia_path = "modelo_tendencia.pkl"
+		# modelo_caida_path = "modelo_caida_rf.pkl"
+
+		# df = DF_Data.copy()
+
+		# # === Indicadores técnicos ===
+		# df['sma_20'] = Sma(DF_Data, 20)
+		# df['ema_20'] = Ema(DF_Data, 20)
+		# df['sma_200'] = Sma(DF_Data, 200)
+		# df['ema_200'] = Ema(DF_Data, 200)
+		# df['rsi'] = Rsi(DF_Data, 14)
+		# df['cci'] = Cci(DF_Data, 20)
+		# df['macd'] = MACD(close=df['Close']).macd_diff()
+		# df['bollinger_width'] = BollingerBands(close=df['Close'], window=20, window_dev=2).bollinger_wband()
+		# df['volume_sma_20'] = df['Volume'].rolling(window=20).mean()
+		# df['vol_above_avg'] = (df['Volume'] > df['volume_sma_20']).astype(int)
+		# df['obv'] = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
+
+		# # === Targets ===
+		# df['future_close'] = df['Close'].shift(-10)
+		# df['target_tendencia'] = (df['future_close'] > df['Close']).astype(int)
+		# df['target_caida'] = ((df['future_close'] - df['Close']) / df['Close'] < -0.0015).astype(int)
+
+		# features = ['sma_20', 'ema_20', 'rsi', 'cci', 'macd', 'bollinger_width', 'sma_200', 'ema_200', 'volume_sma_20', 'vol_above_avg', 'obv']
+
+		# df = df.dropna(subset=features + ['target_tendencia', 'target_caida'])
+
+		# X = df[features]
+		# y_tendencia = df['target_tendencia']
+		# y_caida = df['target_caida']
+
+		# # Separar última fila para predicción
+		# X_pred = X.iloc[[-1]]
+		# y_pred_tendencia = y_tendencia.iloc[[-1]]
+		# y_pred_caida = y_caida.iloc[[-1]]
+
+		# X_train = X.iloc[:-1]
+		# y_train_tendencia = y_tendencia.iloc[:-1]
+		# y_train_caida = y_caida.iloc[:-1]
+
+		# # === Carga o creación de modelos ===
+		# if os.path.exists(modelo_tendencia_path):
+			# modelo_tendencia = joblib.load(modelo_tendencia_path)
+		# else:
+			# modelo_tendencia = HistGradientBoostingClassifier(max_iter=100, max_depth=6, random_state=42)
+
+		# if os.path.exists(modelo_caida_path):
+			# modelo_caida = joblib.load(modelo_caida_path)
+		# else:
+			# modelo_caida = HistGradientBoostingClassifier(max_iter=100, max_depth=6, random_state=42)
+
+		# # === Entrenamiento ===
+		# if entrenar:
+			# modelo_tendencia.fit(X_train, y_train_tendencia)
+			# modelo_caida.fit(X_train, y_train_caida)
+
+		# # === Predicción ===
+		# probas_subida = modelo_tendencia.predict_proba(X_pred)[0]
+		# prob_subida = probas_subida[1] if len(probas_subida) > 1 else 0.0
+
+		# probas_caida = modelo_caida.predict_proba(X_pred)[0]
+		# prob_caida = probas_caida[1] if len(probas_caida) > 1 else 0.0
+
+		# decision_subida = "Comprar" if prob_subida > 0.7 else "Mantener"
+		# decision_caida = "Vender" if prob_caida > 0.7 else "Mantener"
+
+		# # === Guardado ===
+		# if entrenar:
+			# joblib.dump(modelo_tendencia, modelo_tendencia_path)
+			# joblib.dump(modelo_caida, modelo_caida_path)
+
+		# # === Evaluación ===
+		# y_pred_tendencia_train = modelo_tendencia.predict(X_train)
+		# y_pred_caida_train = modelo_caida.predict(X_train)
+
+		# print("Exactitud tendencia:", accuracy_score(y_train_tendencia, y_pred_tendencia_train))
+		# print("Exactitud caida:", accuracy_score(y_train_caida, y_pred_caida_train))
+		# print("Tendencia - Subida (1) / No subida (0):")
+		# print(y_tendencia.value_counts(normalize=True))
+		# print("\nCaída - Fuerte caída (1) / No caída (0):")
+		# print(y_caida.value_counts(normalize=True))
+		# print("Reporte de clasificación - Caída:")
+		# print(classification_report(y_train_caida, y_pred_caida_train))
+
+		# return {
+			# "tendencia": {
+				# "probabilidad_subida": prob_subida,
+				# "decision": decision_subida
+			# },
+			# "caida": {
+				# "probabilidad_caida": prob_caida,
+				# "decision": decision_caida
+			# }
+		# }
+
+	# except Exception as e:
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# print(e)
+		# print('función inteligente Error en línea', exc_tb.tb_lineno)
+		# return ""
+
+
+# def analizar_mercado_inteligente_multi(DF_Data, entrenar=True):
+	# try:
+		# modelo_tendencia_path = "modelo_multi_tendencia.pkl"
+		# modelo_multi_caida_path = "modelo_multi_caida.pkl"
+
+		# df = DF_Data.copy()
+
+		# # === Indicadores técnicos ===
+		# df['sma_20'] = Sma(DF_Data, 20)
+		# df['ema_20'] = Ema(DF_Data, 20)
+		# df['sma_200'] = Sma(DF_Data, 200)
+		# df['ema_200'] = Ema(DF_Data, 200)
+		# df['rsi'] = Rsi(DF_Data, 14)
+		# df['cci'] = Cci(DF_Data, 20)
+		# df['macd'] = MACD(close=df['Close']).macd_diff()
+		# df['bollinger_width'] = BollingerBands(close=df['Close'], window=20, window_dev=2).bollinger_wband()
+		# df['volume_sma_20'] = df['Volume'].rolling(window=20).mean()
+		# df['vol_above_avg'] = (df['Volume'] > df['volume_sma_20']).astype(int)
+		# df['obv'] = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
+
+		# # === Targets ===
+		# df['future_close'] = df['Close'].shift(-10)
+		# df['target_tendencia'] = (df['future_close'] > df['Close']).astype(int)
+		# df['caida_pct'] = (df['future_close'] - df['Close']) / df['Close']
+		# df['target_caida_suave'] = (df['caida_pct'] < -0.001).astype(int)
+		# df['target_caida_fuerte'] = (df['caida_pct'] < -0.002).astype(int)
+
+		# # === Features y limpieza ===
+		# features = ['sma_20', 'ema_20', 'rsi', 'cci', 'macd', 'bollinger_width', 'sma_200', 'ema_200', 'volume_sma_20', 'vol_above_avg', 'obv']
+		
+		# # Aseguramos no NaN en la fila para predecir
+		# df[features] = df[features].fillna(method="ffill").fillna(method="bfill").fillna(0.0)
+
+		# df = df.dropna(subset=['target_tendencia', 'target_caida_suave', 'target_caida_fuerte'])
+
+		# X = df[features]
+		# y_tendencia = df['target_tendencia']
+		# Y_caidas = df[['target_caida_suave', 'target_caida_fuerte']]
+
+		# # Separar última fila para predicción
+		# X_pred = X.iloc[[-1]]
+		# y_pred_tendencia = y_tendencia.iloc[[-1]]
+		# Y_pred_caidas = Y_caidas.iloc[[-1]]
+
+		# X_train = X.iloc[:-1]
+		# y_train_tendencia = y_tendencia.iloc[:-1]
+		# Y_train_caidas = Y_caidas.iloc[:-1]
+
+		# # === Carga o creación de modelos ===
+		# if os.path.exists(modelo_tendencia_path):
+			# modelo_tendencia = joblib.load(modelo_tendencia_path)
+		# else:
+			# modelo_tendencia = SGDClassifier(loss="log_loss")
+
+		# if os.path.exists(modelo_multi_caida_path):
+			# modelo_multi_caida = joblib.load(modelo_multi_caida_path)
+		# else:
+			# modelo_multi_caida = MultiOutputClassifier(RandomForestClassifier(n_estimators=100, max_depth=6, random_state=42))
+
+		# # === Entrenamiento ===
+		# if entrenar:
+			# class_weights_tendencia = compute_class_weight(class_weight='balanced', classes=np.array([0, 1]), y=y_train_tendencia)
+			# weights_dict = {0: class_weights_tendencia[0], 1: class_weights_tendencia[1]}
+			# modelo_tendencia.set_params(class_weight=weights_dict)
+
+			# modelo_tendencia.partial_fit(X_train, y_train_tendencia, classes=np.array([0, 1]))
+			# modelo_multi_caida.fit(X_train, Y_train_caidas)
+
+		# # === Predicción ===
+		# probas_subida = modelo_tendencia.predict_proba(X_pred)[0]
+		# prob_subida = probas_subida[1] if len(probas_subida) == 2 else (0.0 if modelo_tendencia.classes_[0] == 0 else 1.0)
+
+		# probas_multi = modelo_multi_caida.predict_proba(X_pred)
+		# prob_suave = probas_multi[0][0][1] if len(probas_multi[0][0]) == 2 else 0.0
+		# prob_fuerte = probas_multi[1][0][1] if len(probas_multi[1][0]) == 2 else 0.0
+
+		# decision_subida = "Comprar" if prob_subida > 0.7 else "Mantener"
+		# decision_caida_suave = "Vender suave" if prob_suave > 0.7 else "Mantener"
+		# decision_caida_fuerte = "Vender fuerte" if prob_fuerte > 0.7 else "Mantener"
+
+		# # === Reentrenamiento final y guardado ===
+		# if entrenar:
+			# modelo_tendencia.partial_fit(X_pred, y_pred_tendencia)
+			# joblib.dump(modelo_tendencia, modelo_tendencia_path)
+			# joblib.dump(modelo_multi_caida, modelo_multi_caida_path)
+
+		# # === Evaluación ===
+		# print("Exactitud tendencia:", accuracy_score(y_train_tendencia, modelo_tendencia.predict(X_train)))
+		# for i, col in enumerate(Y_caidas.columns):
+			# y_true = Y_train_caidas[col]
+			# y_pred = modelo_multi_caida.predict(X_train)[:, i]
+			# print(f"\nExactitud {col}:", accuracy_score(y_true, y_pred))
+			# print(f"Reporte de clasificación - {col}:")
+			# print(classification_report(y_true, y_pred))
+
+		# return {
+			# "tendencia": {
+				# "probabilidad_subida": prob_subida,
+				# "decision": decision_subida
+			# },
+			# "caida": {
+				# "probabilidad_caida_suave": prob_suave,
+				# "probabilidad_caida_fuerte": prob_fuerte,
+				# "decision_suave": decision_caida_suave,
+				# "decision_fuerte": decision_caida_fuerte
+			# }
+		# }
+
+	# except Exception as e:
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# print(e)
+		# print('función inteligente Error en línea', exc_tb.tb_lineno)
+		# return ""
+
+# def analizar_mercado_inteligente_2(DF_Data, entrenar=True):
+	# try:
+		# modelo_tendencia_path = "modelo_tendencia_gpu.pkl"
+		# modelo_caida_path = "modelo_caida_gpu.pkl"
+
+		# df = DF_Data.copy()
+
+		# # === Indicadores técnicos ===
+		# df['sma_20'] = Sma(DF_Data, 20)
+		# df['ema_20'] = Ema(DF_Data, 20)
+		# df['sma_200'] = Sma(DF_Data, 200)
+		# df['ema_200'] = Ema(DF_Data, 200)
+		# df['rsi'] = Rsi(DF_Data, 14)
+		# df['cci'] = Cci(DF_Data, 20)
+		# df['macd'] = MACD(close=df['Close']).macd_diff()
+		# df['bollinger_width'] = BollingerBands(close=df['Close'], window=20, window_dev=2).bollinger_wband()
+		# df['volume_sma_20'] = df['Volume'].rolling(window=20).mean()
+		# df['vol_above_avg'] = (df['Volume'] > df['volume_sma_20']).astype(int)
+		# df['obv'] = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
+
+		# # === Targets ===
+		# df['future_close'] = df['Close'].shift(-10)
+		# df['target_tendencia'] = (df['future_close'] > df['Close']).astype(int)
+		# df['target_caida'] = ((df['future_close'] - df['Close']) / df['Close'] < -0.0015).astype(int)
+
+		# features = ['sma_20', 'ema_20', 'rsi', 'cci', 'macd', 'bollinger_width', 'sma_200', 'ema_200', 'volume_sma_20', 'vol_above_avg', 'obv']
+		# df = df.dropna(subset=features + ['target_tendencia', 'target_caida'])
+
+		# X = df[features]
+		# y_tendencia = df['target_tendencia']
+		# y_caida = df['target_caida']
+
+		# X_pred = X.iloc[[-1]]
+		# X_train = X.iloc[:-1]
+		# y_train_tendencia = y_tendencia.iloc[:-1]
+		# y_train_caida = y_caida.iloc[:-1]
+
+		# # === Modelos ===
+		# if os.path.exists(modelo_tendencia_path):
+			# modelo_tendencia = joblib.load(modelo_tendencia_path)
+		# else:
+			# modelo_tendencia = XGBClassifier(
+				# tree_method='gpu_hist',
+				# predictor='gpu_predictor',
+				# use_label_encoder=False,
+				# eval_metric='logloss',
+				# random_state=42
+			# )
+
+		# if os.path.exists(modelo_caida_path):
+			# modelo_caida = joblib.load(modelo_caida_path)
+		# else:
+			# modelo_caida = XGBClassifier(
+				# tree_method='gpu_hist',
+				# predictor='gpu_predictor',
+				# use_label_encoder=False,
+				# eval_metric='logloss',
+				# random_state=42
+			# )
+
+		# # === Entrenamiento ===
+		# if entrenar:
+			# modelo_tendencia.fit(X_train, y_train_tendencia)
+			# modelo_caida.fit(X_train, y_train_caida)
+
+		# # === Predicción ===
+		# prob_subida = modelo_tendencia.predict_proba(X_pred)[0][1]
+		# prob_caida = modelo_caida.predict_proba(X_pred)[0][1]
+
+		# decision_subida = "Comprar" if prob_subida > 0.7 else "Mantener"
+		# decision_caida = "Vender" if prob_caida > 0.7 else "Mantener"
+
+		# # === Guardado ===
+		# if entrenar:
+			# joblib.dump(modelo_tendencia, modelo_tendencia_path)
+			# joblib.dump(modelo_caida, modelo_caida_path)
+
+		# # === Evaluación ===
+		# y_pred_tendencia_train = modelo_tendencia.predict(X_train)
+		# y_pred_caida_train = modelo_caida.predict(X_train)
+		
+		# if not entrenar:
+			# print("Exactitud tendencia:", accuracy_score(y_train_tendencia, y_pred_tendencia_train))
+			# print("Exactitud caida:", accuracy_score(y_train_caida, y_pred_caida_train))
+			# print("Tendencia - Subida (1) / No subida (0):")
+			# print(y_tendencia.value_counts(normalize=True))
+			# print("\nCaída - Fuerte caída (1) / No caída (0):")
+			# print(y_caida.value_counts(normalize=True))
+			# print("Reporte de clasificación - Caída:")
+			# print(classification_report(y_train_caida, y_pred_caida_train))
+
+		# return {
+			# "tendencia": {
+				# "probabilidad_subida": prob_subida,
+				# "decision": decision_subida
+			# },
+			# "caida": {
+				# "probabilidad_caida": prob_caida,
+				# "decision": decision_caida
+			# }
+		# }
+
+	# except Exception as e:
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# print(e)
+		# print('función inteligente Error en línea', exc_tb.tb_lineno)
+		# return ""
+		
+# def analizar_mercado_inteligente_gpu(DF_Data, entrenar=True):
+	# try:
+		# modelo_tendencia_path = "modelo_tendencia_xgb.pkl"
+		# modelo_caida_path = "modelo_caida_xgb.pkl"
+
+		# df = DF_Data.copy()
+
+		# # === Indicadores técnicos ===
+		# df['sma_20'] = Sma(DF_Data, 20)
+		# df['ema_20'] = Ema(DF_Data, 20)
+		# df['sma_200'] = Sma(DF_Data, 200)
+		# df['ema_200'] = Ema(DF_Data, 200)
+		# df['rsi'] = Rsi(DF_Data, 14)
+		# df['cci'] = Cci(DF_Data, 20)
+		# df['macd'] = MACD(close=df['Close']).macd_diff()
+		# df['bollinger_width'] = BollingerBands(close=df['Close'], window=20, window_dev=2).bollinger_wband()
+		# df['volume_sma_20'] = df['Volume'].rolling(window=20).mean()
+		# df['vol_above_avg'] = (df['Volume'] > df['volume_sma_20']).astype(int)
+		# df['obv'] = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
+
+		# # === Targets ===
+		# df['future_close'] = df['Close'].shift(-10)
+		# df['target_tendencia'] = (df['future_close'] > df['Close']).astype(int)
+		# df['target_caida'] = ((df['future_close'] - df['Close']) / df['Close'] < -0.0015).astype(int)
+
+		# features = ['sma_20', 'ema_20', 'rsi', 'cci', 'macd', 'bollinger_width', 'sma_200', 'ema_200', 'volume_sma_20', 'vol_above_avg', 'obv']
+
+		# df = df.dropna(subset=features + ['target_tendencia', 'target_caida'])
+
+		# X = df[features]
+		# y_tendencia = df['target_tendencia']
+		# y_caida = df['target_caida']
+
+		# # Separar última fila para predicción
+		# X_pred = X.iloc[[-1]]
+		# X_train = X.iloc[:-1]
+		# y_train_tendencia = y_tendencia.iloc[:-1]
+		# y_train_caida = y_caida.iloc[:-1]
+
+		# # === Carga o creación de modelos XGBoost ===
+		# if os.path.exists(modelo_tendencia_path):
+			# modelo_tendencia = joblib.load(modelo_tendencia_path)
+		# else:
+			# modelo_tendencia = XGBClassifier(
+				# max_depth=6,
+				# n_estimators=100,
+				# learning_rate=0.1,
+				# tree_method="hist",  # recomendado en 2.x
+				# device="cuda",       # usa GPU
+				# verbosity=0,
+				# random_state=42
+			# )
+
+		# if os.path.exists(modelo_caida_path):
+			# modelo_caida = joblib.load(modelo_caida_path)
+		# else:
+			# modelo_caida = XGBClassifier(
+				# max_depth=6,
+				# n_estimators=100,
+				# learning_rate=0.1,
+				# tree_method="hist",
+				# device="cuda",
+				# verbosity=0,
+				# random_state=42
+			# )
+
+		# # === Entrenamiento ===
+		# if entrenar:
+			# modelo_tendencia.fit(X_train, y_train_tendencia)
+			# modelo_caida.fit(X_train, y_train_caida)
+
+		# # === Predicción ===
+		# prob_subida = modelo_tendencia.predict_proba(X_pred)[0][1]
+		# prob_caida = modelo_caida.predict_proba(X_pred)[0][1]
+
+		# decision_subida = "Comprar" if prob_subida > 0.7 else "Mantener"
+		# decision_caida = "Vender" if prob_caida > 0.7 else "Mantener"
+
+		# # === Guardado ===
+		# if entrenar:
+			# joblib.dump(modelo_tendencia, modelo_tendencia_path)
+			# joblib.dump(modelo_caida, modelo_caida_path)
+
+		# # === Evaluación ===
+		# y_pred_tendencia_train = modelo_tendencia.predict(X_train)
+		# y_pred_caida_train = modelo_caida.predict(X_train)
+
+		# if not entrenar:
+			# print("Exactitud tendencia:", accuracy_score(y_train_tendencia, y_pred_tendencia_train))
+			# print("Exactitud caida:", accuracy_score(y_train_caida, y_pred_caida_train))
+			# print("Tendencia - Subida (1) / No subida (0):")
+			# print(y_tendencia.value_counts(normalize=True))
+			# print("\nCaída - Fuerte caída (1) / No caída (0):")
+			# print(y_caida.value_counts(normalize=True))
+			# print("Reporte de clasificación - Caída:")
+			# print(classification_report(y_train_caida, y_pred_caida_train))
+
+		# return {
+			# "tendencia": {
+				# "probabilidad_subida": prob_subida,
+				# "decision": decision_subida
+			# },
+			# "caida": {
+				# "probabilidad_caida": prob_caida,
+				# "decision": decision_caida
+			# }
+		# }
+
+	# except Exception as e:
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# print(e)
+		# print('función inteligente Error en línea', exc_tb.tb_lineno)
+		# return ""
