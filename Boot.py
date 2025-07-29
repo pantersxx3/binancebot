@@ -183,6 +183,7 @@ trade_wins = 0
 trade_losses = 0
 bot_started_datetime = ""
 function_variables = {}
+commissionCoins = {}
 
 def convertir_a_str(value):
 	if isinstance(value, dict):
@@ -644,7 +645,10 @@ def get_price(add_to_historical=True, prices = []):
 				VOLATILE_VOLUME_LIST = [line.strip() for line in lines]
 				for item1 in VOLATILE_VOLUME_LIST:
 					if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
-						initial_price[coin['symbol']] = { 'price': coin['price'], 'time': datetime.now()} 
+						if BACKTESTING_MODE:
+							initial_price[coin['symbol']] = { 'price': coin['price'], 'time': coin['time']}
+						else:
+							initial_price[coin['symbol']] = { 'price': coin['price'], 'time': datetime.now()} 
 
 		# if add_to_historical:
 			# hsp_head += 1
@@ -1557,7 +1561,7 @@ def buy_external_signals():
 
 def random_without_repeating():
 	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())      
-	RandOrderId = randint(1000, 9999)		
+	RandOrderId = randint(10000, 99999)		
 	return RandOrderId
 
 #use function of the OlorinSledge
@@ -1705,40 +1709,50 @@ def convert_volume():
 	return volume, last_price
 
 def simulate_commission(volume, coin):
-	global client	
-	r = 0.0
-	symbol_price = 0.0
-	if TRADING_FEE == 0.075:
-		client = Client(access_key, secret_key)
-		try:
-			symbol1 = client.get_symbol_ticker(symbol=coin.replace(PAIR_WITH, "") + "BNB")
-			#print("symbol1", symbol1)
-		except Exception  as e:
-			symbol1 = ""
-			#print(coin.replace(PAIR_WITH, "") + "BNB", e)
-		try:    
-			symbol2 = client.get_symbol_ticker(symbol="BNB" + coin.replace(PAIR_WITH, ""))
-			#print("symbol2", symbol2)
-		except Exception  as e:
-			symbol2 = ""
-			#print("BNB" + coin.replace(PAIR_WITH, ""), e)
-	
-		if not symbol1 == "":
-			symbol_price = float(symbol1['price'])
-			#print(symbol1)
-		if not symbol2 == "":
-			symbol_price = float(symbol2['price'])
-			#print(symbol2)
-		try:
-			if symbol_price > 0:
-				r = ((TRADING_FEE/100) * volume)*symbol_price
-			#else:
-				#print("ERROR:", TRADING_FEE, volume, symbol_price)
-		except Exception  as e:
-			print(e)
-		coin = "BNB"	
-	else:
-		r = ((TRADING_FEE/100) * volume)
+	try:
+		global client, commissionCoins
+		r = 0.0
+		symbol_price = 0.0
+		ExistCoin = False
+		if TRADING_FEE == 0.075:
+			if not coin in commissionCoins:
+				client = Client(access_key, secret_key)
+				try:
+					filter = coin.replace(PAIR_WITH, "") + "BNB"
+					symbol1 = client.get_symbol_ticker(symbol=filter)				
+					#print("symbol1", symbol1)
+				except Exception  as e:
+					symbol1 = ""
+					#print(coin.replace(PAIR_WITH, "") + "BNB", e)
+				try:
+					filter = "BNB" + coin.replace(PAIR_WITH, "") 
+					symbol2 = client.get_symbol_ticker(symbol=filter)
+					#print("symbol2", symbol2)
+				except Exception  as e:
+					symbol2 = ""
+					#print("BNB" + coin.replace(PAIR_WITH, ""), e)
+			
+				if not symbol1 == "":
+					symbol_price = float(symbol1['price'])
+					#print(symbol1)
+				if not symbol2 == "":
+					symbol_price = float(symbol2['price'])
+					#print(symbol2)
+				try:
+					if symbol_price > 0:
+						r = ((TRADING_FEE/100) * volume)*symbol_price
+					#else:
+						#print("ERROR:", TRADING_FEE, volume, symbol_price)
+				except Exception  as e:
+					print(e)
+				coin = "BNB"	
+			else:
+				r = ((TRADING_FEE/100) * volume)
+			commissionCoins[coin] = r
+			
+	except Exception as e:
+			write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} simulate_commission(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+			write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 	return r, coin
 	
 
@@ -2231,7 +2245,7 @@ def load_signal_threads():
 						t.name = module
 						t.start()
 						signalthreads.append(t)
-						time.sleep(2000/1000) #wait for load_signal_threads
+						time.sleep(0.5) #wait for load_signal_threads
 					else:
 						write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Module {module} does not exist... continuing to load other modules{txcolors.DEFAULT}')
 			else:
