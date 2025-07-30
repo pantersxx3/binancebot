@@ -156,7 +156,7 @@ def analyze(d, pairs, buy=True):
 					else:
 						print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
                         
-			analysis = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 200)
+			analysis = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 300)
 
 			if not analysis.empty:
 				CLOSE = float(analysis['Close'].iloc[-1]) #round(float(analysis['Close'].iloc[-1]),6)

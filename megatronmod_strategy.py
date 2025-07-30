@@ -14,11 +14,6 @@ import megatronmod_functions as MF
 import sys
 import os
 import random
-#import telnetlib
-#from AgenteIA_2 import train, plot_performance
-
-#from AgenteIA_3 import TradingBot
-#from AgenteIA import usar_agente
   
 def buy(Data, CLOSE, pair):
 	try:
@@ -28,8 +23,9 @@ def buy(Data, CLOSE, pair):
 		
 		buySignal = False
 		####Strategy Fibollinger(Fibonacci-Bollinger)####
-		BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)		
-		if MF.Fibonacci(Data) == 1 and CLOSE <= BM:
+		BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
+		#MF.Fibonacci(Data) == 1 and 		
+		if CLOSE <= BM:
 			buySignal = True
 		####Strategy Bollinger and SMA200 METOD 1####
 		#BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
@@ -118,9 +114,11 @@ def sell(Data, CLOSE, pair):
 		# PORT = 10000
 		# tn = telnetlib.Telnet(HOST, PORT)
 		sellSignal1 = False
+		B = MF.Bought_at(pair)
 		####Strategy Fibollinger(Fibonacci-Bollinger)####
 		BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
-		if MF.Fibonacci(Data) == -1 and CLOSE >= BM:
+		#MF.Fibonacci(Data) == -1 and
+		if CLOSE >= BM and CLOSE > B:
 			sellSignal1 = True			
 		#r = MF.analizar_mercado_inteligente_gpu(Data, False)
 		#if r["caida"]["probabilidad_caida"] > 0.7:
