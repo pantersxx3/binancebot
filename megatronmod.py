@@ -142,7 +142,7 @@ def analyze(d, pairs, buy=True):
 		else:
 			file_prefix = 'live_'     
     
-		print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}')
+		#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}')
         
         
 		for pair in pairs:
@@ -178,7 +178,7 @@ def analyze(d, pairs, buy=True):
 							signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
                             #MF.write_log(f'BUY {CLOSE} {position2}', LOG_FILE, False, False)
 							if USE_SIGNALLING_MODULES:
-								print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Buy signal detected...{txcolors.DEFAULT}')
+								#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Buy signal detected...{txcolors.DEFAULT}')
 								with open(SIGNAL_FILE_BUY,'w+') as f:
 									f.write(pair + '\n') 
                                 #break
@@ -188,7 +188,7 @@ def analyze(d, pairs, buy=True):
 					if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:                       
 						if sellSignal00 and float(bought_at) != 0:
 							signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-							print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Sell signal detected...{txcolors.DEFAULT}')
+							#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Sell signal detected...{txcolors.DEFAULT}')
                             #MF.write_log(f'SELL {CLOSE} {bought_at} {position2}', LOG_FILE, False, False)
 							if USE_SIGNALLING_MODULES:
 								with open(SIGNAL_FILE_SELL,'w+') as f:
@@ -247,7 +247,7 @@ def do_work():
 				print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Exit...{txcolors.DEFAULT}') 
 				os.remove("signal.sig")
 				sys.exit(0)
-			print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
+			#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
 			if BACKTESTING_MODE:
 				while os.path.exists('ok.ok'):
 					time.sleep(1/1000) #do_work
@@ -256,13 +256,7 @@ def do_work():
 					f.write('1')
 			else:
 				signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-			time.sleep(MICROSECONDS) #do_work
-            # if len(signalcoins1) > 0:
-                # print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                # #time.sleep(MICROSECONDS)
-            # else:
-                # print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{len(signalcoins1)} coins of {len(pairs)} with Buy Signals. Waiting {1} minutes for next analysis.{txcolors.DEFAULT}')
-                # #time.sleep(MICROSECONDS)            
+			time.sleep(MICROSECONDS) #do_work         
 			DISABLE_WAI = False
 			if not DISABLE_WAI:
 				if "s" in BOT_TIMEFRAME:
@@ -270,7 +264,7 @@ def do_work():
 				else:
 					current_time = time.localtime()
 					seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
-					print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
+					#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
 					time.sleep(seconds_until_next_minute)    
             
 			register_func_name("do_work", locals().items())

@@ -17,10 +17,10 @@ from datetime import date, datetime, timedelta
 from collections import defaultdict
 import pandas_ta as ta #pta
 import pandas as pd
-from ta.trend import SMAIndicator, EMAIndicator, CCIIndicator, MACD
+from ta.trend import SMAIndicator, EMAIndicator, CCIIndicator, MACD, ADXIndicator
 from ta.momentum import RSIIndicator
-from ta.volatility import BollingerBands
-from ta.volume import OnBalanceVolumeIndicator
+from ta.volatility import BollingerBands, AverageTrueRange
+from ta.volume import OnBalanceVolumeIndicator, VolumeWeightedAveragePrice
 import threading
 import os
 import sys
@@ -35,8 +35,8 @@ import random
 
 # Load creds modules
 from helpers.handle_creds import (
-    load_correct_creds, load_discord_creds
-    )
+	load_correct_creds, load_discord_creds
+	)
 
 global config_file, creds_file, parsed_creds, parsed_config, USE_MOST_VOLUME_COINS, PAIR_WITH, SELL_ON_SIGNAL_ONLY, TEST_MODE, LOG_FILE
 global COINS_BOUGHT, EXCHANGE, SCREENER, STOP_LOSS, TAKE_PROFIT, TRADE_SLOTS, BACKTESTING_MODE, BACKTESTING_MODE_TIME_START, SIGNAL_NAME
@@ -45,14 +45,14 @@ global USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE, MAX_HOLDING_T
 
 
 class txcolors:
-    BUY = '\033[92m'
-    WARNING = '\033[93m'
-    SELL_LOSS = '\033[91m'
-    SELL_PROFIT = '\033[32m'
-    DIM = '\033[2m\033[35m'
-    Red = '\033[31m'
-    DEFAULT = '\033[39m'
-    
+	BUY = '\033[92m'
+	WARNING = '\033[93m'
+	SELL_LOSS = '\033[91m'
+	SELL_PROFIT = '\033[32m'
+	DIM = '\033[2m\033[35m'
+	Red = '\033[31m'
+	DEFAULT = '\033[39m'
+	
 DEFAULT_CONFIG_FILE = 'config.yml'
 DEFAULT_CREDS_FILE = 'creds.yml'
 
@@ -81,7 +81,7 @@ TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 BACKTESTING_MODE_TIME_START = parsed_config['script_options']['BACKTESTING_MODE_TIME_START']
 MAX_HOLDING_TIME = parsed_config['trading_options']['MAX_HOLDING_TIME']
 MICROSECONDS = 2
-      
+	  
 #ACTUAL_POSITION = 0
 SIGNAL_NAME = 'MEGATRONMOD'
 #CREATE_BUY_SELL_FILES = True
@@ -90,7 +90,7 @@ EXCHANGE = 'BINANCE'
 SCREENER = 'CRYPTO'
 
 #JSON_FILE_BOUGHT = SIGNAL_NAME + '.json'
-        
+		
 def write_log(logline, LOGFILE = LOG_FILE, show = True, time = False):
 	try:
 		from Boot import set_correct_mode
@@ -123,7 +123,7 @@ def read_position_csv(coin):
 			f.close()
 		else:
 			pos1 = -1
-            #os.remove(coin + '.position')
+			#os.remove(coin + '.position')
 	except Exception as e:
 		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_position_csv(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
 		exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -149,7 +149,7 @@ def get_analysis(d, tf, p, position1=0, num_records=1000):
 				c = d.query('time < @position1').tail(num_records)
 				inttime = int(position1)/1000            
 				position2 = c['time'].iloc[0]
-				print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{BACKTESTING_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
+				#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{BACKTESTING_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
 				d = pd.DataFrame([])
 		else:            
 			client = Client(access_key, secret_key)
@@ -170,7 +170,7 @@ def get_analysis(d, tf, p, position1=0, num_records=1000):
 			c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
 			c['time'] = pd.to_datetime(c['time'], unit='ms')
 			c['Close'] = c['Close'].astype(float)
-            #print(c)
+			#print(c)
 	except Exception as e:
 		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: get_analysis(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
 		exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -179,118 +179,118 @@ def get_analysis(d, tf, p, position1=0, num_records=1000):
 
    
 def Crossunder(arr1, arr2):
-    CrossUnder = 0
-    if not arr1 == None or not arr2 == None:
-        if arr1 != arr2:
-            if arr1 > arr2 and arr2 < arr1:
-                CrossUnder = True
-            else:
-                CrossUnder = False
-        else:
-            CrossUnder = False
-    return CrossUnder
+	CrossUnder = 0
+	if not arr1 == None or not arr2 == None:
+		if arr1 != arr2:
+			if arr1 > arr2 and arr2 < arr1:
+				CrossUnder = True
+			else:
+				CrossUnder = False
+		else:
+			CrossUnder = False
+	return CrossUnder
 
 def Crossover(arr1, arr2):
-    CrossOver = 0
-    if not arr1 == None or not arr2 == None:
-        if arr1 != arr2:
-            if arr1 < arr2 and arr2 > arr1:
-                CrossOver = True
-            else:
-                CrossOver = False
-        else:
-            CrossOver = False
-    return CrossOver
-    
+	CrossOver = 0
+	if not arr1 == None or not arr2 == None:
+		if arr1 != arr2:
+			if arr1 < arr2 and arr2 > arr1:
+				CrossOver = True
+			else:
+				CrossOver = False
+		else:
+			CrossOver = False
+	return CrossOver
+	
 def Cross(arr1, arr2):
-    if round(arr1, 8) == round(arr2, 8):
-        Cross = True
-    else:
-        Cross = False
-    return Cross
-    
+	if round(arr1, 8) == round(arr2, 8):
+		Cross = True
+	else:
+		Cross = False
+	return Cross
+	
 def isNone(var):
-    if var == None:
-        r = 0
-    else:
-        r = var
-    return r
+	if var == None:
+		r = 0
+	else:
+		r = var
+	return r
 
 def read_volume_value(coin, type):
-    try:
-        if TEST_MODE:
-            file_prefix = 'test_'
-        else:
-            file_prefix = 'live_' 
-            
-        if os.path.exists(file_prefix + 'trades.csv'):
-            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
-            df = pd.read_csv(file_prefix + 'trades.csv', delimiter=',', names=column_names)
-            #Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
-            filtered = df[(df["Type"] == " " + type) & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
-            if len(filtered) > 1:
-                return round(float(filtered["Volume"].iloc[-1]),8)
-            elif len(filtered) == 1:
-                return round(float(filtered["Volume"].iloc[0]), 8)
-            else:
-                return 0.0
-        else:
-            return 0.0            
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_comission_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        
+	try:
+		if TEST_MODE:
+			file_prefix = 'test_'
+		else:
+			file_prefix = 'live_' 
+			
+		if os.path.exists(file_prefix + 'trades.csv'):
+			column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
+			df = pd.read_csv(file_prefix + 'trades.csv', delimiter=',', names=column_names)
+			#Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
+			filtered = df[(df["Type"] == " " + type) & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
+			if len(filtered) > 1:
+				return round(float(filtered["Volume"].iloc[-1]),8)
+			elif len(filtered) == 1:
+				return round(float(filtered["Volume"].iloc[0]), 8)
+			else:
+				return 0.0
+		else:
+			return 0.0            
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_comission_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		
 def read_commission_value(coin, type):
-    try:
-        if TEST_MODE:
-            file_prefix = 'test_'
-        else:
-            file_prefix = 'live_'
-            
-        if os.path.exists(file_prefix + 'trades.csv'):
-            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
-            df = pd.read_csv(file_prefix + 'trades.csv', names=column_names)
-            #Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
-            filtered = df[(df["Type"] == " " + type) & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
-            if len(filtered) > 1:
-                return round(float(filtered["Commission"].iloc[-1]), 8)
-            elif len(filtered) == 1:
-                return round(float(filtered["Commission"].iloc[0]), 8)
-            else:
-                return 0.0
-        else:
-            return 0.0
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_commission_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        
+	try:
+		if TEST_MODE:
+			file_prefix = 'test_'
+		else:
+			file_prefix = 'live_'
+			
+		if os.path.exists(file_prefix + 'trades.csv'):
+			column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
+			df = pd.read_csv(file_prefix + 'trades.csv', names=column_names)
+			#Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
+			filtered = df[(df["Type"] == " " + type) & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
+			if len(filtered) > 1:
+				return round(float(filtered["Commission"].iloc[-1]), 8)
+			elif len(filtered) == 1:
+				return round(float(filtered["Commission"].iloc[0]), 8)
+			else:
+				return 0.0
+		else:
+			return 0.0
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_commission_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		
 def read_sell_value(coin):
-    try:
-        if TEST_MODE:
-            file_prefix = 'test_'
-        else:
-            file_prefix = 'live_'
-            
-        if os.path.exists(file_prefix + 'trades.csv'):
-            column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
-            df = pd.read_csv(file_prefix + 'trades.csv', names=column_names)
-            #Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
-            filtered = df[(df["Type"] ==' Sell') & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
-            if len(filtered) > 1:
-                return round(float(filtered["Sell Price"].iloc[-1]), 8)
-            elif len(filtered) == 1:
-                return round(float(filtered["Sell Price"].iloc[0]), 8)
-            else:
-                return 0.0
-        else:
-            return 0.0
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_sell_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-    
+	try:
+		if TEST_MODE:
+			file_prefix = 'test_'
+		else:
+			file_prefix = 'live_'
+			
+		if os.path.exists(file_prefix + 'trades.csv'):
+			column_names = ["Datetime", "OrderID", "Type", "Coin", "Volume", "Buy Price", "Amount of Buy USDT", "Sell Price", "Amount of Sell USDT", "Sell Reason", "Profit $ USDT", "Commission"]
+			df = pd.read_csv(file_prefix + 'trades.csv', names=column_names)
+			#Datetime, OrderID, Type, Coin, Volume, Buy Price, Amount of Buy USDT, Sell Price, Amount of Sell USDT, Sell Reason, Profit $ USDT
+			filtered = df[(df["Type"] ==' Sell') & (df["Coin"] == " " + coin.replace(PAIR_WITH, ""))]
+			if len(filtered) > 1:
+				return round(float(filtered["Sell Price"].iloc[-1]), 8)
+			elif len(filtered) == 1:
+				return round(float(filtered["Sell Price"].iloc[0]), 8)
+			else:
+				return 0.0
+		else:
+			return 0.0
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: read_sell_value(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+	
 def load_json(p):
 	try:
 		from Boot import set_correct_mode
@@ -320,245 +320,255 @@ def load_json(p):
 	return value1, value2, value3
 
 def isfloat(num):
-    try:
-        float(num)
-        return True
-    except ValueError:
-        return False
-        
+	try:
+		float(num)
+		return True
+	except ValueError:
+		return False
+		
 def print_dic(dic, with_key=False, with_value=True):
-    try:
-        str1 = ''
-        for key, value in dic.items():
-            if with_key == False:
-                if not value == {}:
-                    if isfloat(value):
-                        str1 = str1 + str(round(float(value),8)) + ','
-                    else:
-                        str1 = str1 + str(value) + ','
-            else:
-                if with_value:
-                    if not value == {}:
-                        if isfloat(value):    
-                            str1 = str1 + str(key) + ':' + str(round(float(value),8)) + ','
-                        else:
-                            str1 = str1 + str(key) + ':' + str(value) + ','
-                else:
-                    str1 = str1 + str(key) + ','
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: print_dic(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-    return str1[:-1]
-    
+	try:
+		str1 = ''
+		for key, value in dic.items():
+			if with_key == False:
+				if not value == {}:
+					if isfloat(value):
+						str1 = str1 + str(round(float(value),8)) + ','
+					else:
+						str1 = str1 + str(value) + ','
+			else:
+				if with_value:
+					if not value == {}:
+						if isfloat(value):    
+							str1 = str1 + str(key) + ':' + str(round(float(value),8)) + ','
+						else:
+							str1 = str1 + str(key) + ':' + str(value) + ','
+				else:
+					str1 = str1 + str(key) + ','
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: print_dic(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+	return str1[:-1]
+	
 def list_indicators():
-    try:
-        list_indicators = []
-        list_indicators = ["Bollinger_Bands", "Cci", "Cross", "Crossover", "Crossunder", "Ema", "Heikinashi", "Hma", "Ichimoku", "Macd", "Momentum", "Rsi", "Sl", "Sma", "Stochastic", "Supertrend", "Tp", "Wma", "Zigzag"]
-    except Exception as e:
-        write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: list_indicators(): {e}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        pass
-    return list_variables
+	try:
+		list_indicators = []
+		list_indicators = ["Bollinger_Bands", "Cci", "Cross", "Crossover", "Crossunder", "Ema", "Heikinashi", "Hma", "Ichimoku", "Macd", "Momentum", "Rsi", "Sl", "Sma", "Stochastic", "Supertrend", "Tp", "Wma", "Zigzag"]
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: list_indicators(): {e}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		pass
+	return list_variables
  
 def defaultdict_from_dict(d):
-    nd = lambda: defaultdict(nd)
-    ni = nd()
-    ni.update(d)
-    return ni
+	nd = lambda: defaultdict(nd)
+	ni = nd()
+	ni.update(d)
+	return ni
 
 def ret_time(df):
-    TIME_1M = df['time'].iloc[-1]
-    if not isinstance(TIME_1M, pd._libs.tslibs.timestamps.Timestamp):
-        time1 = int(TIME_1M)/1000
-        time_1MIN = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S")
-    else:
-        time_1MIN = TIME_1M
-    return time_1MIN
-    
+	TIME_1M = df['time'].iloc[-1]
+	if not isinstance(TIME_1M, pd._libs.tslibs.timestamps.Timestamp):
+		time1 = int(TIME_1M)/1000
+		time_1MIN = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S")
+	else:
+		time_1MIN = TIME_1M
+	return time_1MIN
+	
 # def save_indicator(items):
-    # try:
+	# try:
 
-        # if TEST_MODE:
-                # file_prefix = 'test_'
-        # else:
-            # file_prefix = 'live_'                
-         
-        # data_indicator = pd.DataFrame([]) 
-        # csv_indicators = file_prefix + TRADES_INDICATORS
-        
-        # for name, myvalue in list(items):
-            # if name.endswith('_IND'): # or name == 'time_1MIN':
-                # myvalue = str(myvalue).strip()
-                # data_indicators = pd.DataFrame([])
-                # data_indicators[name] = [myvalue] 
-                   
-                # if not data_indicators.empty:
-                    # data_indicators.to_csv(csv_indicators.replace('.csv', '') + "_" + name + '.csv', mode='a', index=False, header=False)
+		# if TEST_MODE:
+				# file_prefix = 'test_'
+		# else:
+			# file_prefix = 'live_'                
+		 
+		# data_indicator = pd.DataFrame([]) 
+		# csv_indicators = file_prefix + TRADES_INDICATORS
+		
+		# for name, myvalue in list(items):
+			# if name.endswith('_IND'): # or name == 'time_1MIN':
+				# myvalue = str(myvalue).strip()
+				# data_indicators = pd.DataFrame([])
+				# data_indicators[name] = [myvalue] 
+				   
+				# if not data_indicators.empty:
+					# data_indicators.to_csv(csv_indicators.replace('.csv', '') + "_" + name + '.csv', mode='a', index=False, header=False)
 
-    # except Exception as e:
-        # write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: #save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
-        # exc_type, exc_obj, exc_tb = sys.exc_info()
-        # write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        # pass
+	# except Exception as e:
+		# write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: #save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		# pass
 
 # def save_strategy(items):
-    # try:
-        # TRADES_STRATEGY = 'strategy.csv'
-        # if TEST_MODE:
-                # file_prefix = 'test_'
-        # else:
-            # file_prefix = 'live_'                
-         
-        # data_strategy = pd.DataFrame([]) #buySignal price sellSignal price result
-        # csv_strategy  = file_prefix + TRADES_STRATEGY
-        
-        # for name, myvalue in list(items):
-            # if name.startswith('buy') or name.startswith('sell'):
-                # myvalue = str(myvalue).strip()
-                # data_strategy = pd.DataFrame([])
-                # if 'buy' in name:
-                    # data_strategy [name] = [myvalue] 
-                   
-                # if not data_strategy.empty:
-                    # data_strategy.to_csv(csv_strategy, mode='a', index=False, header=False)
+	# try:
+		# TRADES_STRATEGY = 'strategy.csv'
+		# if TEST_MODE:
+				# file_prefix = 'test_'
+		# else:
+			# file_prefix = 'live_'                
+		 
+		# data_strategy = pd.DataFrame([]) #buySignal price sellSignal price result
+		# csv_strategy  = file_prefix + TRADES_STRATEGY
+		
+		# for name, myvalue in list(items):
+			# if name.startswith('buy') or name.startswith('sell'):
+				# myvalue = str(myvalue).strip()
+				# data_strategy = pd.DataFrame([])
+				# if 'buy' in name:
+					# data_strategy [name] = [myvalue] 
+				   
+				# if not data_strategy.empty:
+					# data_strategy.to_csv(csv_strategy, mode='a', index=False, header=False)
 
-    # except Exception as e:
-        # write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: #save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
-        # exc_type, exc_obj, exc_tb = sys.exc_info()
-        # write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        # pass
-        
+	# except Exception as e:
+		# write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.Red}Exception: #save_indicator(): {e}', SIGNAL_NAME + '.log', True, False)
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		# pass
+		
 def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
-    df = pd.DataFrame(DF_Data)
-    df[['spanA', 'spanB', 'tenkan_sen', 'kijun_sen', 'chikou_span']] = ta.ichimoku(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], TENKA, KIJUN, SENKU)
-    spanA = round(df['spanA'], 8)
-    spanB = round(df['spanB'], 8)
-    tenkan_sen_IND = round(df['tenkan_sen'], 8)
-    kijun_sen_IND = round(df['kijun_sen'], 8)
-    chikou_span_IND = round(df['chikou_span'], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
-    
+	df = pd.DataFrame(DF_Data)
+	df[['spanA', 'spanB', 'tenkan_sen', 'kijun_sen', 'chikou_span']] = ta.ichimoku(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], TENKA, KIJUN, SENKU)
+	spanA = round(df['spanA'], 8)
+	spanB = round(df['spanB'], 8)
+	tenkan_sen_IND = round(df['tenkan_sen'], 8)
+	kijun_sen_IND = round(df['kijun_sen'], 8)
+	chikou_span_IND = round(df['chikou_span'], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
+	
 def Bollinger_Bands(DF_Data, LENGHT, STD):
-    df = pd.DataFrame()
-    df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(DF_Data['Close'], length=LENGHT, std=STD)
-    B1_IND = round(df['upper'].iloc[-1], 8)
-    BM_IND = round(df['middle'].iloc[-1], 8)
-    B2_IND = round(df['lower'].iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return B1_IND, BM_IND, B2_IND
+	df = pd.DataFrame()
+	df[['lower', 'middle', 'upper', 'bandwidth', 'percentcolumns']] = ta.bbands(DF_Data['Close'], length=LENGHT, std=STD)
+	B1_IND = round(df['upper'].iloc[-1], 8)
+	BM_IND = round(df['middle'].iloc[-1], 8)
+	B2_IND = round(df['lower'].iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return B1_IND, BM_IND, B2_IND
 
 def Supertrend(DF_Data, LENGHT, MULT):
-    df = pd.DataFrame()
-    df[['supertrend', 'supertrend_direc', 'supertrend_down', 'supertrend_up']] = ta.supertrend(pd.to_numeric(DF_Data['High']), pd.to_numeric(DF_Data['Low']), pd.to_numeric(DF_Data['Close']), length=LENGHT, multiplier=MULT)
-    SUPERTRENDUP_IND = round(df['supertrend_up'].iloc[-1], 8)
-    SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 8)
-    SUPERTREND_IND = round(df['supertrend'].iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return SUPERTREND_IND, SUPERTRENDDOWN_IND, SUPERTRENDUP_IND
+	df = pd.DataFrame()
+	df[['supertrend', 'supertrend_direc', 'supertrend_down', 'supertrend_up']] = ta.supertrend(pd.to_numeric(DF_Data['High']), pd.to_numeric(DF_Data['Low']), pd.to_numeric(DF_Data['Close']), length=LENGHT, multiplier=MULT)
+	SUPERTRENDUP_IND = round(df['supertrend_up'].iloc[-1], 8)
+	SUPERTRENDDOWN_IND = round(df['supertrend_down'].iloc[-1], 8)
+	SUPERTREND_IND = round(df['supertrend'].iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return SUPERTREND_IND, SUPERTRENDDOWN_IND, SUPERTRENDUP_IND
 
 def Momentum(DF_Data, LENGHT):
-    MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)    
-    #save_indicator(locals().items())
-    return MOMENTUM_IND
-    
+	MOMENTUM_IND = round(ta.mom(DF_Data['Close'], timeperiod=LENGHT).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)    
+	#save_indicator(locals().items())
+	return MOMENTUM_IND
+	
 def Ema(DF_Data, LENGHT):
-    EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return EMA_IND
+	EMA_IND = round(ta.ema(DF_Data['Close'], length=LENGHT).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return EMA_IND
 
 def Sma(DF_Data, LENGHT):
-    SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())    
-    return SMA_IND
+	SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())    
+	return SMA_IND
 
 def Stochastic(DF_Data, LENGHT, K, D):
-    STOCHK_1M_DATA = pd.DataFrame()
-    STOCHK_1M_DATA[['k', 'd']] = ta.stoch(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], LENGHT, K, D)
-    STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 8)
-    STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return STOCHK_IND, STOCHD_IND
-    
+	STOCHK_1M_DATA = pd.DataFrame()
+	STOCHK_1M_DATA[['k', 'd']] = ta.stoch(DF_Data['High'], DF_Data['Low'], DF_Data['Close'], LENGHT, K, D)
+	STOCHK_IND = round(STOCHK_1M_DATA['k'].iloc[-1], 8)
+	STOCHD_IND = round(STOCHK_1M_DATA['d'].iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return STOCHK_IND, STOCHD_IND
+	
 def Rsi(DF_Data, LENGHT):
-    RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return RSI_IND
+	RSI_IND = round(ta.rsi(DF_Data['Close'], LENGHT).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return RSI_IND
 
 def Wma(DF_Data, LENGHT):
-    WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return WMA_IND
-    
+	WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return WMA_IND
+	
 def Hma(DF_Data, LENGHT):
-    HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return HMA_IND
-    
+	HMA_IND = round(ta.hma(DF_Data['Close'], LENGHT).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return HMA_IND
+	
 def Heikinashi(DF_Data):
-    HEIKINASHI_1M_DATA = pd.DataFrame()
-    HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_Close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
-    HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 8)
-    HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 8)
-    HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 8)
-    HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_Close'], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
+	HEIKINASHI_1M_DATA = pd.DataFrame()
+	HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_Close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
+	HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 8)
+	HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 8)
+	HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 8)
+	HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_Close'], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
 
 def Macd(DF_Data, FAST, SLOW, SIGNAL):
-    MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return MACD_IND, MACDHIST_IND, MACDSIG_IND
-    
+	MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return MACD_IND, MACDHIST_IND, MACDSIG_IND
+	
 def Cci(DF_Data, LENGHT):
-    CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 8)
-    #time_1MIN = ret_time(DF_Data)
-    #save_indicator(locals().items())
-    return CCI_IND
+	CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return CCI_IND
 
 def Sl(PAIR, CLOSE):
-    try:
-        #r = False
-        bought_at, timeHold, coins_bought = load_json(PAIR)
-        SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
-        r = float(CLOSE) < float(SL) and float(SL) != 0
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        print('Sl Error on line ' + str(exc_tb.tb_lineno))
-        pass    
-    return r
-    
+	try:
+		#r = False
+		bought_at, timeHold, coins_bought = load_json(PAIR)
+		SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
+		r = float(CLOSE) < float(SL) and float(SL) != 0
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print('Sl Error on line ' + str(exc_tb.tb_lineno))
+		pass    
+	return r
+	
 def Tp(PAIR, CLOSE):
-    try:
-        global TAKE_PROFIT
-        sellSignalTP = False
-        bought_at, timeHold, coins_bought = load_json(PAIR)
-        TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
-        sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0.0)
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        print('Tp Error on line ' + str(exc_tb.tb_lineno))
-        pass
-    return sellSignalTP
-    
+	try:
+		global TAKE_PROFIT
+		sellSignalTP = False
+		bought_at, timeHold, coins_bought = load_json(PAIR)
+		TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
+		sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0.0)
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print('Tp Error on line ' + str(exc_tb.tb_lineno))
+		pass
+	return sellSignalTP
+	
 def Bought_at(PAIR):
-    bought_at, timeHold, coins_bought = load_json(PAIR)
-    return bought_at
-    
+	bought_at, timeHold, coins_bought = load_json(PAIR)
+	return bought_at
+
+def Bought_timeHold(PAIR):
+	bought_at, timeHold, coins_bought = load_json(PAIR)
+	return timeHold
+	
+def TimeHold(pair, current_timestamp_seconds):
+	TimeHold_seconds = Bought_timeHold(pair)/1000
+	TimeHold_sec = current_timestamp_seconds - TimeHold_seconds
+	TimeHold_min = TimeHold_sec / 60
+	return TimeHold_min
+	
 def Zigzag(DF_data, length):
 	try:
 		zigzag = pd.Series(np.nan, index=DF_data.index)
@@ -604,12 +614,12 @@ def Zigzag(DF_data, length):
 	#return DF_Data
  
 def contar_decimales(numero):
-    numero_str = str(numero)
-    if '.' in numero_str:
-        parte_decimal = numero_str.split('.')[1]
-        return len(parte_decimal)
-    else:
-        return 0
+	numero_str = str(numero)
+	if '.' in numero_str:
+		parte_decimal = numero_str.split('.')[1]
+		return len(parte_decimal)
+	else:
+		return 0
 		
 def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
 	try:
@@ -653,174 +663,174 @@ def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
 	return False
 	
 def probabilidad_precio_otro(DF_data, minutos_adelante, close, takeprofit, n_simulaciones=1000000):
-    # Verificar datos
-    if len(DF_data) < 10:
-        raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
-    
-    precios = DF_data['Close'].values
-    retornos = np.log(precios[1:] / precios[:-1]) * 100
-    
-    if len(retornos) < 5:
-        raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
-    
-    if np.std(retornos) < 1e-5:
-        raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
-    
-    # Ajustar modelo GARCH(1,1)
-    retornos_rescalados = retornos * 10
-    #print("Ajustando modelo GARCH(1,1)...")
-    modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
-    resultado = modelo.fit(disp='on')
-    
-    if not resultado.convergence_flag == 0:
-        print("Advertencia: El modelo no convergió correctamente.")
-    
-    # Simular retornos futuros
-    #print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
-    simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
-    
-    if simulaciones.simulations is None or simulaciones.simulations.values is None:
-        raise ValueError("El método forecast no generó simulaciones válidas.")
-    
-    retornos_simulados = simulaciones.simulations.values[-1].T
-    ultimo_precio = precios[-1]
-    precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
-    precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
-    
-    for t in range(1, minutos_adelante):
-        precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
-    
-    # Calcular probabilidades
-    valores_unicos = np.unique(precios)
-    resultados = {}
-    
-    for minuto in range(minutos_adelante):
-        precios_minuto = np.round(precios_simulados[minuto], 2)
-        conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
-        probabilidades = conteos / n_simulaciones
-        resultados[f'Minuto_{minuto + 1}'] = probabilidades
-    
-    # Crear DataFrame y filtrar probabilidades 0
-    df_resultado = pd.DataFrame(resultados, index=valores_unicos)
-    df_resultado.index.name = 'Precio'
-    df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
-    
-    # Analizar probabilidad más alta del último minuto
-    ultima_columna = f'Minuto_{minutos_adelante}'
-    prob_max = df_resultado[ultima_columna].max()
-    precios_max = df_resultado.index[df_resultado[ultima_columna] == prob_max].tolist()
-    
-    if len(precios_max) == len(df_resultado) and prob_max > 0:
-        # Todas las probabilidades son iguales
-        precio_predicho = max(precios_max)  # Tomamos el máximo del rango
-    else:
-        # Tomamos el precio más alto con la probabilidad máxima (si hay varios)
-        precio_predicho = max(precios_max)
-    
-    # Comparar con takeprofit
-    return precio_predicho > takeprofit
+	# Verificar datos
+	if len(DF_data) < 10:
+		raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
+	
+	precios = DF_data['Close'].values
+	retornos = np.log(precios[1:] / precios[:-1]) * 100
+	
+	if len(retornos) < 5:
+		raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
+	
+	if np.std(retornos) < 1e-5:
+		raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
+	
+	# Ajustar modelo GARCH(1,1)
+	retornos_rescalados = retornos * 10
+	#print("Ajustando modelo GARCH(1,1)...")
+	modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
+	resultado = modelo.fit(disp='on')
+	
+	if not resultado.convergence_flag == 0:
+		print("Advertencia: El modelo no convergió correctamente.")
+	
+	# Simular retornos futuros
+	#print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
+	simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
+	
+	if simulaciones.simulations is None or simulaciones.simulations.values is None:
+		raise ValueError("El método forecast no generó simulaciones válidas.")
+	
+	retornos_simulados = simulaciones.simulations.values[-1].T
+	ultimo_precio = precios[-1]
+	precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
+	precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
+	
+	for t in range(1, minutos_adelante):
+		precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
+	
+	# Calcular probabilidades
+	valores_unicos = np.unique(precios)
+	resultados = {}
+	
+	for minuto in range(minutos_adelante):
+		precios_minuto = np.round(precios_simulados[minuto], 2)
+		conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
+		probabilidades = conteos / n_simulaciones
+		resultados[f'Minuto_{minuto + 1}'] = probabilidades
+	
+	# Crear DataFrame y filtrar probabilidades 0
+	df_resultado = pd.DataFrame(resultados, index=valores_unicos)
+	df_resultado.index.name = 'Precio'
+	df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
+	
+	# Analizar probabilidad más alta del último minuto
+	ultima_columna = f'Minuto_{minutos_adelante}'
+	prob_max = df_resultado[ultima_columna].max()
+	precios_max = df_resultado.index[df_resultado[ultima_columna] == prob_max].tolist()
+	
+	if len(precios_max) == len(df_resultado) and prob_max > 0:
+		# Todas las probabilidades son iguales
+		precio_predicho = max(precios_max)  # Tomamos el máximo del rango
+	else:
+		# Tomamos el precio más alto con la probabilidad máxima (si hay varios)
+		precio_predicho = max(precios_max)
+	
+	# Comparar con takeprofit
+	return precio_predicho > takeprofit
 
 def probabilidad_precio_simple(DF_data, minutos_adelante, n_simulaciones=1000000):
-    precios = DF_data['Close'].values
-    retornos = np.log(precios[1:] / precios[:-1]) * 100
-    volatilidad = np.std(retornos)
-    
-    ultimo_precio = precios[-1]
-    precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
-    
-    for t in range(minutos_adelante):
-        retornos_aleatorios = np.random.normal(0, volatilidad, n_simulaciones)
-        if t == 0:
-            precios_simulados[t] = ultimo_precio * np.exp(retornos_aleatorios / 100)
-        else:
-            precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_aleatorios / 100)
-    
-    valores_unicos = np.unique(precios)
-    resultados = {}
-    
-    for minuto in range(minutos_adelante):
-        precios_minuto = np.round(precios_simulados[minuto], 2)
-        conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
-        probabilidades = conteos / n_simulaciones
-        resultados[f'Minuto_{minuto + 1}'] = probabilidades
-    
-    # Crear DataFrame y filtrar filas con todas las probabilidades igual a 0
-    df_resultado = pd.DataFrame(resultados, index=valores_unicos)
-    df_resultado.index.name = 'Precio'
-    df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
-    
-    return df_resultado
+	precios = DF_data['Close'].values
+	retornos = np.log(precios[1:] / precios[:-1]) * 100
+	volatilidad = np.std(retornos)
+	
+	ultimo_precio = precios[-1]
+	precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
+	
+	for t in range(minutos_adelante):
+		retornos_aleatorios = np.random.normal(0, volatilidad, n_simulaciones)
+		if t == 0:
+			precios_simulados[t] = ultimo_precio * np.exp(retornos_aleatorios / 100)
+		else:
+			precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_aleatorios / 100)
+	
+	valores_unicos = np.unique(precios)
+	resultados = {}
+	
+	for minuto in range(minutos_adelante):
+		precios_minuto = np.round(precios_simulados[minuto], 2)
+		conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
+		probabilidades = conteos / n_simulaciones
+		resultados[f'Minuto_{minuto + 1}'] = probabilidades
+	
+	# Crear DataFrame y filtrar filas con todas las probabilidades igual a 0
+	df_resultado = pd.DataFrame(resultados, index=valores_unicos)
+	df_resultado.index.name = 'Precio'
+	df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
+	
+	return df_resultado
 	
 def probabilidad_precio_tp(DF_data, minutos_adelante, close, takeprofit, n_simulaciones=10000000):
-    # Verificar datos
-    if len(DF_data) < 10:
-        raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
-    
-    precios = DF_data['Close'].values
-    retornos = np.log(precios[1:] / precios[:-1]) * 100
-    
-    if len(retornos) < 5:
-        raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
-    
-    if np.std(retornos) < 1e-5:
-        raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
-    
-    # Ajustar modelo GARCH(1,1)
-    retornos_rescalados = retornos * 10
-    #print("Ajustando modelo GARCH(1,1)...")
-    modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
-    resultado = modelo.fit(disp='off')
-    
-    if not resultado.convergence_flag == 0:
-        print("Advertencia: El modelo no convergió correctamente.")
-    
-    # Simular retornos futuros
-    #print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
-    simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
-    
-    if simulaciones.simulations is None or simulaciones.simulations.values is None:
-        raise ValueError("El método forecast no generó simulaciones válidas.")
-    
-    retornos_simulados = simulaciones.simulations.values[-1].T
-    ultimo_precio = precios[-1]
-    precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
-    precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
-    
-    for t in range(1, minutos_adelante):
-        precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
-    
-    # Calcular probabilidades
-    valores_unicos = np.unique(precios)
-    resultados = {}
-    
-    for minuto in range(minutos_adelante):
-        precios_minuto = np.round(precios_simulados[minuto], 2)
-        conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
-        probabilidades = conteos / n_simulaciones
-        resultados[f'Minuto_{minuto + 1}'] = probabilidades
-    
-    # Crear DataFrame y filtrar probabilidades 0
-    df_resultado = pd.DataFrame(resultados, index=valores_unicos)
-    df_resultado.index.name = 'Precio'
-    df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
-    
-    # Verificar si algún minuto supera el takeprofit
-    for minuto in range(minutos_adelante):
-        col = f'Minuto_{minuto + 1}'
-        prob_max = df_resultado[col].max()
-        precios_max = df_resultado.index[df_resultado[col] == prob_max].tolist()
-        
-        if len(precios_max) == len(df_resultado) and prob_max > 0:
-            # Todas las probabilidades son iguales, tomamos el máximo del rango
-            precio_predicho = max(precios_max)
-        else:
-            # Tomamos el precio más alto con la probabilidad máxima
-            precio_predicho = max(precios_max)
-        
-        if precio_predicho > takeprofit:
-            return True
-    
-    return False
+	# Verificar datos
+	if len(DF_data) < 10:
+		raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
+	
+	precios = DF_data['Close'].values
+	retornos = np.log(precios[1:] / precios[:-1]) * 100
+	
+	if len(retornos) < 5:
+		raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
+	
+	if np.std(retornos) < 1e-5:
+		raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
+	
+	# Ajustar modelo GARCH(1,1)
+	retornos_rescalados = retornos * 10
+	#print("Ajustando modelo GARCH(1,1)...")
+	modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
+	resultado = modelo.fit(disp='off')
+	
+	if not resultado.convergence_flag == 0:
+		print("Advertencia: El modelo no convergió correctamente.")
+	
+	# Simular retornos futuros
+	#print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
+	simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
+	
+	if simulaciones.simulations is None or simulaciones.simulations.values is None:
+		raise ValueError("El método forecast no generó simulaciones válidas.")
+	
+	retornos_simulados = simulaciones.simulations.values[-1].T
+	ultimo_precio = precios[-1]
+	precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
+	precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
+	
+	for t in range(1, minutos_adelante):
+		precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
+	
+	# Calcular probabilidades
+	valores_unicos = np.unique(precios)
+	resultados = {}
+	
+	for minuto in range(minutos_adelante):
+		precios_minuto = np.round(precios_simulados[minuto], 2)
+		conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
+		probabilidades = conteos / n_simulaciones
+		resultados[f'Minuto_{minuto + 1}'] = probabilidades
+	
+	# Crear DataFrame y filtrar probabilidades 0
+	df_resultado = pd.DataFrame(resultados, index=valores_unicos)
+	df_resultado.index.name = 'Precio'
+	df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
+	
+	# Verificar si algún minuto supera el takeprofit
+	for minuto in range(minutos_adelante):
+		col = f'Minuto_{minuto + 1}'
+		prob_max = df_resultado[col].max()
+		precios_max = df_resultado.index[df_resultado[col] == prob_max].tolist()
+		
+		if len(precios_max) == len(df_resultado) and prob_max > 0:
+			# Todas las probabilidades son iguales, tomamos el máximo del rango
+			precio_predicho = max(precios_max)
+		else:
+			# Tomamos el precio más alto con la probabilidad máxima
+			precio_predicho = max(precios_max)
+		
+		if precio_predicho > takeprofit:
+			return True
+	
+	return False
 	
 def probabilidad_precio(DF_data, minutos_adelante, close, porcentaje_aumento=0.001, n_simulaciones=1000):
 	try:
@@ -857,47 +867,131 @@ def probabilidad_precio(DF_data, minutos_adelante, close, porcentaje_aumento=0.0
 def spread_strategy(min_spread, max_spread, DF_Data):
 	open_price = DF_Data['Open'].iloc[-1]   # precio de compra
 	close_price = DF_Data['Close'].iloc[-1] # precio de venta
-
 	spread = (close_price - open_price) / open_price * 100  # % de spread
-	
-	print("spread=", spread)
-
 	if spread <= min_spread:
 		return 1
 	elif spread >= max_spread:
 		return 2
 
 def calculate_fibonacci(data, length=100):
-    if len(data) < length:
-        raise ValueError("No hay suficientes datos para calcular Fibonacci.")
-    sub_data = data[-length:]
-    
-    max_price = sub_data['High'].max()
-    min_price = sub_data['Low'].min()
-    
-    diff = max_price - min_price
-    
-    niveles = {
-        '0.0': max_price,
-        '0.236': max_price - 0.236 * diff,
-        '0.382': max_price - 0.382 * diff,
-        '0.5': max_price - 0.5 * diff,
-        '0.618': max_price - 0.618 * diff,
-        '0.786': max_price - 0.786 * diff,
-        '1.0': min_price
-    }
-    return niveles
+	if len(data) < length:
+		raise ValueError("No hay suficientes datos para calcular Fibonacci.")
+	sub_data = data[-length:]
+	
+	max_price = sub_data['High'].max()
+	min_price = sub_data['Low'].min()
+	
+	diff = max_price - min_price
+	
+	niveles = {
+		'0.0': max_price,
+		'0.236': max_price - 0.236 * diff,
+		'0.382': max_price - 0.382 * diff,
+		'0.5': max_price - 0.5 * diff,
+		'0.618': max_price - 0.618 * diff,
+		'0.786': max_price - 0.786 * diff,
+		'1.0': min_price
+	}
+	return niveles
 
 def Fibonacci(data, length=100):
-    fibo = calculate_fibonacci(data, length)
-    nivel_618 = fibo['0.618']
-    
-    precio_anterior = data['Close'].iloc[-2]
-    precio_actual = data['Close'].iloc[-1]
+	fibo = calculate_fibonacci(data, length)
+	nivel_618 = fibo['0.618']
+	
+	precio_anterior = data['Close'].iloc[-2]
+	precio_actual = data['Close'].iloc[-1]
 
-    if precio_anterior < nivel_618 and precio_actual > nivel_618:
-        return 1 #"COMPRA"
-    elif precio_anterior > nivel_618 and precio_actual < nivel_618:
-        return -1 #"VENTA"
-    else:
-        return 0 #"ESPERAR"
+	if precio_anterior < nivel_618 and precio_actual > nivel_618:
+		return 1 #"COMPRA"
+	elif precio_anterior > nivel_618 and precio_actual < nivel_618:
+		return -1 #"VENTA"
+	else:
+		return 0 #"ESPERAR"
+
+def B(data):
+    return (data['High'].iloc[-1] + data['Low'].iloc[-1] + data['Close'].iloc[-1]) / 3
+	
+def Adx(data, adx_period=14):
+	adx = ADXIndicator(
+		high=data['High'],
+		low=data['Low'],
+		close=data['Close'],
+		window=adx_period
+	)
+
+	ADX = adx.adx()
+	DI_positive = adx.adx_pos()
+	DI_negative = adx.adx_neg()
+
+	return ADX.iloc[-1], DI_positive.iloc[-1], DI_negative.iloc[-1]
+	
+def Calculate_Market_Direction(data, adx_period=14, adx_threshold=20):
+	ADX, DI_positive, DI_negative = Adx(data, adx_period)
+	
+	if ADX > adx_threshold:
+		if DI_positive > DI_negative:
+			return 'alcista'
+		elif DI_negative > DI_positive:
+			return 'bajista'		
+	return 'sin_tendencia'
+	
+def Atr(data, atr_period=14):
+	atr = AverageTrueRange(
+		high=data['High'],
+		low=data['Low'],
+		close=data['Close'],
+		window=atr_period
+	).average_true_range()
+	
+	normalized_atr = atr.iloc[-1] / data['Close'].iloc[-1]
+	return normalized_atr
+	
+def evaluar_compresion_bollinger(data, bb_window=20, umbral_compresion=0.01):	
+	data = data.copy()
+	bb = BollingerBands(
+		close=data['Close'],
+		window=bb_window,
+		window_dev=2
+	)
+
+	data['bb_upper'] = bb.bollinger_hband()
+	data['bb_lower'] = bb.bollinger_lband()
+	data['bb_width'] = data['bb_upper'] - data['bb_lower']
+	data['bb_width_pct'] = data['bb_width'] / data['Close']
+	
+	ultima_width = data['bb_width_pct'].iloc[-1]
+	return ultima_width < umbral_compresion
+
+def confirmar_volumen(data, window=5, umbral=1.2):
+	vwap = VolumeWeightedAveragePrice(
+		high=data['High'],
+		low=data['Low'],
+		close=data['Close'],
+		volume=data['Volume'],
+		window=window
+	).volume_weighted_average_price()
+	volumen_actual = data['Volume'].iloc[-1]
+	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
+	return volumen_actual > umbral * volumen_promedio
+
+def es_consolidacion(data, adx_threshold=20, atr_threshold=0.003):
+	adx, _, _ = Adx(data)
+	atr = Atr(data)
+	return adx < adx_threshold and atr < atr_threshold
+	
+def detectar_tipo_de_mercado(data, umbral_alto_volatilidad=0.01):
+	tendencia = Calculate_Market_Direction(data)
+	volatilidad = Atr(data)
+	consolidacion = es_consolidacion(data)
+	volumen_alto = confirmar_volumen(data)
+
+	if tendencia == 'alcista' and volumen_alto:
+		return 'tendencia_alcista_confirmada'
+	elif tendencia == 'bajista' and volumen_alto:
+		return 'tendencia_bajista_confirmada'
+	elif consolidacion and not volumen_alto:
+		return 'consolidacion'
+	elif volatilidad > umbral_alto_volatilidad:
+		return 'volatil'
+	else:
+		return 'rango_lateral'

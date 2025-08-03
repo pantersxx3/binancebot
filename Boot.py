@@ -70,7 +70,7 @@ import time
 import json
 
 #print output tables
-from prettytable import PrettyTable, from_html_one
+from prettytable import PrettyTable, from_html_one, ALL
 
 #for regex
 import re
@@ -138,7 +138,7 @@ global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_to
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
 global BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-global SILENT_MODE
+global SILENT_MODE, Test_Pos_Now
 
 SAVED_COINS = {}
 parsed_creds = []
@@ -176,6 +176,7 @@ trade_losses = 0
 bot_started_datetime = ""
 function_variables = {}
 commissionCoins = {}
+Test_Pos_Now = ""
 
 def convertir_a_str(value):
 	if isinstance(value, dict):
@@ -503,7 +504,7 @@ def read_next_row_csv(coin, nonext=False):
 		# time1 = 0        
 
 		# file_prefix = prefix_type()
-        
+		
 		# if USE_SIGNALLING_MODULES:
 			# while not os.path.exists('ok.ok'):
 				# time.sleep(1/1000)
@@ -534,7 +535,7 @@ def read_next_row_csv(coin, nonext=False):
 			# price = float(c['Close'])
 			# time1 = int(c['time'])
 			# c = pd.DataFrame([]) 
-            
+			
 		# write_position_csv(coin,str(time1))
 
 		# if USE_SIGNALLING_MODULES: 
@@ -548,17 +549,17 @@ def read_next_row_csv(coin, nonext=False):
 				
 def get_all_tickers(nonext=False):
 	try:
-		global client
+		global client, Test_Pos_Now
 		pairs = {}
 		TICKERS = ''
 		coins = []
-        
+		
 		if USE_MOST_VOLUME_COINS == True:
 			TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
 		else:
 			TICKERS = 'tickers.txt'            
-        #for line in open(TICKERS):
-        #pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")]  
+		#for line in open(TICKERS):
+		#pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")]  
 		with open(TICKERS, "r") as file:
 			lines = file.readlines() 
 		pairs = [line.strip() + PAIR_WITH for line in lines if line.strip()]        
@@ -568,10 +569,11 @@ def get_all_tickers(nonext=False):
 				file = coin + '.csv'
 				while not os.path.exists(file):
 					download_data(coin)
-                #sys.exit(1)
-                #price, time = csv_bot.read_next_row_csv(coin) #get_all_tickers 
+				#sys.exit(1)
+				#price, time = csv_bot.read_next_row_csv(coin) #get_all_tickers 
 				price, time = read_next_row_csv(coin, nonext)
-				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {languages_bot.MSG6[LANGUAGE]} {BACKTESTING_MODE_TIME_START} - {txcolors.DEFAULT}{languages_bot.MSG7[LANGUAGE]}: {time} {datetime.fromtimestamp(time/1000).strftime("%d/%m/%y %H:%M:%S")}{txcolors.DEFAULT}')
+				Test_Pos_Now = datetime.fromtimestamp(time/1000).strftime("%d/%m/%y %H:%M:%S")
+				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {languages_bot.MSG6[LANGUAGE]} {BACKTESTING_MODE_TIME_START} - {txcolors.DEFAULT}{languages_bot.MSG7[LANGUAGE]}: {time} {datetime.fromtimestamp(time/1000).strftime("%d/%m/%y %H:%M:%S")}{txcolors.DEFAULT}')
 				coins.append({ 'time': time, 'symbol': coin, 'price': price})
 			else:
 				c = pd.DataFrame([])
@@ -809,47 +811,109 @@ def print_table_coins_saved():
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		lost_connection(e, "print_table_coins_saved")
 		pass
-		
+	
 def print_table_coins_bought():
 	try:
-		global coins_bought
-		if SHOW_TABLE_COINS_BOUGHT:
-			if len(coins_bought) > 0:
-				my_table = PrettyTable()
-				my_table.format = True
-				my_table.border = True
-				my_table.align = "c"
-				my_table.valign = "m"
-				my_table.left_padding_width = 1
-				my_table. right_padding_width = 1
-				my_table.field_names = [languages_bot.MSG15[LANGUAGE], languages_bot.MSG21[LANGUAGE], languages_bot.MSG16[LANGUAGE], languages_bot.MSG17[LANGUAGE], "TP %", "SL %", languages_bot.MSG18[LANGUAGE] + " %", languages_bot.MSG19[LANGUAGE] + " $", languages_bot.MSG20[LANGUAGE]]
-				last_price = get_price(False) #print_table_coins_bought
-				for coin in list(coins_bought):
-					LastPriceT = float(last_price[coin]['price'])#,8)
-					BuyPriceT = float(coins_bought[coin]['bought_at'])#,8)
+		global coins_bought, PAIR_WITH, SHOW_TABLE_COINS_BOUGHT
+		if SHOW_TABLE_COINS_BOUGHT and len(coins_bought) > 0:
+			my_table = PrettyTable()
+			my_table.format = True
+			my_table.border = True
+			my_table.align = "c"
+			my_table.valign = "m"
+			my_table.left_padding_width = 1
+			my_table.right_padding_width = 1
+			my_table.field_names = [languages_bot.MSG15[LANGUAGE], languages_bot.MSG21[LANGUAGE], languages_bot.MSG16[LANGUAGE], languages_bot.MSG17[LANGUAGE], "TP %", "SL %", languages_bot.MSG18[LANGUAGE] + " %", languages_bot.MSG19[LANGUAGE] + " $", languages_bot.MSG20[LANGUAGE]]
+			
+			# Asumiendo que get_price no ha cambiado, si lo ha hecho, se debe modificar aquí
+			last_price = get_price(False)
+
+			for coin in list(coins_bought):
+				if coin in last_price:
+					LastPriceT = float(last_price[coin]['price'])
+					BuyPriceT = float(coins_bought[coin]['bought_at'])
 					PriceChange_PercT = float(((LastPriceT - BuyPriceT) / BuyPriceT) * 100)
 					
 					if MODE == "BACKTESTING":
 						buy_time = datetime.fromtimestamp(coins_bought[coin]['timestamp'] / 1000)
-						current_time = datetime.fromtimestamp(last_price[coin]['time'] / 1000) 
-						time_held = current_time - buy_time 
+						current_time = datetime.fromtimestamp(last_price[coin]['time'] / 1000)
+						time_held = current_time - buy_time
 					else:
 						time_held = timedelta(seconds=datetime.now().timestamp() - int(str(coins_bought[coin]['timestamp'])[:10]))
-				
-					if SELL_ON_SIGNAL_ONLY:
-						my_table.add_row([f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{BuyPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{LastPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{PriceChange_PercT:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_PercT)/100:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
-					else:
-						my_table.add_row([f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{BuyPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{LastPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['take_profit']:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['stop_loss']:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{PriceChange_PercT:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_PercT)/100:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
 
-				print(" " * 9 + my_table.get_string().replace("\n", "\n" + " " * 9))
-				#print(my_table)
-				my_table = PrettyTable()
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+					if SELL_ON_SIGNAL_ONLY:
+						my_table.add_row([
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{BuyPriceT:.4f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{LastPriceT:.4f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{PriceChange_PercT:.2f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_PercT)/100:.2f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
+					else:
+						my_table.add_row([
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{BuyPriceT:.4f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{LastPriceT:.4f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['take_profit']:.2f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['stop_loss']:.2f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{PriceChange_PercT:.2f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_PercT)/100:.2f}{txcolors.DEFAULT}",
+							f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
+
+			# En lugar de print con padding, se imprime directamente
+			#print(my_table)
+			#my_table = PrettyTable()
+			return my_table.get_string()
 	except Exception as e:
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}print_table_coins_bought: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		lost_connection(e, "print_table_coins_bought")
 		pass
+	
+# def print_table_coins_bought():
+	# try:
+		# global coins_bought
+		# if SHOW_TABLE_COINS_BOUGHT:
+			# if len(coins_bought) > 0:
+				# my_table = PrettyTable()
+				# my_table.format = True
+				# my_table.border = True
+				# my_table.align = "c"
+				# my_table.valign = "m"
+				# my_table.left_padding_width = 1
+				# my_table. right_padding_width = 1
+				# my_table.field_names = [languages_bot.MSG15[LANGUAGE], languages_bot.MSG21[LANGUAGE], languages_bot.MSG16[LANGUAGE], languages_bot.MSG17[LANGUAGE], "TP %", "SL %", languages_bot.MSG18[LANGUAGE] + " %", languages_bot.MSG19[LANGUAGE] + " $", languages_bot.MSG20[LANGUAGE]]
+				# last_price = get_price(False) #print_table_coins_bought
+				# for coin in list(coins_bought):
+					# LastPriceT = float(last_price[coin]['price'])#,8)
+					# BuyPriceT = float(coins_bought[coin]['bought_at'])#,8)
+					# PriceChange_PercT = float(((LastPriceT - BuyPriceT) / BuyPriceT) * 100)
+					
+					# if MODE == "BACKTESTING":
+						# buy_time = datetime.fromtimestamp(coins_bought[coin]['timestamp'] / 1000)
+						# current_time = datetime.fromtimestamp(last_price[coin]['time'] / 1000) 
+						# time_held = current_time - buy_time 
+					# else:
+						# time_held = timedelta(seconds=datetime.now().timestamp() - int(str(coins_bought[coin]['timestamp'])[:10]))
+				
+					# if SELL_ON_SIGNAL_ONLY:
+						# my_table.add_row([f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{BuyPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{LastPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{PriceChange_PercT:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_PercT)/100:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
+					# else:
+						# my_table.add_row([f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{BuyPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{LastPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['take_profit']:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['stop_loss']:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{PriceChange_PercT:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_PercT)/100:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
+
+				# print(" " * 9 + my_table.get_string().replace("\n", "\n" + " " * 9))
+				# #print(my_table)
+				# my_table = PrettyTable()
+		# show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	# except Exception as e:
+		# write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}print_table_coins_bought: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		# write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+		# lost_connection(e, "print_table_coins_bought")
+		# pass
 
 def clear():
 	name = os.name
@@ -876,7 +940,7 @@ def balance_report(last_price):
 	try:
 		global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total
 		global last_price_global, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL
-		global session_USDT_LOSS, SAVED_COINS, coins_bought
+		global session_USDT_LOSS, SAVED_COINS, coins_bought, Test_Pos_Now
 
 		unrealised_session_profit_incfees_perc = 0
 		unrealised_session_profit_incfees_total = 0
@@ -929,6 +993,7 @@ def balance_report(last_price):
 		my_table.align = "c"
 		my_table.valign = "m"
 		my_table.header = True
+		my_table.hrules = ALL
 		my_table.padding_width = 3
 		TRADETOTAL = round(session_USDT_EARNED + TRADE_TOTAL,3)
 		if MODE == "BACKTESTING":
@@ -943,9 +1008,12 @@ def balance_report(last_price):
 		else:
 			my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.GREEN if TRADETOTAL > 0. else txcolors.RED}{str(TRADETOTAL)} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG31[LANGUAGE]}: {txcolors.RED}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG32[LANGUAGE]}: {txcolors.GREEN}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {languages_bot.MSG19[LANGUAGE].upper()} %: {txcolors.GREEN if (session_USDT_EARNED) > 0. else txcolors.RED}{round(0,3)}%{txcolors.DEFAULT}'])
 		print("\n")
+		coins_table_str = print_table_coins_bought()
+		my_table.add_row([Test_Pos_Now])
+		my_table.add_row([coins_table_str])
 		print(my_table)
 		my_table = PrettyTable()
-		print_table_coins_bought()
+		#print_table_coins_bought()
 		print_table_coins_saved()
 		print_table_commissions()
 		print("\n")
@@ -1602,7 +1670,7 @@ def wait_for_price():
 			if excoin not in volatile_coins and excoin not in coins_bought and (len(coins_bought) + len(volatile_coins)) < TRADE_SLOTS:
 				volatile_coins[excoin] = 1
 				exnumber +=1               
-				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}External signal received on {excoin}, purchasing ${get_balance_test_mode()} {PAIR_WITH} value of {excoin}!{txcolors.DEFAULT}')
+				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}External signal received on {excoin}, purchasing ${get_balance_test_mode()} {PAIR_WITH} value of {excoin}!{txcolors.DEFAULT}')
 
 		balance_report(last_price)
 		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
@@ -1759,14 +1827,14 @@ def buy():
 
 		for coin, vol in volume.items():
 			if not coin in coins_bought or not coin.replace(PAIR_WITH, '') in EXCLUDE_PAIRS:
-				print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.GREEN}Preparing to buy {vol} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
+				#print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.GREEN}Preparing to buy {vol} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
 				if TEST_MODE:
 					#orders[coin] = simulate_test_order(coin, vol, last_price[coin]['price'])
 					order_id = random_without_repeating()
 					coin_commission, pair_with = simulate_commission(vol, coin)
 					USED_COMMISSIONS[pair_with] = round(USED_COMMISSIONS.get(pair_with, 0) + coin_commission, 10)
 					
-					print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.GREEN}Simulated order for {coin}: {vol} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
+					#print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.GREEN}Simulated order for {coin}: {vol} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
 					if MODE == "BACKTESTING":
 						orders[coin] = [{
 							'symbol': coin,
@@ -1797,7 +1865,7 @@ def buy():
 							order_details = client.get_all_orders(symbol=coin, limit=1)
 							time.sleep(1)
 
-						print(f"Order processed for {coin}, saving to file.")
+						#print(f"Order processed for {coin}, saving to file.")
 						orders[coin] = extract_order_data(order_details)
 						order_id = orders[coin]['orderId']
 						coin_commission = orders[coin]['tradeFeeBNB']
@@ -1879,7 +1947,7 @@ def sell_coins(tpsl_override=False, specific_coin_to_sell="", last_price={}):
 					SAVED_COINS[coin] = float(SAVED_COINS.get(coin, 0)) + savedcoin
 
 				try:
-					print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Preparing to sell {coins_bought[coin]['volume']} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
+					#print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Preparing to sell {coins_bought[coin]['volume']} of {coin} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
 					if not TEST_MODE:
 						order_details = client.create_order(symbol=coin, side='SELL', type='MARKET', quantity=q)
 						coins_sold[coin] = extract_order_data(order_details)
@@ -1893,7 +1961,7 @@ def sell_coins(tpsl_override=False, specific_coin_to_sell="", last_price={}):
 						VolumeSell = format(float(coins_sold[coin]['volume']), '.6f')
 						coin_commission, PAIRWITH = simulate_commission(coins_sold[coin]['volume'] * LastPriceBR, coin)
 						OrderID = coins_sold[coin]['orderid']
-						print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Simulated order for {coin}: {VolumeSell} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
+						#print(f"{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Simulated order for {coin}: {VolumeSell} @ ${last_price[coin]['price']}{txcolors.DEFAULT}")
 					
 					USED_COMMISSIONS[PAIRWITH] = round(float(USED_COMMISSIONS.get(PAIRWITH, 0)) + coin_commission, 10)
 
@@ -2143,7 +2211,7 @@ def update_portfolio(orders, last_price, volume):
 			   'step_size': float(coin_step_size),
 			   }
 
-			print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+			#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
 		else:
 			coins_bought[coin] = {
 				'symbol': orders[coin][0]['symbol'],
@@ -2156,7 +2224,7 @@ def update_portfolio(orders, last_price, volume):
 				'step_size': float(coin_step_size),
 				}
 
-			print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+			#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
 
 		# save the coins in a json file in the same directory
 		with open(coins_bought_file_path, 'w') as file:
@@ -3047,6 +3115,7 @@ if __name__ == '__main__':
 			print(f'This bot requires Python version 3.9 or higher/newer. You are running version {sys.version_info[:2]} - please upgrade your Python version!!{txcolors.DEFAULT}')
 			sys.exit(0)
 			# Load arguments then parse settings
+		os.system('mode con: cols=155 lines=20')
 		args = parse_args()
 		mymodule = {}
 		banner()
@@ -3208,11 +3277,9 @@ if __name__ == '__main__':
 				if not MODE == "BACKTESTING":
 					now = datetime.now()
 					seconds_to_wait = timeframe_to_seconds(BOT_TIMEFRAME) - (60 - now.second - now.microsecond / 1_000_000)
-					time.sleep(seconds_to_wait)
-				
+					time.sleep(seconds_to_wait)				
 				coins_sold = {}
 				show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-				#time_init = datetime.now()
 				orders, last_price, volume = buy()
 				check_holding_time()
 				update_portfolio(orders, last_price, volume)
@@ -3223,10 +3290,6 @@ if __name__ == '__main__':
 				coins_sold = sell_coins(last_price=last_price)
 				remove_from_portfolio(coins_sold)
 				update_bot_stats()
-				
-				#time_end = datetime.now()
-				#time_speed = time_end - time_init 
-				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]} Time speed: {time_speed.total_seconds()} seconds{txcolors.DEFAULT}')
 				
 				if not FLAG_PAUSE:
 					#extract of code of OlorinSledge, Thanks
@@ -3249,7 +3312,9 @@ if __name__ == '__main__':
 							
 				end_time = time.time()  # Registrar el tiempo al final de la iteración
 				elapsed_time = end_time - start_time  # Calcular el tiempo transcurrido
-				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{elapsed_time:.4f} segundos/ciclo')
+				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{elapsed_time:.4f} segundos/ciclo')
+				#clear()
+				
 				
 			except ReadTimeout as rt:
 				TIMEOUT_COUNT += 1
