@@ -1,4 +1,5 @@
-![image](https://github.com/pantersxx3/binancebot/assets/2704036/2dd35f0c-d395-4134-bd16-d8a519920e0a)
+<img width="1244" height="305" alt="image" src="https://github.com/user-attachments/assets/ef203926-3cd4-455e-8f4a-71ab7cbb0435" />
+
 
 "# binancebot" 
 
@@ -38,3 +39,4 @@ I have been carrying out this project for more than 3 years, and although it dis
 I'm tired, I've been working alone on this project for a long time....
 
 For install ta-lib: https://github.com/cgohlke/talib-build/releases
+
