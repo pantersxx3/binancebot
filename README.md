@@ -1,3 +1,5 @@
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/bdacbb4a-713d-4914-be3e-25a0274f8291" />
+
 <img width="1244" height="305" alt="image" src="https://github.com/user-attachments/assets/ef203926-3cd4-455e-8f4a-71ab7cbb0435" />
 
 
@@ -39,4 +41,5 @@ I have been carrying out this project for more than 3 years, and although it dis
 I'm tired, I've been working alone on this project for a long time....
 
 For install ta-lib: https://github.com/cgohlke/talib-build/releases
+
 
