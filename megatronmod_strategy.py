@@ -15,6 +15,12 @@ from datetime import datetime
 import sys
 import os
 import random
+global estadisticas
+estadisticas = {}
+estadisticas["tendencia_alcista_confirmada"] = 0
+estadisticas['consolidacion'] = 0
+estadisticas['volatil'] = 0
+estadisticas['rango_lateral'] = 0
   
 def buy(Data, CLOSE, pair):
 	try:
@@ -23,31 +29,35 @@ def buy(Data, CLOSE, pair):
 		# tn = telnetlib.Telnet(HOST, PORT)
 		
 		buySignal = False
-		tipo = MF.detectar_tipo_de_mercado(Data)
-		if tipo == 'tendencia_bajista_confirmada':
-			EMA9 = MF.Ema(Data, 9)
-			EMA21 = MF.Ema(Data, 21)
-			RSI14 = MF.Rsi(Data, 14)
-			buySignal = EMA9 < EMA21 and RSI14 < 30 and CLOSE < EMA21
-		# elif tipo == 'tendencia_bajista_confirmada':
+		# if tipo == 'tendencia_bajista_confirmada':
 			# EMA9 = MF.Ema(Data, 9)
 			# EMA21 = MF.Ema(Data, 21)
 			# RSI14 = MF.Rsi(Data, 14)
-			# buySignal = EMA9 > EMA21 and RSI14 < 70 and CLOSE > EMA21
+			# buySignal = EMA9 < EMA21 and RSI14 < 30 and CLOSE < EMA21
 		# elif tipo == 'consolidacion':
 			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
 			# buySignal = CLOSE < BB
-		# elif tipo == 'volatil':
-			# EMA200 = MF.Ema(Data, 200)
+		# if tipo == 'volatil':
+			# #EMA200 = MF.Ema(Data, 200)
 			# High_break = Data['High'].rolling(20).max().iloc[-1]
 			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
-			# buySignal = CLOSE < High_break and CLOSE > EMA200 and confirmar_volumen(Data)
-		# elif tipo == 'rango_lateral':
+			# buySignal = CLOSE < Low_break and confirmar_volumen(Data)
+		buySignal = MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and MF.Rsi(Data, 14) < 30 and MF.confirmar_volumen(Data)
+			#--------------------------------------------
+			#BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
+			#if CLOSE <= BB and MF.confirmar_volumen(Data):
+				#buySignal = True
+			#--------------------------------------------
+			#EMA200 = MF.Ema(Data, 200)
+			#spread = MF.spread_strategy(0.01, 0.07, Data)
+			#B = MF.B(Data)
+			#if spread == 1 and CLOSE <= B * 0.999:
+				#buySignal = True
 			# EMA200 = MF.Ema(Data, 200)
 			# spread = MF.spread_strategy(0.01, 0.07, Data)
 			# CLOSE = Data['Close'].iloc[-1]
 			# B = MF.B(Data)
-			# buySignal = spread == 1 and CLOSE > EMA200 and (CLOSE > B or CLOSE >= round(B - ((0.1 * B)/100), 5))
+			# buySignal = spread == 1 and CLOSE > EMA200 and (CLOSE < B or CLOSE <= round(B - ((0.1 * B)/100), 5))
 		
 	except Exception as e:
 		exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -63,33 +73,43 @@ def sell(Data, CLOSE, pair):
 		# PORT = 10000
 		# tn = telnetlib.Telnet(HOST, PORT)
 		sellSignal = False
-		tipo = MF.detectar_tipo_de_mercado(Data)
-		# if tipo == 'tendencia_alcista_confirmada':
+		#if tipo == 'tendencia_alcista_confirmada':
+			# estadisticas["tendencia_alcista_confirmada"] = estadisticas["tendencia_alcista_confirmada"] + 1
 			# EMA9 = MF.Ema(Data, 9)
 			# EMA21 = MF.Ema(Data, 21)
 			# RSI14 = MF.Rsi(Data, 14)
-			# sellSignal = EMA9 < EMA21 or RSI14 > 80 or CLOSE < EMA21
-		if tipo == 'tendencia_alcista_confirmada':
-			EMA9 = MF.Ema(Data, 9)
-			EMA21 = MF.Ema(Data, 21)
-			RSI14 = MF.Rsi(Data, 14)
-			sellSignal = EMA9 > EMA21 and RSI14 > 70 and CLOSE > EMA21
+			# sellSignal = EMA9 > EMA21 and RSI14 > 80 and CLOSE > EMA21
 		# elif tipo == 'consolidacion':
+			# estadisticas['consolidacion'] = estadisticas['consolidacion'] + 1
 			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
 			# sellSignal = CLOSE > BA
 		# elif tipo == 'volatil':
+			# estadisticas['volatil'] = estadisticas['volatil'] + 1
 			# EMA200 = MF.Ema(Data, 200)
 			# High_break = Data['High'].rolling(20).max().iloc[-1]
 			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
-			# CLOSE = Data['Close'].iloc[-1]
-			# sellSignal = CLOSE > Low_break and CLOSE > EMA200 and MF.confirmar_volumen(Data)
-		# elif tipo == 'rango_lateral':
+			# sellSignal = CLOSE > High_break and CLOSE > EMA200 and MF.confirmar_volumen(Data)
+		sellSignal = MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and MF.Rsi(Data, 14) > 70 and MF.confirmar_volumen(Data)
+			#adx = MF.Adx(Data)[0]
+			#if adx < 20 and (CLOSE > BA or CLOSE < BB):
+				#pass
+			#EMA200 = MF.Ema(Data, 200)
+			#spread = MF.spread_strategy(0.01, 0.07, Data)
+			#B = MF.B(Data)
+			#if spread == 2 and CLOSE >= B * 1.001:
+				#sellSignal = True
+			#------------------
+			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
+			# if CLOSE >= BA and MF.confirmar_volumen(Data):
+				# sellSignal = True
+			#------------------
+			# estadisticas['rango_lateral'] = estadisticas['rango_lateral'] + 1
 			# EMA200 = MF.Ema(Data, 200)
 			# spread = MF.spread_strategy(0.01, 0.07, Data)
 			# CLOSE = Data['Close'].iloc[-1]
 			# B = MF.B(Data)
 			# sellSignal = spread == 2 and CLOSE > EMA200 and (CLOSE > B or CLOSE >= round(B + ((0.1 * B)/100), 5))
-		
+		#print(estadisticas)
 	except Exception as e:
 		print(e)
 		exc_type, exc_obj, exc_tb = sys.exc_info()

@@ -925,6 +925,11 @@ def Adx(data, adx_period=14):
 
 	return ADX.iloc[-1], DI_positive.iloc[-1], DI_negative.iloc[-1]
 	
+def filtrar_con_adx(data, adx_umbral=25):
+    adx_indicador = ADXIndicator(data['High'], data['Low'], data['Close'], window=14)
+    adx = adx_indicador.adx().iloc[-1]
+    return adx < adx_umbral
+	
 def Calculate_Market_Direction(data, adx_period=14, adx_threshold=20):
 	ADX, DI_positive, DI_negative = Adx(data, adx_period)
 	
@@ -974,6 +979,12 @@ def confirmar_volumen(data, window=5, umbral=1.2):
 	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
 	return volumen_actual > umbral * volumen_promedio
 
+def confirmar_volumen_aumento(data, window=5, umbral_aumento=1.5):
+    # Esta función es similar a la que ya tienes, pero se enfoca en el aumento.
+    volumen_actual = data['Volume'].iloc[-1]
+    volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
+    return volumen_actual > umbral_aumento * volumen_promedio
+	
 def es_consolidacion(data, adx_threshold=20, atr_threshold=0.003):
 	adx, _, _ = Adx(data)
 	atr = Atr(data)

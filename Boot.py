@@ -138,7 +138,7 @@ global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_to
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
 global BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-global SILENT_MODE, Test_Pos_Now
+global SILENT_MODE, Test_Pos_Now, SpeedBot
 
 SAVED_COINS = {}
 parsed_creds = []
@@ -177,6 +177,7 @@ bot_started_datetime = ""
 function_variables = {}
 commissionCoins = {}
 Test_Pos_Now = ""
+SpeedBot = 0.0
 
 def convertir_a_str(value):
 	if isinstance(value, dict):
@@ -276,14 +277,17 @@ def get_balance_wallet(crypto):
 
 def extract_first_record(csv_file):
 	with open(csv_file, "r") as f:
-		reader = csv.reader(f)
+		data_lines = (line for line in f if not line.strip().startswith("#"))
+		reader = csv.reader(data_lines)
 		first_row = next(reader)
 		first_row = next(reader)
 	return first_row[0]
 
 def extract_last_record(csv_file):
 	with open(csv_file, "r") as f:
-		reader = csv.reader(f)
+		data_lines = (line for line in f if not line.strip().startswith("#"))
+		reader = csv.reader(data_lines)
+		header = next(csv_readed)
 		for row in reader:
 			pass
 		last_row = row
@@ -441,7 +445,7 @@ def read_position_csv(coin):
 	
 def read_next_row_csv(coin, nonext=False):
 	try:
-		global c_data
+		global c_data, TRADES_LOG_FILE
 		price = 0
 		time1 = 0
 
@@ -455,7 +459,7 @@ def read_next_row_csv(coin, nonext=False):
 			pos = read_position_csv(coin)
 
 			if c_data.empty:
-				c_data = pd.read_csv(coin + '.csv', dtype={'Close': float})
+				c_data = pd.read_csv(coin + '.csv', dtype={'Close': float}, comment='#')
 
 			if nonext:
 				row = c_data[c_data['time'] == pos]
@@ -474,11 +478,31 @@ def read_next_row_csv(coin, nonext=False):
 					menu()
 
 		else:
-			c = pd.read_csv(coin + '.csv', dtype={'Close': float})
+			c = pd.read_csv(coin + '.csv', dtype={'Close': float}, comment='#')
 			c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume']
 			row = c.iloc[200]
 			price = float(row['Close'])
 			time1 = int(row['time'])
+			
+			with open("megatronmod_strategy.py", "r") as f:
+				lines = f.readlines()
+			for line in lines:
+				if "buySignal" in line and "False" not in line and "return" not in line and "#" not in line:
+					data1 = line
+				if "sellSignal" in line and "False" not in line and "return" not in line and "#" not in line:
+					data2 = line
+			lines = []		
+			if os.path.exists(file_prefix + TRADES_LOG_FILE):
+				with open(file_prefix + TRADES_LOG_FILE, "r") as f:
+					lines = f.readlines()
+			existe_buy_signal = False
+			for line in lines:
+				if line.strip().startswith("#"):
+					existe_buy_signal = True
+					break
+			if not existe_buy_signal:
+				with open(file_prefix + TRADES_LOG_FILE, "w") as f:
+					f.write("#" + data1 + "#" + data2 + "\n" + ''.join(lines))
 
 		write_position_csv(coin, str(time1))
 
@@ -940,7 +964,7 @@ def balance_report(last_price):
 	try:
 		global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total
 		global last_price_global, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL
-		global session_USDT_LOSS, SAVED_COINS, coins_bought, Test_Pos_Now
+		global session_USDT_LOSS, SAVED_COINS, coins_bought, Test_Pos_Now, SpeedBot
 
 		unrealised_session_profit_incfees_perc = 0
 		unrealised_session_profit_incfees_total = 0
@@ -984,7 +1008,7 @@ def balance_report(last_price):
 			WIN_LOSS_PERCENT = 100
 		strplus = "+"
 		#print_banner()
-		if STATIC_MAIN_INFO == True: clear()
+		#if STATIC_MAIN_INFO == True: clear()
 		my_table = PrettyTable()
 		my_table.title = f'{txcolors.YELLOW}BINANCE TRADING BOT{txcolors.DEFAULT}'
 		my_table.field_names = ['Pantersxx3']
@@ -1009,7 +1033,7 @@ def balance_report(last_price):
 			my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.GREEN if TRADETOTAL > 0. else txcolors.RED}{str(TRADETOTAL)} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG31[LANGUAGE]}: {txcolors.RED}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG32[LANGUAGE]}: {txcolors.GREEN}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {languages_bot.MSG19[LANGUAGE].upper()} %: {txcolors.GREEN if (session_USDT_EARNED) > 0. else txcolors.RED}{round(0,3)}%{txcolors.DEFAULT}'])
 		print("\n")
 		coins_table_str = print_table_coins_bought()
-		my_table.add_row([Test_Pos_Now])
+		my_table.add_row([Test_Pos_Now + " - " + str(round(SpeedBot,3)) + "s/c"])
 		my_table.add_row([coins_table_str])
 		print(my_table)
 		my_table = PrettyTable()
@@ -1085,8 +1109,10 @@ def read_log_trades(OrderID):
 		ret = ""
 		file_prefix = prefix_type()
 
-		with open(file_prefix + TRADES_LOG_FILE, "r") as fp: 
-			csv_readed = csv.reader(fp)
+		with open(file_prefix + TRADES_LOG_FILE, "r") as f:
+			data_lines = (line for line in f if not line.strip().startswith("#"))
+			csv_readed = csv.reader(data_lines)
+			header = next(csv_readed)
 			for row in csv_readed:
 				if row[1] == OrderID:
 						ret = row[6]
@@ -1117,9 +1143,9 @@ def make_indicators(df):
 		with open("megatronmod_strategy.py", "r") as f:
 			lines = f.readlines()
 		for line in lines:
-			if "buySignal" in line and "False" not in line and "return" not in line:
+			if "buySignal" in line and "False" not in line and "return" not in line and "#" not in line:
 				data1 = line
-			if "sellSignal" in line and "False" not in line and "return" not in line:
+			if "sellSignal" in line and "False" not in line and "return" not in line and "#" not in line:
 				data2 = line				
 					
 		for line in lines:
@@ -1292,7 +1318,7 @@ def make_graphics():
 			pairs = [line.strip() + PAIR_WITH for line in open(TICKERS)]
 			
 			for coin in pairs:
-				transactions = pd.read_csv(prefix + TRADES_LOG_FILE)
+				transactions = pd.read_csv(prefix + TRADES_LOG_FILE, comment='#')
 				#transactions['Datetime'] = pd.to_datetime(transactions['Datetime'], unit='ms')
 				
 				df1 = pd.read_csv(coin + ".csv").fillna(0)
@@ -1309,7 +1335,7 @@ def make_graphics():
 				
 				for file in files:
 					if os.path.exists(file):
-						df = pd.read_csv(file).fillna(0)
+						df = pd.read_csv(file, comment='#').fillna(0)
 						#df['time'] = pd.to_datetime(df['time'], unit='ms')
 						for cn in df.columns:
 							if cn not in ["time", "Close"]:
@@ -1410,12 +1436,23 @@ def write_log_trades(logline):
 	try:
 		file_prefix = prefix_type()
 		logline = str(logline).replace("'","").replace("[","").replace("]","")
-		with open(file_prefix + TRADES_LOG_FILE,'a') as f:
-			file_stats = os.stat(file_prefix + TRADES_LOG_FILE)
-			if file_stats.st_size == 0:
-				HEADER = ["Datetime"+","+"OrderID"+","+"Type"+","+"Coin"+","+"Volume"+","+"Buy Price"+","+"Amount of Buy" + " " + PAIR_WITH+","+"Sell Price"+","+"Amount of Sell" + " " + PAIR_WITH+","+ "Sell Reason"+","+"Profit $" + " " + PAIR_WITH+","+"Commission"]
+		with open(file_prefix + TRADES_LOG_FILE,'r') as f:
+			lines = f.readlines()
+			#file_stats = os.stat(file_prefix + TRADES_LOG_FILE)
+		Header = False
+		for line in lines:
+			if "Datetime" in line:
+				Header = True
+				lines = []
+				break
+		if not Header: #file_stats.st_size == 0:
+			HEADER = ["Datetime"+","+"OrderID"+","+"Type"+","+"Coin"+","+"Volume"+","+"Buy Price"+","+"Amount of Buy" + " " + PAIR_WITH+","+"Sell Price"+","+"Amount of Sell" + " " + PAIR_WITH+","+ "Sell Reason"+","+"Profit $" + " " + PAIR_WITH+","+"Commission"]
+			with open(file_prefix + TRADES_LOG_FILE,'a') as f:
 				f.write(str(HEADER).replace("'","").replace("[","").replace("]","") + '\n')
-			f.write(str(logline) + '\n')
+				f.write(str(logline) + '\n')
+		else:
+			with open(file_prefix + TRADES_LOG_FILE,'a') as f:
+				f.write(str(logline) + '\n')
 	except Exception as e:
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}write_log_trades(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -2939,6 +2976,7 @@ def menu(banner1=True):
 		global PAUSEBOT_MANUAL, BUY_PAUSED, TRADE_TOTAL
 
 		stop_signal_threads() #menu
+
 		while True:
 			if banner1: banner()
 			#time.sleep(5) #menu
@@ -3115,7 +3153,7 @@ if __name__ == '__main__':
 			print(f'This bot requires Python version 3.9 or higher/newer. You are running version {sys.version_info[:2]} - please upgrade your Python version!!{txcolors.DEFAULT}')
 			sys.exit(0)
 			# Load arguments then parse settings
-		os.system('mode con: cols=155 lines=20')
+		#os.system('mode con: cols=155 lines=20')
 		args = parse_args()
 		mymodule = {}
 		banner()
@@ -3123,10 +3161,9 @@ if __name__ == '__main__':
 		discord_msg_balance_data = ""
 		last_msg_discord_balance_date = datetime.now()
 		
+		load_settings()
 		global MSG_DISCORD, LANGUAGE, DISCORD_WEBHOOK
 		global COINS_BOUGHT, BOT_STATS, TRADE_SLOTS
-
-		load_settings()
 
 		if not BACKTESTING_MODE:
 			if not CheckIfAliveStation("google.com"):
@@ -3311,8 +3348,8 @@ if __name__ == '__main__':
 							time.sleep(seconds_until_next_minute) 
 							
 				end_time = time.time()  # Registrar el tiempo al final de la iteración
-				elapsed_time = end_time - start_time  # Calcular el tiempo transcurrido
-				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{elapsed_time:.4f} segundos/ciclo')
+				SpeedBot = end_time - start_time  # Calcular el tiempo transcurrido
+				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{SpeedBot:.4f} segundos/ciclo')
 				#clear()
 				
 				
