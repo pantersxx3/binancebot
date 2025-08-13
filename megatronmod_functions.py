@@ -662,209 +662,7 @@ def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
 		pass 
 	return False
 	
-def probabilidad_precio_otro(DF_data, minutos_adelante, close, takeprofit, n_simulaciones=1000000):
-	# Verificar datos
-	if len(DF_data) < 10:
-		raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
-	
-	precios = DF_data['Close'].values
-	retornos = np.log(precios[1:] / precios[:-1]) * 100
-	
-	if len(retornos) < 5:
-		raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
-	
-	if np.std(retornos) < 1e-5:
-		raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
-	
-	# Ajustar modelo GARCH(1,1)
-	retornos_rescalados = retornos * 10
-	#print("Ajustando modelo GARCH(1,1)...")
-	modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
-	resultado = modelo.fit(disp='on')
-	
-	if not resultado.convergence_flag == 0:
-		print("Advertencia: El modelo no convergió correctamente.")
-	
-	# Simular retornos futuros
-	#print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
-	simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
-	
-	if simulaciones.simulations is None or simulaciones.simulations.values is None:
-		raise ValueError("El método forecast no generó simulaciones válidas.")
-	
-	retornos_simulados = simulaciones.simulations.values[-1].T
-	ultimo_precio = precios[-1]
-	precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
-	precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
-	
-	for t in range(1, minutos_adelante):
-		precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
-	
-	# Calcular probabilidades
-	valores_unicos = np.unique(precios)
-	resultados = {}
-	
-	for minuto in range(minutos_adelante):
-		precios_minuto = np.round(precios_simulados[minuto], 2)
-		conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
-		probabilidades = conteos / n_simulaciones
-		resultados[f'Minuto_{minuto + 1}'] = probabilidades
-	
-	# Crear DataFrame y filtrar probabilidades 0
-	df_resultado = pd.DataFrame(resultados, index=valores_unicos)
-	df_resultado.index.name = 'Precio'
-	df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
-	
-	# Analizar probabilidad más alta del último minuto
-	ultima_columna = f'Minuto_{minutos_adelante}'
-	prob_max = df_resultado[ultima_columna].max()
-	precios_max = df_resultado.index[df_resultado[ultima_columna] == prob_max].tolist()
-	
-	if len(precios_max) == len(df_resultado) and prob_max > 0:
-		# Todas las probabilidades son iguales
-		precio_predicho = max(precios_max)  # Tomamos el máximo del rango
-	else:
-		# Tomamos el precio más alto con la probabilidad máxima (si hay varios)
-		precio_predicho = max(precios_max)
-	
-	# Comparar con takeprofit
-	return precio_predicho > takeprofit
-
-def probabilidad_precio_simple(DF_data, minutos_adelante, n_simulaciones=1000000):
-	precios = DF_data['Close'].values
-	retornos = np.log(precios[1:] / precios[:-1]) * 100
-	volatilidad = np.std(retornos)
-	
-	ultimo_precio = precios[-1]
-	precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
-	
-	for t in range(minutos_adelante):
-		retornos_aleatorios = np.random.normal(0, volatilidad, n_simulaciones)
-		if t == 0:
-			precios_simulados[t] = ultimo_precio * np.exp(retornos_aleatorios / 100)
-		else:
-			precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_aleatorios / 100)
-	
-	valores_unicos = np.unique(precios)
-	resultados = {}
-	
-	for minuto in range(minutos_adelante):
-		precios_minuto = np.round(precios_simulados[minuto], 2)
-		conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
-		probabilidades = conteos / n_simulaciones
-		resultados[f'Minuto_{minuto + 1}'] = probabilidades
-	
-	# Crear DataFrame y filtrar filas con todas las probabilidades igual a 0
-	df_resultado = pd.DataFrame(resultados, index=valores_unicos)
-	df_resultado.index.name = 'Precio'
-	df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
-	
-	return df_resultado
-	
-def probabilidad_precio_tp(DF_data, minutos_adelante, close, takeprofit, n_simulaciones=10000000):
-	# Verificar datos
-	if len(DF_data) < 10:
-		raise ValueError(f"Datos insuficientes: se necesitan al menos 10 puntos, pero hay {len(DF_data)}.")
-	
-	precios = DF_data['Close'].values
-	retornos = np.log(precios[1:] / precios[:-1]) * 100
-	
-	if len(retornos) < 5:
-		raise ValueError("No hay suficientes retornos para modelar (mínimo 5).")
-	
-	if np.std(retornos) < 1e-5:
-		raise ValueError("Los retornos tienen varianza casi nula. GARCH no puede modelar datos constantes.")
-	
-	# Ajustar modelo GARCH(1,1)
-	retornos_rescalados = retornos * 10
-	#print("Ajustando modelo GARCH(1,1)...")
-	modelo = arch_model(retornos_rescalados, vol='Garch', p=1, q=1, dist='Normal', rescale=False)
-	resultado = modelo.fit(disp='off')
-	
-	if not resultado.convergence_flag == 0:
-		print("Advertencia: El modelo no convergió correctamente.")
-	
-	# Simular retornos futuros
-	#print(f"Generando {n_simulaciones} simulaciones para {minutos_adelante} minutos...")
-	simulaciones = resultado.forecast(horizon=minutos_adelante, method='simulation', simulations=n_simulaciones)
-	
-	if simulaciones.simulations is None or simulaciones.simulations.values is None:
-		raise ValueError("El método forecast no generó simulaciones válidas.")
-	
-	retornos_simulados = simulaciones.simulations.values[-1].T
-	ultimo_precio = precios[-1]
-	precios_simulados = np.zeros((minutos_adelante, n_simulaciones))
-	precios_simulados[0] = ultimo_precio * np.exp(retornos_simulados[0] / (100 * 10))
-	
-	for t in range(1, minutos_adelante):
-		precios_simulados[t] = precios_simulados[t-1] * np.exp(retornos_simulados[t] / (100 * 10))
-	
-	# Calcular probabilidades
-	valores_unicos = np.unique(precios)
-	resultados = {}
-	
-	for minuto in range(minutos_adelante):
-		precios_minuto = np.round(precios_simulados[minuto], 2)
-		conteos = np.array([np.sum(precios_minuto == valor) for valor in valores_unicos])
-		probabilidades = conteos / n_simulaciones
-		resultados[f'Minuto_{minuto + 1}'] = probabilidades
-	
-	# Crear DataFrame y filtrar probabilidades 0
-	df_resultado = pd.DataFrame(resultados, index=valores_unicos)
-	df_resultado.index.name = 'Precio'
-	df_resultado = df_resultado.loc[(df_resultado > 0).any(axis=1)]
-	
-	# Verificar si algún minuto supera el takeprofit
-	for minuto in range(minutos_adelante):
-		col = f'Minuto_{minuto + 1}'
-		prob_max = df_resultado[col].max()
-		precios_max = df_resultado.index[df_resultado[col] == prob_max].tolist()
-		
-		if len(precios_max) == len(df_resultado) and prob_max > 0:
-			# Todas las probabilidades son iguales, tomamos el máximo del rango
-			precio_predicho = max(precios_max)
-		else:
-			# Tomamos el precio más alto con la probabilidad máxima
-			precio_predicho = max(precios_max)
-		
-		if precio_predicho > takeprofit:
-			return True
-	
-	return False
-	
-def probabilidad_precio(DF_data, minutos_adelante, close, porcentaje_aumento=0.001, n_simulaciones=1000):
-	try:
-		# 1. Calcular los retornos diarios
-		retornos = DF_data["Close"].pct_change().dropna()
-
-		# 2. Calcular la volatilidad diaria
-		volatilidad = retornos.std()
-
-		# 3. Simulación de Monte Carlo
-		resultados_simulaciones = []
-		ultimo_precio = DF_data["Close"].iloc[-1]
-
-		for _ in range(n_simulaciones):
-			precios_simulados = [ultimo_precio]
-			for _ in range(minutos_adelante):
-				cambio_aleatorio = np.random.normal(0, volatilidad)
-				precio_simulado = precios_simulados[-1] * (1 + cambio_aleatorio)
-				precios_simulados.append(precio_simulado)
-			resultados_simulaciones.append(precios_simulados[-1])
-
-		# 4. Calcular la probabilidad
-		precio_objetivo = ultimo_precio * (1 + porcentaje_aumento)
-		probabilidad = sum(precio_simulado >= precio_objetivo for precio_simulado in resultados_simulaciones) / n_simulaciones
-
-	except Exception as e:
-		exc_type, exc_obj, exc_tb = sys.exc_info()
-		print(e)
-		print('probabilidad_precio Error on line ' + str(exc_tb.tb_lineno))
-		return None, None, None  # Return None, None, None in case of error
-
-	return probabilidad
-	
-def spread_strategy(min_spread, max_spread, DF_Data):
+def calculate_spread(min_spread, max_spread, DF_Data):
 	open_price = DF_Data['Open'].iloc[-1]   # precio de compra
 	close_price = DF_Data['Close'].iloc[-1] # precio de venta
 	spread = (close_price - open_price) / open_price * 100  # % de spread
@@ -925,7 +723,7 @@ def Adx(data, adx_period=14):
 
 	return ADX.iloc[-1], DI_positive.iloc[-1], DI_negative.iloc[-1]
 	
-def filtrar_con_adx(data, adx_umbral=25):
+def filter_with_adx(data, adx_umbral=25):
     adx_indicador = ADXIndicator(data['High'], data['Low'], data['Close'], window=14)
     adx = adx_indicador.adx().iloc[-1]
     return adx < adx_umbral
@@ -951,7 +749,7 @@ def Atr(data, atr_period=14):
 	normalized_atr = atr.iloc[-1] / data['Close'].iloc[-1]
 	return normalized_atr
 	
-def evaluar_compresion_bollinger(data, bb_window=20, umbral_compresion=0.01):	
+def check_compression_bollinger(data, bb_window=20, umbral_compresion=0.01):	
 	data = data.copy()
 	bb = BollingerBands(
 		close=data['Close'],
@@ -967,34 +765,53 @@ def evaluar_compresion_bollinger(data, bb_window=20, umbral_compresion=0.01):
 	ultima_width = data['bb_width_pct'].iloc[-1]
 	return ultima_width < umbral_compresion
 
-def confirmar_volumen(data, window=5, umbral=1.2):
+def check_volume(data, window=5, umbral=1.2):
+	# print(data)
+	# vwap = VolumeWeightedAveragePrice(
+		# high=data['High'],
+		# low=data['Low'],
+		# close=data['Close'],
+		# volume=data['Volume'],
+		# window=window
+	# ).volume_weighted_average_price()
+	volumen_actual = data['Volume'].iloc[-1]
+	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
+	return volumen_actual > umbral * volumen_promedio
+
+# def check_volume_rise(data, window=5, umbral_aumento=1.5):
+    # # Esta función es similar a la que ya tienes, pero se enfoca en el aumento.
+    # volumen_actual = data['Volume'].iloc[-1]
+    # volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
+    # return volumen_actual > umbral_aumento * volumen_promedio
+	
+def check_volume_with_vwap(data, window=5, umbral=1.2):
+    volumen_actual = data['Volume'].iloc[-1]
+    volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
 	vwap = VolumeWeightedAveragePrice(
 		high=data['High'],
 		low=data['Low'],
 		close=data['Close'],
 		volume=data['Volume'],
 		window=window
-	).volume_weighted_average_price()
-	volumen_actual = data['Volume'].iloc[-1]
-	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
-	return volumen_actual > umbral * volumen_promedio
+	).volume_weighted_average_price().iloc[-1]	
+	precio_actual = data['Close'].iloc[-1]
+	return (volumen_actual > umbral * volumen_promedio) and (abs(precio_actual - vwap) / vwap < 0.005)
 
-def confirmar_volumen_aumento(data, window=5, umbral_aumento=1.5):
-    # Esta función es similar a la que ya tienes, pero se enfoca en el aumento.
-    volumen_actual = data['Volume'].iloc[-1]
-    volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
-    return volumen_actual > umbral_aumento * volumen_promedio
+def check_volume_growth(data, velas=3):
+    # Detecta si el volumen ha subido en las últimas N velas
+    vol = data['Volume'].tail(velas).values
+    return all(vol[i] > vol[i-1] for i in range(1, len(vol)))
 	
-def es_consolidacion(data, adx_threshold=20, atr_threshold=0.003):
+def check_consolidation(data, adx_threshold=20, atr_threshold=0.003):
 	adx, _, _ = Adx(data)
 	atr = Atr(data)
 	return adx < adx_threshold and atr < atr_threshold
 	
-def detectar_tipo_de_mercado(data, umbral_alto_volatilidad=0.01):
+def detect_market_type(data, umbral_alto_volatilidad=0.01):
 	tendencia = Calculate_Market_Direction(data)
 	volatilidad = Atr(data)
-	consolidacion = es_consolidacion(data)
-	volumen_alto = confirmar_volumen(data)
+	consolidacion = check_consolidation(data)
+	volumen_alto = check_volume(data)
 
 	if tendencia == 'alcista' and volumen_alto:
 		return 'tendencia_alcista_confirmada'

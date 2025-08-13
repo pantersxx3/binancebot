@@ -286,9 +286,9 @@ def extract_first_record(csv_file):
 def extract_last_record(csv_file):
 	with open(csv_file, "r") as f:
 		data_lines = (line for line in f if not line.strip().startswith("#"))
-		reader = csv.reader(data_lines)
-		header = next(csv_readed)
-		for row in reader:
+		csv_reader = csv.reader(data_lines)
+		header = next(csv_reader)
+		for row in csv_reader:
 			pass
 		last_row = row
 	return last_row[0]
@@ -615,7 +615,7 @@ def get_all_tickers(nonext=False):
 				klines = client.get_historical_klines(symbol=coin, interval=BOT_TIMEFRAME, start_str=str(1000) + back, limit=1000) #get_all_tickers
 				c = pd.DataFrame(klines)
 				c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteAssetVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore']
-				c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
+				c = c.drop(c.columns[[6, 7, 8, 9, 10, 11]], axis=1)
 				c['time'] = pd.to_datetime(c['time'], unit='ms')
 				c['Close'] = c['Close'].astype(float)
 				coins.append({ 'time': c['time'].iloc[-1], 'symbol': coin, 'price': float(c['Close'].iloc[-1])}) #round(float(c['Close'].iloc[-1]),5)})
@@ -3153,7 +3153,7 @@ if __name__ == '__main__':
 			print(f'This bot requires Python version 3.9 or higher/newer. You are running version {sys.version_info[:2]} - please upgrade your Python version!!{txcolors.DEFAULT}')
 			sys.exit(0)
 			# Load arguments then parse settings
-		#os.system('mode con: cols=155 lines=20')
+		os.system('mode con: cols=155 lines=20')
 		args = parse_args()
 		mymodule = {}
 		banner()
@@ -3165,10 +3165,10 @@ if __name__ == '__main__':
 		global MSG_DISCORD, LANGUAGE, DISCORD_WEBHOOK
 		global COINS_BOUGHT, BOT_STATS, TRADE_SLOTS
 
-		if not BACKTESTING_MODE:
-			if not CheckIfAliveStation("google.com"):
-				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}You not have internet, Exit...{txcolors.DEFAULT}')
-				menu() #sys.exit(0)    
+		#if not BACKTESTING_MODE:
+			#if not CheckIfAliveStation("8.8.8.8"):
+				#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}You not have internet, Exit...{txcolors.DEFAULT}')
+				#menu() #sys.exit(0)    
 	 
 		if not DISABLE_TIMESTAMPS:
 			# print with timestamps

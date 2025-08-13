@@ -42,7 +42,8 @@ def buy(Data, CLOSE, pair):
 			# High_break = Data['High'].rolling(20).max().iloc[-1]
 			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
 			# buySignal = CLOSE < Low_break and confirmar_volumen(Data)
-		buySignal = MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and MF.Rsi(Data, 14) < 30 and MF.confirmar_volumen(Data)
+			#MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and
+		buySignal =  MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
 			#--------------------------------------------
 			#BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
 			#if CLOSE <= BB and MF.confirmar_volumen(Data):
@@ -89,7 +90,8 @@ def sell(Data, CLOSE, pair):
 			# High_break = Data['High'].rolling(20).max().iloc[-1]
 			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
 			# sellSignal = CLOSE > High_break and CLOSE > EMA200 and MF.confirmar_volumen(Data)
-		sellSignal = MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and MF.Rsi(Data, 14) > 70 and MF.confirmar_volumen(Data)
+			#MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and 
+		sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data)
 			#adx = MF.Adx(Data)[0]
 			#if adx < 20 and (CLOSE > BA or CLOSE < BB):
 				#pass
