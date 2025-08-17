@@ -418,7 +418,43 @@ def download_data(coin):
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}download_data: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
+
+def write_log_trades_strategys():
+	try:
+		lines = []		
+		if os.path.exists(file_prefix + TRADES_LOG_FILE):
+			with open(file_prefix + TRADES_LOG_FILE, "r") as f:
+				lines = f.readlines()
+				
+		existe_buy_signal = False
 		
+		for line in lines:
+			if line.strip().startswith("#"):
+				existe_buy_signal = True
+				break
+				
+		if not existe_buy_signal:
+			lines_strategy = []	
+			
+			with open("megatronmod_strategy.py", "r") as f:
+				lines_strategy = f.readlines()
+				
+			for line in lines_strategy:
+				if "buySignal" in line and "False" not in line and "return" not in line and "#" not in line:
+					data1 = line
+				if "sellSignal" in line and "False" not in line and "return" not in line and "#" not in line:
+					data2 = line
+					
+			lines_strategy = []
+			
+			with open(file_prefix + TRADES_LOG_FILE, "w") as f:
+				f.write("#" + data1 + "#" + data2 + "\n" + ''.join(lines))	
+				
+	except Exception as e:
+		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}write_log_trades_strategys: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
+		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+		pass
+			
 def write_position_csv(coin, position):
 	try:
 		with open(coin + '.position', 'w') as f:
@@ -484,25 +520,7 @@ def read_next_row_csv(coin, nonext=False):
 			price = float(row['Close'])
 			time1 = int(row['time'])
 			
-			with open("megatronmod_strategy.py", "r") as f:
-				lines = f.readlines()
-			for line in lines:
-				if "buySignal" in line and "False" not in line and "return" not in line and "#" not in line:
-					data1 = line
-				if "sellSignal" in line and "False" not in line and "return" not in line and "#" not in line:
-					data2 = line
-			lines = []		
-			if os.path.exists(file_prefix + TRADES_LOG_FILE):
-				with open(file_prefix + TRADES_LOG_FILE, "r") as f:
-					lines = f.readlines()
-			existe_buy_signal = False
-			for line in lines:
-				if line.strip().startswith("#"):
-					existe_buy_signal = True
-					break
-			if not existe_buy_signal:
-				with open(file_prefix + TRADES_LOG_FILE, "w") as f:
-					f.write("#" + data1 + "#" + data2 + "\n" + ''.join(lines))
+			#write_log_trades_strategys()
 
 		write_position_csv(coin, str(time1))
 
@@ -612,7 +630,7 @@ def get_all_tickers(nonext=False):
 					back = 'week ago UTC'
 				elif "M" in BOT_TIMEFRAME:
 					back = 'month ago UTC'				
-				klines = client.get_historical_klines(symbol=coin, interval=BOT_TIMEFRAME, start_str=str(1000) + back, limit=1000) #get_all_tickers
+				klines = client.get_historical_klines(symbol=coin, interval=BOT_TIMEFRAME, start_str=str(300) + back, limit=300) #get_all_tickers
 				c = pd.DataFrame(klines)
 				c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteAssetVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore']
 				c = c.drop(c.columns[[6, 7, 8, 9, 10, 11]], axis=1)
@@ -1033,7 +1051,10 @@ def balance_report(last_price):
 			my_table.add_row([f'{txcolors.DEFAULT}TOTAL: {txcolors.GREEN if TRADETOTAL > 0. else txcolors.RED}{str(TRADETOTAL)} {txcolors.DEFAULT}{PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG31[LANGUAGE]}: {txcolors.RED}{str(format(float(session_USDT_LOSS), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {txcolors.DEFAULT}{languages_bot.MSG32[LANGUAGE]}: {txcolors.GREEN}{str(format(float(session_USDT_WON), ".4f"))}{txcolors.DEFAULT} {PAIR_WITH} | {languages_bot.MSG19[LANGUAGE].upper()} %: {txcolors.GREEN if (session_USDT_EARNED) > 0. else txcolors.RED}{round(0,3)}%{txcolors.DEFAULT}'])
 		print("\n")
 		coins_table_str = print_table_coins_bought()
-		my_table.add_row([Test_Pos_Now + " - " + str(round(SpeedBot,3)) + "s/c"])
+		if MODE == "BACKTESTING":
+			my_table.add_row([Test_Pos_Now + " - " + str(round(SpeedBot,3)) + "s/c"])
+		else:
+			my_table.add_row([str(round(SpeedBot,3)) + "s/c"])			
 		my_table.add_row([coins_table_str])
 		print(my_table)
 		my_table = PrettyTable()
@@ -1436,15 +1457,17 @@ def write_log_trades(logline):
 	try:
 		file_prefix = prefix_type()
 		logline = str(logline).replace("'","").replace("[","").replace("]","")
-		with open(file_prefix + TRADES_LOG_FILE,'r') as f:
-			lines = f.readlines()
-			#file_stats = os.stat(file_prefix + TRADES_LOG_FILE)
+		write_log_trades_strategys()
 		Header = False
-		for line in lines:
-			if "Datetime" in line:
-				Header = True
-				lines = []
-				break
+		if os.path.exists(file_prefix + TRADES_LOG_FILE):
+			with open(file_prefix + TRADES_LOG_FILE,'r') as f:
+				lines = f.readlines()
+				#file_stats = os.stat(file_prefix + TRADES_LOG_FILE)
+			for line in lines:
+				if "Datetime" in line:
+					Header = True
+					lines = []
+					break
 		if not Header: #file_stats.st_size == 0:
 			HEADER = ["Datetime"+","+"OrderID"+","+"Type"+","+"Coin"+","+"Volume"+","+"Buy Price"+","+"Amount of Buy" + " " + PAIR_WITH+","+"Sell Price"+","+"Amount of Sell" + " " + PAIR_WITH+","+ "Sell Reason"+","+"Profit $" + " " + PAIR_WITH+","+"Commission"]
 			with open(file_prefix + TRADES_LOG_FILE,'a') as f:
@@ -1911,7 +1934,14 @@ def buy():
 							#write_log_trades([last_price[coin]['time'],order_id,"Buy",coin.replace(PAIR_WITH,""),round(float(vol),8),str(round(float(last_price[coin]['price']),8)),str(round(float(get_balance_test_mode()),8)),0,0,"-",0,coin_commission]) #buy               
 						#else:
 							#write_log_trades([datetime.now().strftime("%Y-%d-%m %H:%M:%S"),order_id,"Buy",coin.replace(PAIR_WITH,""),round(float(vol),8),str(round(float(last_price[coin]['price']),8)),str(round(float(get_balance_test_mode()),8)),0,0,"-",0,coin_commission]) #buy 
-						write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime('%Y-%m-%d %H:%M:%S')+","+str(order_id)+","+"Buy"+","+coin.replace(PAIR_WITH,"")+","+str(round(float(vol),8))+","+str(round(float(last_price[coin]['price']),8))+","+str(round(float(get_balance_test_mode()),8))+","+"0"+","+"0"+","+"-"+","+"0"+","+f"{coin_commission:.10f}"]) #buy 
+						trade_time_raw = last_price[coin]['time']
+						if isinstance(trade_time_raw, datetime):
+							trade_time = trade_time_raw.strftime('%Y-%m-%d %H:%M:%S')
+						else:
+							trade_time = datetime.fromtimestamp(trade_time_raw / 1000).strftime('%Y-%m-%d %H:%M:%S')
+
+						write_log_trades([trade_time, str(order_id), "Buy", coin.replace(PAIR_WITH, ""), str(round(float(vol), 8)), str(round(float(last_price[coin]['price']), 8)), str(round(float(get_balance_test_mode()), 8)), "0", "0", "-", "0", f"{coin_commission:.10f}"])
+						# write_log_trades([datetime.fromtimestamp(last_price[coin]['time']/1000).strftime('%Y-%m-%d %H:%M:%S')+","+str(order_id)+","+"Buy"+","+coin.replace(PAIR_WITH,"")+","+str(round(float(vol),8))+","+str(round(float(last_price[coin]['price']),8))+","+str(round(float(get_balance_test_mode()),8))+","+"0"+","+"0"+","+"-"+","+"0"+","+f"{coin_commission:.10f}"]) #buy 
 					
 					except Exception as e:
 						write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} buy(): In create_order exception({coin}): {e}{txcolors.DEFAULT}')
@@ -1988,10 +2018,12 @@ def sell_coins(tpsl_override=False, specific_coin_to_sell="", last_price={}):
 					if not TEST_MODE:
 						order_details = client.create_order(symbol=coin, side='SELL', type='MARKET', quantity=q)
 						coins_sold[coin] = extract_order_data(order_details)
-						OrderID = orders[coin]['orderId']
+						OrderID = coins_sold[coin]['orderId'] #orders[coin]['orderId']
 						VolumeSell = q
 						LastPrice = coins_sold[coin]['avgPrice']
 						coin_commission = coins_sold[coin]['tradeFeeBNB'] #, PAIRWITH = simulate_commission(coins_sold[coin]['volume'] * LastPriceBR, PAIR_WITH)
+						if TRADING_FEE == 0.075:
+							PAIRWITH = 'BNB'
 					else:
 						coins_sold[coin] = coins_bought[coin]
 						coins_bought.pop(coin, None)
@@ -2296,7 +2328,6 @@ def update_bot_stats():
 
 def remove_from_portfolio(coins_sold):
 	global coins_bought
-	'''Remove coins sold due to SL or TP from portfolio'''
 	try:
 		if coins_sold is not None:
 			for coin in coins_sold:
@@ -3153,7 +3184,7 @@ if __name__ == '__main__':
 			print(f'This bot requires Python version 3.9 or higher/newer. You are running version {sys.version_info[:2]} - please upgrade your Python version!!{txcolors.DEFAULT}')
 			sys.exit(0)
 			# Load arguments then parse settings
-		os.system('mode con: cols=155 lines=20')
+		#os.system('mode con: cols=155 lines=20')
 		args = parse_args()
 		mymodule = {}
 		banner()
@@ -3275,7 +3306,7 @@ if __name__ == '__main__':
 		#hsp_head = -1
 
 		# if saved coins_bought json file exists and it's not empty then load it
-		if os.path.isfile(coins_bought_file_path) and os.stat(coins_bought_file_path).st_size!= 0:
+		if os.path.exists(coins_bought_file_path) and os.stat(coins_bought_file_path).st_size > 2:
 			with open(coins_bought_file_path, "r") as file:
 				coins_bought = json.load(file)
 
@@ -3311,20 +3342,20 @@ if __name__ == '__main__':
 		while is_bot_running:
 			try:
 				start_time = time.time()
-				if not MODE == "BACKTESTING":
-					now = datetime.now()
-					seconds_to_wait = timeframe_to_seconds(BOT_TIMEFRAME) - (60 - now.second - now.microsecond / 1_000_000)
-					time.sleep(seconds_to_wait)				
+				# if not MODE == "BACKTESTING":
+					# now = datetime.now()
+					# seconds_to_wait = timeframe_to_seconds(BOT_TIMEFRAME) - (60 - now.second - now.microsecond / 1_000_000)
+					# time.sleep(seconds_to_wait)				
 				coins_sold = {}
 				show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 				orders, last_price, volume = buy()
-				check_holding_time()
+				#check_holding_time()
 				update_portfolio(orders, last_price, volume)
 				
 				if SESSION_TPSL_OVERRIDE:
 					check_total_session_profit(coins_bought, last_price)
 					
-				coins_sold = sell_coins(last_price=last_price)
+				coins_sold = sell_coins(False, "", last_price)
 				remove_from_portfolio(coins_sold)
 				update_bot_stats()
 				
@@ -3343,7 +3374,7 @@ if __name__ == '__main__':
 							time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
 						else:
 							current_time = time.localtime()
-							seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec  # Calcular los segundos restantes hasta el siguiente minuto
+							seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
 							print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
 							time.sleep(seconds_until_next_minute) 
 							

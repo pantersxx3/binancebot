@@ -29,11 +29,9 @@ def buy(Data, CLOSE, pair):
 		# tn = telnetlib.Telnet(HOST, PORT)
 		
 		buySignal = False
+		buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21) or MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
 		# if tipo == 'tendencia_bajista_confirmada':
-			# EMA9 = MF.Ema(Data, 9)
-			# EMA21 = MF.Ema(Data, 21)
-			# RSI14 = MF.Rsi(Data, 14)
-			# buySignal = EMA9 < EMA21 and RSI14 < 30 and CLOSE < EMA21
+		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
 			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
 			# buySignal = CLOSE < BB
@@ -43,22 +41,16 @@ def buy(Data, CLOSE, pair):
 			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
 			# buySignal = CLOSE < Low_break and confirmar_volumen(Data)
 			#MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and
-		buySignal =  MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
+		# buySignal =  MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
 			#--------------------------------------------
 			#BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
 			#if CLOSE <= BB and MF.confirmar_volumen(Data):
 				#buySignal = True
 			#--------------------------------------------
-			#EMA200 = MF.Ema(Data, 200)
-			#spread = MF.spread_strategy(0.01, 0.07, Data)
-			#B = MF.B(Data)
-			#if spread == 1 and CLOSE <= B * 0.999:
+			#if MF.spread_strategy(0.01, 0.07, Data) == 1 and CLOSE <= MF.B(Data) * 0.999:
 				#buySignal = True
-			# EMA200 = MF.Ema(Data, 200)
-			# spread = MF.spread_strategy(0.01, 0.07, Data)
-			# CLOSE = Data['Close'].iloc[-1]
-			# B = MF.B(Data)
-			# buySignal = spread == 1 and CLOSE > EMA200 and (CLOSE < B or CLOSE <= round(B - ((0.1 * B)/100), 5))
+			#--------------------------------------------
+			# buySignal = MF.spread_strategy(0.01, 0.07, Data) == 1 and CLOSE > MF.Ema(Data, 200) and (CLOSE < MF.B(Data) or CLOSE <= round(MF.B(Data) - ((0.1 * MF.B(Data))/100), 5))
 		
 	except Exception as e:
 		exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -74,14 +66,10 @@ def sell(Data, CLOSE, pair):
 		# PORT = 10000
 		# tn = telnetlib.Telnet(HOST, PORT)
 		sellSignal = False
+		sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21) or MF.Rsi(Data, 14) > 70 and MF.check_volume(Data)
 		#if tipo == 'tendencia_alcista_confirmada':
-			# estadisticas["tendencia_alcista_confirmada"] = estadisticas["tendencia_alcista_confirmada"] + 1
-			# EMA9 = MF.Ema(Data, 9)
-			# EMA21 = MF.Ema(Data, 21)
-			# RSI14 = MF.Rsi(Data, 14)
-			# sellSignal = EMA9 > EMA21 and RSI14 > 80 and CLOSE > EMA21
+		# sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
-			# estadisticas['consolidacion'] = estadisticas['consolidacion'] + 1
 			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
 			# sellSignal = CLOSE > BA
 		# elif tipo == 'volatil':
@@ -91,7 +79,7 @@ def sell(Data, CLOSE, pair):
 			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
 			# sellSignal = CLOSE > High_break and CLOSE > EMA200 and MF.confirmar_volumen(Data)
 			#MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and 
-		sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data)
+		# sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data)
 			#adx = MF.Adx(Data)[0]
 			#if adx < 20 and (CLOSE > BA or CLOSE < BB):
 				#pass

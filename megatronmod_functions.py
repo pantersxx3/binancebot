@@ -167,7 +167,7 @@ def get_analysis(d, tf, p, position1=0, num_records=1000):
 			klines = client.get_historical_klines(symbol=p, interval=tf, start_str=str(num_records) + back, limit=num_records)
 			c = pd.DataFrame(klines)
 			c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteAssetVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore']
-			c = c.drop(c.columns[[5, 6, 7, 8, 9, 10, 11]], axis=1)
+			c = c.drop(c.columns[[6, 7, 8, 9, 10, 11]], axis=1)
 			c['time'] = pd.to_datetime(c['time'], unit='ms')
 			c['Close'] = c['Close'].astype(float)
 			#print(c)
@@ -707,7 +707,7 @@ def Fibonacci(data, length=100):
 		return 0 #"ESPERAR"
 
 def B(data):
-    return (data['High'].iloc[-1] + data['Low'].iloc[-1] + data['Close'].iloc[-1]) / 3
+	return (data['High'].iloc[-1] + data['Low'].iloc[-1] + data['Close'].iloc[-1]) / 3
 	
 def Adx(data, adx_period=14):
 	adx = ADXIndicator(
@@ -724,9 +724,9 @@ def Adx(data, adx_period=14):
 	return ADX.iloc[-1], DI_positive.iloc[-1], DI_negative.iloc[-1]
 	
 def filter_with_adx(data, adx_umbral=25):
-    adx_indicador = ADXIndicator(data['High'], data['Low'], data['Close'], window=14)
-    adx = adx_indicador.adx().iloc[-1]
-    return adx < adx_umbral
+	adx_indicador = ADXIndicator(data['High'], data['Low'], data['Close'], window=14)
+	adx = adx_indicador.adx().iloc[-1]
+	return adx < adx_umbral
 	
 def Calculate_Market_Direction(data, adx_period=14, adx_threshold=20):
 	ADX, DI_positive, DI_negative = Adx(data, adx_period)
@@ -766,27 +766,19 @@ def check_compression_bollinger(data, bb_window=20, umbral_compresion=0.01):
 	return ultima_width < umbral_compresion
 
 def check_volume(data, window=5, umbral=1.2):
-	# print(data)
-	# vwap = VolumeWeightedAveragePrice(
-		# high=data['High'],
-		# low=data['Low'],
-		# close=data['Close'],
-		# volume=data['Volume'],
-		# window=window
-	# ).volume_weighted_average_price()
 	volumen_actual = data['Volume'].iloc[-1]
 	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
 	return volumen_actual > umbral * volumen_promedio
 
 # def check_volume_rise(data, window=5, umbral_aumento=1.5):
-    # # Esta función es similar a la que ya tienes, pero se enfoca en el aumento.
-    # volumen_actual = data['Volume'].iloc[-1]
-    # volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
-    # return volumen_actual > umbral_aumento * volumen_promedio
+	# # Esta función es similar a la que ya tienes, pero se enfoca en el aumento.
+	# volumen_actual = data['Volume'].iloc[-1]
+	# volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
+	# return volumen_actual > umbral_aumento * volumen_promedio
 	
 def check_volume_with_vwap(data, window=5, umbral=1.2):
-    volumen_actual = data['Volume'].iloc[-1]
-    volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
+	volumen_actual = data['Volume'].iloc[-1]
+	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
 	vwap = VolumeWeightedAveragePrice(
 		high=data['High'],
 		low=data['Low'],
@@ -798,9 +790,9 @@ def check_volume_with_vwap(data, window=5, umbral=1.2):
 	return (volumen_actual > umbral * volumen_promedio) and (abs(precio_actual - vwap) / vwap < 0.005)
 
 def check_volume_growth(data, velas=3):
-    # Detecta si el volumen ha subido en las últimas N velas
-    vol = data['Volume'].tail(velas).values
-    return all(vol[i] > vol[i-1] for i in range(1, len(vol)))
+	# Detecta si el volumen ha subido en las últimas N velas
+	vol = data['Volume'].tail(velas).values
+	return all(vol[i] > vol[i-1] for i in range(1, len(vol)))
 	
 def check_consolidation(data, adx_threshold=20, atr_threshold=0.003):
 	adx, _, _ = Adx(data)
