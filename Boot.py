@@ -323,18 +323,19 @@ def extract_last_record(csv_file):
 		# pass
 def update_data_coin():
 	try:
-		global c_data
+		global c_data, PAIR
+		pairs = []
 		if USE_MOST_VOLUME_COINS:
 			TICKERS = f'volatile_volume_{date.today()}.txt'
+			# Leer la lista de pares de trading
+			with open(TICKERS, "r") as file:
+				lines = file.readlines()
+			pairs = [line.strip() + PAIR_WITH for line in lines if line.strip()]
 		else:
-			TICKERS = 'tickers.txt'
-
-		# Leer la lista de pares de trading
-		with open(TICKERS, "r") as file:
-			lines = file.readlines()
-		pairs = [line.strip() + PAIR_WITH for line in lines if line.strip()]
+			pairs = PAIR		
 
 		for coin in pairs:
+			coin = coin + PAIR_WITH
 			filecsv = f"{coin}.csv"
 			if os.path.exists(filecsv) and TEST_MODE and not USE_TESNET_IN_ONLINEMODE:
 				# Leer primer y último timestamp del CSV
@@ -591,22 +592,22 @@ def read_next_row_csv(coin, nonext=False):
 				
 def get_all_tickers(nonext=False):
 	try:
-		global client, Test_Pos_Now
-		pairs = {}
-		TICKERS = ''
+		global client, Test_Pos_Now, PAIR
+		pairs = []
 		coins = []
 		
 		if USE_MOST_VOLUME_COINS == True:
 			TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+			with open(TICKERS, "r") as file:
+				lines = file.readlines() 
+			pairs = [line.strip() + PAIR_WITH for line in lines if line.strip()]
 		else:
-			TICKERS = 'tickers.txt'            
+			pairs = PAIR            
 		#for line in open(TICKERS):
-		#pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")]  
-		with open(TICKERS, "r") as file:
-			lines = file.readlines() 
-		pairs = [line.strip() + PAIR_WITH for line in lines if line.strip()]        
+		#pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")]  		        
 		
 		for coin in pairs:
+			coin = coin + PAIR_WITH
 			if BACKTESTING_MODE or TEST_MODE:
 				file = coin + '.csv'
 				while not os.path.exists(file):
@@ -662,12 +663,12 @@ def get_price(add_to_historical=True, prices = []):
 		renew_list()
 
 		for coin in prices:
-			if CUSTOM_LIST and not USE_MOST_VOLUME_COINS:
+			if not USE_MOST_VOLUME_COINS:
 				#tickers=[line.strip() for line in open(TICKERS_LIST, "r")]
-				with open(TICKERS_LIST, "r") as file:
-					lines = file.readlines()
-				tickers = [line.strip() for line in lines if line.strip() if line.strip()]   
-				for item1 in tickers:
+				#with open(TICKERS_LIST, "r") as file:
+					#lines = file.readlines()
+				#tickers = PAIR #[line.strip() for line in lines if line.strip() if line.strip()]   
+				for item1 in PAIR:
 					if item1 + PAIR_WITH == coin['symbol'] and coin['symbol'].replace(PAIR_WITH, "") not in EXCLUDE_PAIRS:
 						if BACKTESTING_MODE:
 							initial_price[coin['symbol']] = { 'price': coin['price'], 'time': coin['time']}
@@ -781,11 +782,11 @@ def get_volume_list():
 			else:    
 				VOLATILE_VOLUME = "volatile_volume_" + dt_string
 				return VOLATILE_VOLUME
-		else:
-			#tickers=[line.strip() for line in open(TICKERS_LIST, "r")]
-			with open(TICKERS_LIST, "r") as file:
-				lines = file.readlines() 
-			pairs = [line.strip() for line in lines if line.strip()]
+		# else:
+			# #tickers=[line.strip() for line in open(TICKERS_LIST, "r")]
+			# with open(TICKERS_LIST, "r") as file:
+				# lines = file.readlines() 
+			# pairs = [line.strip() for line in lines if line.strip()]
 			
 		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
 	except Exception as e:
@@ -982,7 +983,7 @@ def balance_report(last_price):
 	try:
 		global TRADE_TOTAL, trade_wins, trade_losses, session_profit_incfees_perc, session_profit_incfees_total
 		global last_price_global, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, TUP, TDOWN, TNEUTRAL
-		global session_USDT_LOSS, SAVED_COINS, coins_bought, Test_Pos_Now, SpeedBot
+		global session_USDT_LOSS, SAVED_COINS, coins_bought, Test_Pos_Now, SpeedBot, PAIR
 
 		unrealised_session_profit_incfees_perc = 0
 		unrealised_session_profit_incfees_total = 0
@@ -991,14 +992,14 @@ def balance_report(last_price):
 		pair = ""
 		BUDGET = TRADE_SLOTS * get_balance_test_mode() #balance_report
 		exposure_calcuated = 0
-		if TRADE_SLOTS == 1:
-			if USE_MOST_VOLUME_COINS == True:
-				TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
-			else:
-				TICKERS = 'tickers.txt' 
-			#pair=str([line.strip() for line in open(TICKERS, "r")]).replace("[","").replace("]", "").replace("'", "")
-			with open(TICKERS, "r") as file:
-				pair = ", ".join(line.strip() for line in file)
+		# if TRADE_SLOTS == 1:
+			# if USE_MOST_VOLUME_COINS == True:
+				# TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+			# else:
+				# TICKERS = PAIR
+			# #pair=str([line.strip() for line in open(TICKERS, "r")]).replace("[","").replace("]", "").replace("'", "")
+			# with open(TICKERS, "r") as file:
+				# pair = ", ".join(line.strip() for line in file)
 		
 		for coin in list(coins_bought):
 			LastPriceBR = float(last_price[coin]['price'])
@@ -1326,6 +1327,7 @@ def obtener_color_aleatorio():
   
 def make_graphics():
 	try:
+		global PAIR
 		prefix = prefix_type()
 		tradesindicators = prefix + TRADES_INDICATORS.replace(".csv", "") + "_"
 		output_file(prefix + TRADES_GRAPH)
@@ -1333,12 +1335,12 @@ def make_graphics():
 		if TEST_MODE:
 			if USE_MOST_VOLUME_COINS:
 				TICKERS = f'volatile_volume_{date.today()}.txt'
+				pairs = [line.strip() + PAIR_WITH for line in open(TICKERS)]
 			else:
-				TICKERS = 'tickers.txt'            
-			
-			pairs = [line.strip() + PAIR_WITH for line in open(TICKERS)]
+				pairs = PAIR 		
 			
 			for coin in pairs:
+				coin = coin + PAIR_WITH
 				transactions = pd.read_csv(prefix + TRADES_LOG_FILE, comment='#')
 				#transactions['Datetime'] = pd.to_datetime(transactions['Datetime'], unit='ms')
 				
@@ -1690,10 +1692,12 @@ def random_without_repeating():
 def wait_for_price():
 	try:
 		'''calls the initial price and ensures the correct amount of time has passed before reading the current price again'''
-		global historical_prices, hsp_head, coins_up, coins_down, coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD, coins_bought, c_data		
+		global historical_prices, hsp_head, coins_up, coins_down, coins_unchanged, TRADE_TOTAL, USE_VOLATILE_METOD, coins_bought
+		global PAIR, c_data		
 		volatile_coins = {}
 		externals1 = []
 		externals2 = []
+		pairs = []
 		coins_up = 0
 		coins_down = 0
 		coins_unchanged = 0	
@@ -1707,17 +1711,18 @@ def wait_for_price():
 			coins1 = []
 			last_price = 0
 			coins1 = []
-			TICKERS = ''
 			if USE_MOST_VOLUME_COINS == True:
 				TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+				with open(TICKERS, "r") as file:
+					lines = file.readlines()
+				pairs = [line.strip() + PAIR_WITH for line in lines if line.strip()]
 			else:
-				TICKERS = 'tickers.txt'            
+				pairs = PAIR           
 			#for line in open(TICKERS):
 			#pairs=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")] 
-			with open(TICKERS, "r") as file:
-				lines = file.readlines()
-			pairs = [line.strip() + PAIR_WITH for line in lines if line.strip()]
+			
 			for pair in pairs:
+				pair = pair + PAIR_WITH
 				coins1.append(pair)
 			from megatronmod import analyze
 			externals1, externals2 = analyze(c_data, coins1, True) #wait_for_price
@@ -1805,7 +1810,7 @@ def convert_volume():
 					break		
 			if lot_size[coin] < 0: lot_size[coin] = 0
 			#print("volume[coin]",volume[coin],"lot_size[coin]", lot_size[coin], "type", type(lot_size[coin]))
-			# calculate the volume in coin from TRADE_TOTAL in PAIR_WITH (default)            
+			# calculate the volume in coin from TRADE_TOTAL in PAIR_WITH (default)    
 
 			volume[coin] = float(get_balance_test_mode() / float(last_price[coin]['price'])) #convert_volume
 
@@ -2137,15 +2142,17 @@ def sell_external_signals():
 		
 		if USE_MOST_VOLUME_COINS == True:
 			TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+			with open(TICKERS, "r") as file:
+				lines = file.readlines()
+			symbols = [line.strip() + PAIR_WITH for line in lines if line.strip()] 
 		else:
-			TICKERS = 'tickers.txt'  
+			symbols = PAIR
 			
 		#for line in open(TICKERS):
 		#symbols=[line.strip() + PAIR_WITH for line in open(TICKERS, "r")] 
-		with open(TICKERS, "r") as file:
-			lines = file.readlines()
-		symbols = [line.strip() + PAIR_WITH for line in lines if line.strip()]    
+		   
 		for symbol in symbols:
+			symbol = symbol + PAIR_WITH
 			coins1.append(symbol)
 		from megatronmod import analyze
 		signals1, signals2 = analyze(c_data, coins1, False) # sell_external_signals()
@@ -2452,7 +2459,7 @@ def load_settings():
 		global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE
 		global BACKTESTING_MODE_TIME_START, BACKTESTING_MODE_TIME_END, BOT_TIMEFRAME, LOG_TRADES, TRADES_LOG_FILE
 		global DEBUG_SETTING, AMERICAN_USER, PAIR_WITH, QUANTITY, MAX_COINS, FIATS, TIME_DIFFERENCE, RECHECK_INTERVAL, CHANGE_IN_PRICE
-		global STOP_LOSS, TAKE_PROFIT, CUSTOM_LIST, TICKERS_LIST, USE_TRAILING_STOP_LOSS, TRAILING_STOP_LOSS, TRAILING_TAKE_PROFIT, TRADING_FEE
+		global STOP_LOSS, TAKE_PROFIT, USE_TRAILING_STOP_LOSS, TRAILING_STOP_LOSS, TRAILING_TAKE_PROFIT, TRADING_FEE
 		global SIGNALLING_MODULES, MSG_DISCORD, HISTORY_LOG_FILE, TRADE_SLOTS, TRADE_TOTAL, SESSION_TPSL_OVERRIDE, coin_bought
 		global SELL_ON_SIGNAL_ONLY, TRADING_FEE, SHOW_INITIAL_CONFIG, USE_MOST_VOLUME_COINS, COINS_MAX_VOLUME, USE_VOLATILE_METOD
 		global COINS_MIN_VOLUME, DISABLE_TIMESTAMPS, STATIC_MAIN_INFO, COINS_BOUGHT, BOT_STATS, print_TO_FILE, TRADES_GRAPH, TRADES_INDICATORS
@@ -2460,7 +2467,7 @@ def load_settings():
 		global REVERSE_SORT, MAX_HOLDING_TIME, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
 		global LOG_FILE, PANIC_STOP, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
 		global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, SELL_PART, MODE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-		global REMOTE_INSPECTOR_BOT_PORT, SILENT_MODE
+		global REMOTE_INSPECTOR_BOT_PORT, SILENT_MODE, PAIR
 		
 		# Default no debugging
 		DEBUG = False
@@ -2503,6 +2510,7 @@ def load_settings():
 
 		# Load trading vars
 		PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
+		PAIR = parsed_config['trading_options']['PAIR']
 		COMPOUND_INTEREST = parsed_config['trading_options']['COMPOUND_INTEREST']
 		TRADE_TOTAL = parsed_config['trading_options']['TRADE_TOTAL']            
 		TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']	
@@ -2518,8 +2526,8 @@ def load_settings():
 		
 		#COOLOFF_PERIOD = parsed_config['trading_options']['COOLOFF_PERIOD']
 
-		CUSTOM_LIST = parsed_config['trading_options']['CUSTOM_LIST']
-		TICKERS_LIST = parsed_config['trading_options']['TICKERS_LIST']
+		#CUSTOM_LIST = parsed_config['trading_options']['CUSTOM_LIST']
+		#TICKERS_LIST = parsed_config['trading_options']['TICKERS_LIST']
 		
 		USE_TRAILING_STOP_LOSS = parsed_config['trading_options']['USE_TRAILING_STOP_LOSS']
 		TRAILING_STOP_LOSS = parsed_config['trading_options']['TRAILING_STOP_LOSS']
@@ -2876,13 +2884,13 @@ def new_or_continue():
 						break
 					else:
 						print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Deleting previous sessions ...{txcolors.DEFAULT}')
-						if not USE_MOST_VOLUME_COINS:
-							if os.path.exists(TICKERS_LIST.replace(".txt",".backup")):
-								with open(TICKERS_LIST.replace(".txt",".backup") ,'r') as f:
-									lines_tickers = f.readlines()                            
-								with open(TICKERS_LIST,'w') as f:
-									f.writelines(lines_tickers)
-								os.remove(TICKERS_LIST.replace(".txt",".backup"))     
+						# if not USE_MOST_VOLUME_COINS:
+							# if os.path.exists(TICKERS_LIST.replace(".txt",".backup")):
+								# with open(TICKERS_LIST.replace(".txt",".backup") ,'r') as f:
+									# lines_tickers = f.readlines()                            
+								# with open(TICKERS_LIST,'w') as f:
+									# f.writelines(lines_tickers)
+								# os.remove(TICKERS_LIST.replace(".txt",".backup"))     
 
 						remove_by_file_name(file_prefix + TRADES_LOG_FILE)
 						remove_by_file_name(file_prefix + TRADES_LOG_FILE.replace("csv", "html"))

@@ -51,6 +51,7 @@ parsed_config = load_config(config_file)
  
 global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
 
+PAIR = parsed_config['trading_options']['PAIR']
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
 TRADE_SLOTS = parsed_config['trading_options']['TRADE_SLOTS']
 MODE = parsed_config['script_options']['MODE']
@@ -235,11 +236,10 @@ def do_work():
         
 		if USE_MOST_VOLUME_COINS == True:
 			TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
+			for line in open(TICKERS):
+				pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
 		else:
-			TICKERS = 'tickers.txt'            
-
-		for line in open(TICKERS):
-			pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
+			pairs = PAIR   		
             
 		while True:
             #if not threading.main_thread().is_alive(): exit()

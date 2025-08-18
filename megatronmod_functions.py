@@ -517,12 +517,30 @@ def Heikinashi(DF_Data):
 	#time_1MIN = ret_time(DF_Data)
 	#save_indicator(locals().items())
 	return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
-
+	
 def Macd(DF_Data, FAST, SLOW, SIGNAL):
 	MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
 	#time_1MIN = ret_time(DF_Data)
 	#save_indicator(locals().items())
 	return MACD_IND, MACDHIST_IND, MACDSIG_IND
+
+def Macd_Ind(DF_Data, FAST, SLOW, SIGNAL):
+	MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return MACD_IND
+
+def Macd_Hist(DF_Data, FAST, SLOW, SIGNAL):
+	MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return MACDHIST_IND
+
+def Macd_Sig(DF_Data, FAST, SLOW, SIGNAL):
+	MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return MACDSIG_IND
 	
 def Cci(DF_Data, LENGHT):
 	CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 8)
