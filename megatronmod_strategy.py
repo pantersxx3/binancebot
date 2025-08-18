@@ -29,7 +29,9 @@ def buy(Data, CLOSE, pair):
 		# tn = telnetlib.Telnet(HOST, PORT)
 		
 		buySignal = False
-		buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21) or MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
+		MACD_IND, MACDHIST_IND, MACDSIG_IND = MF.Macd(Data, 12, 26, 9)
+		buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21) and MACD_IND < -1.05
+		#MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
 		# if tipo == 'tendencia_bajista_confirmada':
 		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
@@ -66,7 +68,10 @@ def sell(Data, CLOSE, pair):
 		# PORT = 10000
 		# tn = telnetlib.Telnet(HOST, PORT)
 		sellSignal = False
-		sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21) or MF.Rsi(Data, 14) > 70 and MF.check_volume(Data)
+		B = MF.Bought_at(pair)
+		MACD_IND, MACDHIST_IND, MACDSIG_IND = MF.Macd(Data, 12, 26, 9)
+		sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21) and MACD_IND > 0.82
+		#MF.Rsi(Data, 14) > 70 and MF.check_volume(Data)
 		#if tipo == 'tendencia_alcista_confirmada':
 		# sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
