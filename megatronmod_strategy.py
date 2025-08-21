@@ -31,7 +31,7 @@ def buy(Data, CLOSE, pair):
 		buySignal = False
 		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21) and MF.Macd_Ind(Data, 12, 26, 9) < -1.05
 		# buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
-		buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) < -1.05
+		buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) < -1.25
 		# if tipo == 'tendencia_bajista_confirmada':
 		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
@@ -70,7 +70,7 @@ def sell(Data, CLOSE, pair):
 		sellSignal = False
 		# B = MF.Bought_at(pair)
 		#sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)and MF.Macd_Ind(Data, 12, 26, 9) > 0.85
-		sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 0.85
+		sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 1.05
 		#if tipo == 'tendencia_alcista_confirmada':
 		# sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':

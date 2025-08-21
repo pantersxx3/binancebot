@@ -19,7 +19,10 @@ Notes:
 - Requires Python version 3.9.x to run
 
 """
+import signal
+
 import languages_bot
+from megatronmod import analyze
 
 #use for debug
 import traceback
@@ -138,7 +141,7 @@ global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_to
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
 global BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-global SILENT_MODE, Test_Pos_Now, SpeedBot
+global SILENT_MODE, Test_Pos_Now, SpeedBot, POSITION
 
 SAVED_COINS = {}
 parsed_creds = []
@@ -178,6 +181,7 @@ function_variables = {}
 commissionCoins = {}
 Test_Pos_Now = ""
 SpeedBot = 0.0
+POSITION = {}
 
 def convertir_a_str(value):
 	if isinstance(value, dict):
@@ -189,54 +193,54 @@ def convertir_a_str(value):
 	else:
 		return str(value)
 		
-def handle_client(client_socket):
-	try:
-		global function_variables
-		while True:
-			request = client_socket.recv(1024).decode().strip() 
-			parts = request.split(".")
-			if len(parts) == 2:
-				funcion = parts[0]
-				variable = parts[1]
+# def handle_client(client_socket):
+	# try:
+		# global function_variables
+		# while True:
+			# request = client_socket.recv(1024).decode().strip() 
+			# parts = request.split(".")
+			# if len(parts) == 2:
+				# funcion = parts[0]
+				# variable = parts[1]
 
-				if variable == "all_val":
-					all_vars = "\n".join([f"{k}: {convertir_a_str(v)}" for k, v in function_variables[funcion].items()])
-					response = f"{funcion}:\n {all_vars}\n <END_COMMAND>"
-				else:
-					if funcion in function_variables and variable in function_variables[funcion]:
-						response = f"{funcion}.{variable}: {function_variables[funcion][variable]}\n<END_COMMAND>"
-					else:
-						response = f"Variable {variable} no encontrada en la función {funcion}\n<END_COMMAND>"
-			else:
-				response = "Comando no reconocido. Use 'funcion.variable'\n<END_COMMAND>"
+				# if variable == "all_val":
+					# all_vars = "\n".join([f"{k}: {convertir_a_str(v)}" for k, v in function_variables[funcion].items()])
+					# response = f"{funcion}:\n {all_vars}\n <END_COMMAND>"
+				# else:
+					# if funcion in function_variables and variable in function_variables[funcion]:
+						# response = f"{funcion}.{variable}: {function_variables[funcion][variable]}\n<END_COMMAND>"
+					# else:
+						# response = f"Variable {variable} no encontrada en la función {funcion}\n<END_COMMAND>"
+			# else:
+				# response = "Comando no reconocido. Use 'funcion.variable'\n<END_COMMAND>"
 			
-			client_socket.send(response.encode()) 
+			# client_socket.send(response.encode()) 
 			
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}handle_client: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass   
+	# except Exception as e:
+		# write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}handle_client: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		# write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+		# pass   
 		
-def start_telnet_server():
-	try:
-		SIGNAL_NAME = "BOT"
-		if REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0:
-			server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			server.bind(('0.0.0.0', REMOTE_INSPECTOR_MEGATRONMOD_PORT))  # Escucha en todas las interfaces en el puerto 9999
-			server.listen(5)
-			print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: escuchando en el puerto 9999')
+# def start_telnet_server():
+	# try:
+		# SIGNAL_NAME = "BOT"
+		# if REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0:
+			# server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			# server.bind(('0.0.0.0', REMOTE_INSPECTOR_MEGATRONMOD_PORT))  # Escucha en todas las interfaces en el puerto 9999
+			# server.listen(5)
+			# print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: escuchando en el puerto 9999')
 
-			while True:
-				client_socket, addr = server.accept()
-				print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: Conexión aceptada desde {addr}')
+			# while True:
+				# client_socket, addr = server.accept()
+				# print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: Conexión aceptada desde {addr}')
 				
-				# Crear un hilo separado para manejar la conexión
-				client_handler = threading.Thread(target=handle_client, args=(client_socket,))
-				client_handler.start()
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}start_telnet_server: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass  
+				# # Crear un hilo separado para manejar la conexión
+				# client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+				# client_handler.start()
+	# except Exception as e:
+		# write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}start_telnet_server: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		# write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+		# pass  
 	
 def is_fiat():
 	# check if we are using a fiat as a base currency
@@ -455,34 +459,73 @@ def write_log_trades_strategys():
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}write_log_trades_strategys: {languages_bot.MSG1[LANGUAGE]} download_data(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
-			
-def write_position_csv(coin, position):
-	try:
-		with open(coin + '.position', 'w') as f:
-			f.write(str(position).replace(".0", ""))
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass
 
-def read_position_csv(coin):
-	try:
-		pos1 = 0
-		if os.path.exists(coin + '.position'):
-			with open(coin + '.position', 'r') as f:
-				r = f.read().replace(".0", "")
-				pos1 = int(r)
-		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
-		pass
-	return pos1
+# def load_position(filename="positions.json"):
+	# global POSITION
+	# if os.path.exists(filename):
+		# with open(filename, "r") as f:
+			# POSITION = json.load(f)
+		# print("Posiciones cargadas:", POSITION)
+	# else:
+		# POSITION = {}
+
+
+# def save_position(filename="positions.json"):
+	# global POSITION
+	# with open(filename, "w") as f:
+		# json.dump(POSITION, f, indent=4)
+	# print("Posiciones guardadas en", filename)
+	
+# def write_position_csv(coin, position):
+	# try:
+		# global POSITION
+		# POSITION[coin] = position
+		# #with open(coin + '.position', 'w') as f:
+			# #f.write(str(position).replace(".0", ""))
+		# show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	# except Exception as e:
+		# write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}write_position_csv: {languages_bot.MSG1[LANGUAGE]} write_position_csv(): {e}{txcolors.DEFAULT}')
+		# write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+		# pass
+
+# def read_position_csv(coin):
+	# try:
+		# global POSITION
+		# pos1 = POSITION[coin]
+		# # pos1 = 0
+		# # if os.path.exists(coin + '.position'):
+			# # with open(coin + '.position', 'r') as f:
+				# # r = f.read().replace(".0", "")
+				# # pos1 = int(r)
+		# show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	# except Exception as e:
+		# write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}read_position_csv: {languages_bot.MSG1[LANGUAGE]} read_position_csv(): {e}{txcolors.DEFAULT}')
+		# write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+		# pass
+	# return pos1
+
+def load_positions():
+	global POSITION
+	_FILE = "positions.json"
+	if os.path.exists(_FILE):
+		with open(_FILE, "r") as f:
+			data = json.load(f)
+		POSITION = {str(k): int(v) for k, v in data.items()}
+	#else:
+		#POSITION = {}			
+
+def save_positions(pos = {}):
+	global POSITION
+	_FILE = "positions.json"
+	POSITION = pos
+	if len(POSITION) > 0:
+		snapshot = dict(POSITION)
+		with open(_FILE, "w") as f:
+			json.dump(snapshot, f, indent=2)
 	
 def read_next_row_csv(coin, nonext=False):
 	try:
-		global c_data, TRADES_LOG_FILE
+		global c_data, TRADES_LOG_FILE, POSITION
 		price = 0
 		time1 = 0
 
@@ -490,18 +533,22 @@ def read_next_row_csv(coin, nonext=False):
 
 		if USE_SIGNALLING_MODULES:
 			while not os.path.exists('ok.ok'):
-				time.sleep(0.05)
-
-		if os.path.exists(coin + '.position'):
-			pos = read_position_csv(coin)
+				time.sleep(0.05) #read_next_row_csv
+		
+		if os.path.exists('positions.json') and len(POSITION) == 0 : 
+			load_positions() #load_position()
+		
+		if coin in POSITION: #os.path.exists(coin + '.position'):
+			pos1 = POSITION[coin] #read_position_csv(coin)
 
 			if c_data.empty:
 				c_data = pd.read_csv(coin + '.csv', dtype={'Close': float}, comment='#')
+				c_data.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume']
 
 			if nonext:
-				row = c_data[c_data['time'] == pos]
+				row = c_data[c_data['time'] == pos1]
 			else:
-				idx = c_data.index[c_data['time'] == pos]
+				idx = c_data.index[c_data['time'] == pos1]
 				if not idx.empty and idx[0] + 1 < len(c_data):
 					row = c_data.iloc[[idx[0] + 1]]
 				else:
@@ -513,17 +560,20 @@ def read_next_row_csv(coin, nonext=False):
 			else:
 				if not nonext:
 					menu()
+					
+			POSITION[coin] = time1 #write_position_csv(coin, str(time1))
 
 		else:
-			c = pd.read_csv(coin + '.csv', dtype={'Close': float}, comment='#')
-			c.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume']
-			row = c.iloc[200]
+			if c_data.empty:
+				c_data = pd.read_csv(coin + '.csv', dtype={'Close': float}, comment='#')
+				c_data.columns = ['time', 'Open', 'High', 'Low', 'Close', 'Volume']
+			row = c_data.iloc[301]
 			price = float(row['Close'])
 			time1 = int(row['time'])
 			
-			#write_log_trades_strategys()
-
-		write_position_csv(coin, str(time1))
+			POSITION[coin] = time1
+			save_positions(POSITION)			
+			#write_log_trades_strategys()		
 
 		if USE_SIGNALLING_MODULES:
 			try:
@@ -694,8 +744,8 @@ def get_price(add_to_historical=True, prices = []):
 			# historical_prices[hsp_head] = initial_price
 		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
-		import languages_bot
-		import sys
+		#import languages_bot
+		#import sys
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_price: {languages_bot.MSG1[LANGUAGE]} get_price(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
 		pass
@@ -1724,8 +1774,7 @@ def wait_for_price():
 			for pair in pairs:
 				pair = pair + PAIR_WITH
 				coins1.append(pair)
-			from megatronmod import analyze
-			externals1, externals2 = analyze(c_data, coins1, True) #wait_for_price
+			externals1, externals2 = analyze(c_data, coins1, True, POSITION) #wait_for_price
 			last_price = get_price(False, externals1) #wait_for_price
 		
 		exnumber = 0
@@ -1928,7 +1977,7 @@ def buy():
 						while not order_details:
 							print(f"Binance API slow for {coin}, retrying...")
 							order_details = client.get_all_orders(symbol=coin, limit=1)
-							time.sleep(1)
+							time.sleep(1) #buy
 
 						#print(f"Order processed for {coin}, saving to file.")
 						orders[coin] = extract_order_data(order_details)
@@ -2154,8 +2203,7 @@ def sell_external_signals():
 		for symbol in symbols:
 			symbol = symbol + PAIR_WITH
 			coins1.append(symbol)
-		from megatronmod import analyze
-		signals1, signals2 = analyze(c_data, coins1, False) # sell_external_signals()
+		signals1, signals2 = analyze(c_data, coins1, False, POSITION) # sell_external_signals()
 		#tp_pausebotmod.analyze(c_data)
 		
 	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())    
@@ -2370,7 +2418,7 @@ def load_signal_threads():
 		#load signalling modules
 		global signalthreads
 		signalthreads = []
-		if SIGNALLING_MODULES is not None and USE_SIGNALLING_MODULES: 
+		if SIGNALLING_MODULES is not None and USE_SIGNALLING_MODULES: #load_signal_threads
 			if len(SIGNALLING_MODULES) > 0:
 				for module in SIGNALLING_MODULES:
 					if os.path.exists(module + '.py'):
@@ -2466,8 +2514,8 @@ def load_settings():
 		global ENABLE_print_TO_FILE, EXCLUDE_PAIRS, RESTART_MODULES, SHOW_TABLE_COINS_BOUGHT, SORT_TABLE_BY, print_TABLE_COMMISSIONS
 		global REVERSE_SORT, MAX_HOLDING_TIME, PROXY_HTTP, PROXY_HTTPS,USE_SIGNALLING_MODULES, REINVEST_MODE, JSON_REPORT
 		global LOG_FILE, PANIC_STOP, BUY_PAUSED, UPDATE_MOST_VOLUME_COINS, VOLATILE_VOLUME, COMPOUND_INTEREST, MICROSECONDS, LANGUAGE
-		global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, SELL_PART, MODE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-		global REMOTE_INSPECTOR_BOT_PORT, SILENT_MODE, PAIR
+		global FILE_SYMBOL_INFO, TRADES_INDICATORS, USE_TRADES_INDICATORS, SELL_PART, MODE
+		global SILENT_MODE, PAIR
 		
 		# Default no debugging
 		DEBUG = False
@@ -2497,8 +2545,8 @@ def load_settings():
 		print_TABLE_COMMISSIONS = parsed_config['script_options'].get('print_TABLE_COMMISSIONS')
 		BOT_STATS = parsed_config['script_options'].get('BOT_STATS')
 		DEBUG_SETTING = parsed_config['script_options'].get('DEBUG')
-		REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
-		REMOTE_INSPECTOR_BOT_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_BOT_PORT']
+		#REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
+		#REMOTE_INSPECTOR_BOT_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_BOT_PORT']
 		ENABLE_FUNCTION_NAME = False #parsed_config['script_options'].get('ENABLE_FUNCTION_NAME')
 		SAVE_FUNCTION_NAME = True #parsed_config['script_options'].get('SAVE_FUNCTION_NAME')
 		SHOW_FUNCTION_NAME = False #parsed_config['script_options'].get('SHOW_FUNCTION_NAME')
@@ -2595,24 +2643,25 @@ def load_settings():
 		
 def show_func_name(function_name, items):
 	try:
-		global ENABLE_FUNCTION_NAME, LANGUAGE, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT, SHOW_VARIABLES_AND_VALUE
+		global ENABLE_FUNCTION_NAME, LANGUAGE, SHOW_VARIABLES_AND_VALUE
 		global SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, LANGUAGE
 		
-		try:
-			REMOTE_INSPECTOR_BOT_PORT
-		except:
-			DEFAULT_CONFIG_FILE = 'config.yml'   
-			parsed_config = load_config(DEFAULT_CONFIG_FILE)
-			REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
-			REMOTE_INSPECTOR_BOT_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_BOT_PORT']
-			REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
-			ENABLE_FUNCTION_NAME = False
-			SHOW_VARIABLES_AND_VALUE = False
-			SAVE_FUNCTION_NAME = True
-			SAVE_VARIABLES_AND_VALUE = False
+		# try:
+			# REMOTE_INSPECTOR_BOT_PORT
+		# except:
+			#DEFAULT_CONFIG_FILE = 'config.yml'   
+			#parsed_config = load_config(DEFAULT_CONFIG_FILE)
+			#REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
+			#REMOTE_INSPECTOR_BOT_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_BOT_PORT']
+			#REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options'].get('REMOTE_INSPECTOR_MEGATRONMOD_PORT')
+			
+		ENABLE_FUNCTION_NAME = False
+		SHOW_VARIABLES_AND_VALUE = False
+		SAVE_FUNCTION_NAME = True
+		SAVE_VARIABLES_AND_VALUE = False
 			 
-		if REMOTE_INSPECTOR_BOT_PORT > 0 or REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0: 
-			function_variables[function_name] = {k: v for k, v in items}
+		# if REMOTE_INSPECTOR_BOT_PORT > 0 or REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0: 
+			# function_variables[function_name] = {k: v for k, v in items}
 		if ENABLE_FUNCTION_NAME:
 			fn = str(datetime.now()) + "_" + function_name
 			if SHOW_FUNCTION_NAME:  
@@ -2904,7 +2953,7 @@ def new_or_continue():
 						remove_by_extension("/*.pause")
 						remove_by_extension("/*.buy")
 						remove_by_extension("/*.sell")
-						remove_by_extension("/*.position")
+						remove_by_file_name("positions.json")
 
 						print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Session deleted, continuing ...{txcolors.DEFAULT}')
 						break
@@ -3012,7 +3061,7 @@ def change_key_secretkey():
 def menu(banner1=True):
 	try:
 		global COINS_MAX_VOLUME, COINS_MIN_VOLUME, LOG_FILE
-		global PAUSEBOT_MANUAL, BUY_PAUSED, TRADE_TOTAL
+		global PAUSEBOT_MANUAL, BUY_PAUSED, TRADE_TOTAL, POSITION
 
 		stop_signal_threads() #menu
 
@@ -3129,6 +3178,7 @@ def menu(banner1=True):
 			elif x == "L" or x == "l":
 				stop_signal_threads() #Menu - 
 				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Program execution ended by user!{txcolors.DEFAULT}')
+				save_positions(POSITION)
 				sys.exit(0)
 			else:
 				print(f'wrong choice: {x}')
@@ -3184,7 +3234,33 @@ def banner():
 	print(f'{txcolors.YELLOW}')
 	tprint('BinanceTradingBot')    
 	print(f'                                               by {txcolors.RED}Pantersxx3{txcolors.DEFAULT}')                   
+
+def handle_exit(sig, frame):
+	global POSITION
+	save_positions(POSITION)
+	#print(POSITION)
+	#sleep(2)
+	#save_position()
+	#sys.exit(0)
+
+if os.name == 'nt':
+	try:
+		import win32api
+		import win32con
 		
+		def console_handler(sig):
+			if sig == win32con.CTRL_CLOSE_EVENT:
+				handle_exit(sig, None)
+				return True
+			return False
+			
+		win32api.SetConsoleCtrlHandler(console_handler, True)
+	except Exception as e:
+		with open("error_exit.txt", 'w') as f:
+			f.write(e)
+else:
+	signal.signal(signal.SIGTERM, handle_exit)  # kill
+	
 if __name__ == '__main__':
 	try:
 		req_version = (3,9)
@@ -3331,10 +3407,10 @@ if __name__ == '__main__':
 		#remove_external_signals('sell')
 		#remove_external_signals('pause')
 		
-		if REMOTE_INSPECTOR_BOT_PORT > 0:
-			telnet_thread = threading.Thread(target=start_telnet_server)
-			telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
-			telnet_thread.start()
+		# if REMOTE_INSPECTOR_BOT_PORT > 0:
+			# telnet_thread = threading.Thread(target=start_telnet_server)
+			# telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
+			# telnet_thread.start()
 		
 		load_signal_threads()
 
@@ -3347,6 +3423,7 @@ if __name__ == '__main__':
 		#extract of code of OlorinSledge, Thanks
 		thehour = datetime.now().hour  
 		coins_sold = {}
+		C = 0
 		while is_bot_running:
 			try:
 				start_time = time.time()
@@ -3384,7 +3461,11 @@ if __name__ == '__main__':
 							current_time = time.localtime()
 							seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
 							print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
-							time.sleep(seconds_until_next_minute) 
+							time.sleep(seconds_until_next_minute)
+							C = C + 1
+							if C == 15: 
+								save_positions(POSITION)
+								C = 0
 							
 				end_time = time.time()  # Registrar el tiempo al final de la iteración
 				SpeedBot = end_time - start_time  # Calcular el tiempo transcurrido

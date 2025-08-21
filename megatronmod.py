@@ -31,13 +31,13 @@ global access_key, secret_key, client, txcolors, bought, timeHold, ACTUAL_POSITI
 global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, LANGUAGE, BOT_TIMEFRAME
 
 class txcolors:
-    BUY = '\033[92m'
-    WARNING = '\033[93m'
-    SELL_LOSS = '\033[91m'
-    SELL_PROFIT = '\033[32m'
-    DIM = '\033[2m\033[35m'
-    Red = '\033[31m'
-    DEFAULT = '\033[39m'
+	BUY = '\033[92m'
+	WARNING = '\033[93m'
+	SELL_LOSS = '\033[91m'
+	SELL_PROFIT = '\033[32m'
+	DIM = '\033[2m\033[35m'
+	Red = '\033[31m'
+	DEFAULT = '\033[39m'
 
 DEFAULT_CONFIG_FILE = 'config.yml'
 SIGNAL_NAME = 'MEGATRONMOD'
@@ -49,7 +49,7 @@ args = parse_args()
 config_file = args.config if args.config else DEFAULT_CONFIG_FILE
 parsed_config = load_config(config_file)
  
-global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, REMOTE_INSPECTOR_MEGATRONMOD_PORT
+global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
 
 PAIR = parsed_config['trading_options']['PAIR']
 PAIR_WITH = parsed_config['trading_options']['PAIR_WITH']
@@ -59,72 +59,72 @@ SELL_ON_SIGNAL_ONLY = parsed_config['trading_options']['SELL_ON_SIGNAL_ONLY']
 LOG_FILE = parsed_config['script_options'].get('LOG_FILE')
 USE_MOST_VOLUME_COINS = parsed_config['trading_options']['USE_MOST_VOLUME_COINS']
 LANGUAGE = parsed_config['script_options']['LANGUAGE']
-REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_MEGATRONMOD_PORT']
+#REMOTE_INSPECTOR_MEGATRONMOD_PORT = parsed_config['script_options']['REMOTE_INSPECTOR_MEGATRONMOD_PORT']
 BOT_TIMEFRAME = parsed_config['script_options']['BOT_TIMEFRAME']
 #USE_SIGNALLING_MODULES =  False if BACKTESTING_MODE else True
 
 MICROSECONDS = 2
 
-        
+		
 def register_func_name(function_name, items):
-    global variables_funciones
-    variables_funciones[function_name] = {k: v for k, v in items}
-    
+	global variables_funciones
+	variables_funciones[function_name] = {k: v for k, v in items}
+	
 def convertir_a_str(value):
-    if isinstance(value, dict):
-        return str(value)
-    elif isinstance(value, list):
-        return str(value)
-    elif isinstance(value, pd.DataFrame):
-        return value.to_string()  # Convierte el DataFrame a texto legible
-    else:
-        return str(value)
-        
-def handle_client(client_socket):
-    try:
-        global variables_funciones
-        while True:
-            request = client_socket.recv(1024).decode().strip() 
-            parts = request.split(".")
-            if len(parts) == 2:
-                funcion = parts[0]
-                variable = parts[1]
+	if isinstance(value, dict):
+		return str(value)
+	elif isinstance(value, list):
+		return str(value)
+	elif isinstance(value, pd.DataFrame):
+		return value.to_string()  # Convierte el DataFrame a texto legible
+	else:
+		return str(value)
+		
+# def handle_client(client_socket):
+	# try:
+		# global variables_funciones
+		# while True:
+			# request = client_socket.recv(1024).decode().strip() 
+			# parts = request.split(".")
+			# if len(parts) == 2:
+				# funcion = parts[0]
+				# variable = parts[1]
 
-                if variable == "all_val":
-                    all_vars = "\n".join([f"{k}: {convertir_a_str(v)}" for k, v in variables_funciones[funcion].items()])
-                    response = f"{funcion}:\n {all_vars}\n <END_COMMAND>"
-                else:
-                    if funcion in variables_funciones and variable in variables_funciones[funcion]:
-                        response = f"{funcion}.{variable}: {variables_funciones[funcion][variable]}\n<END_COMMAND>"
-                    else:
-                        response = f"Variable {variable} no encontrada en la función {funcion}\n<END_COMMAND>"
-            else:
-                response = "Comando no reconocido. Use 'funcion.variable'\n<END_COMMAND>"
-            
-            client_socket.send(response.encode()) 
-            
-    except Exception as e:
-        MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        MF.write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
-        pass  
-        
-def start_telnet_server():
-    if REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0:
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind(('0.0.0.0', REMOTE_INSPECTOR_MEGATRONMOD_PORT))  # Escucha en todas las interfaces en el puerto 9999
-        server.listen(5)
-        print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: escuchando en el puerto 9999')
+				# if variable == "all_val":
+					# all_vars = "\n".join([f"{k}: {convertir_a_str(v)}" for k, v in variables_funciones[funcion].items()])
+					# response = f"{funcion}:\n {all_vars}\n <END_COMMAND>"
+				# else:
+					# if funcion in variables_funciones and variable in variables_funciones[funcion]:
+						# response = f"{funcion}.{variable}: {variables_funciones[funcion][variable]}\n<END_COMMAND>"
+					# else:
+						# response = f"Variable {variable} no encontrada en la función {funcion}\n<END_COMMAND>"
+			# else:
+				# response = "Comando no reconocido. Use 'funcion.variable'\n<END_COMMAND>"
+			
+			# client_socket.send(response.encode()) 
+			
+	# except Exception as e:
+		# MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# MF.write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)
+		# pass  
+		
+# def start_telnet_server():
+	# if REMOTE_INSPECTOR_MEGATRONMOD_PORT > 0:
+		# server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		# server.bind(('0.0.0.0', REMOTE_INSPECTOR_MEGATRONMOD_PORT))  # Escucha en todas las interfaces en el puerto 9999
+		# server.listen(5)
+		# print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: escuchando en el puerto 9999')
 
-        while True:
-            client_socket, addr = server.accept()
-            print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: Conexión aceptada desde {addr}')
-            
-            # Crear un hilo separado para manejar la conexión
-            client_handler = threading.Thread(target=handle_client, args=(client_socket,))
-            client_handler.start()
-        
-def analyze(d, pairs, buy=True):
+		# while True:
+			# client_socket, addr = server.accept()
+			# print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT} Servidor Telnet: Conexión aceptada desde {addr}')
+			
+			# # Crear un hilo separado para manejar la conexión
+			# client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+			# client_handler.start()
+		
+def analyze(d, pairs, buy=True, position = {}):
 	try:
 		global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE
 
@@ -134,67 +134,70 @@ def analyze(d, pairs, buy=True):
 		buySignal00 = False
 		sellSignal00 = False
 		position2 = 0
-        
+		
 		from Boot import set_correct_mode
 		TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
-        
+		
 		if TEST_MODE:
 			file_prefix = 'test_'
 		else:
 			file_prefix = 'live_'     
-    
+	
 		#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}')
-        
-        
+		
 		for pair in pairs:
 			if BACKTESTING_MODE:
-				position2 = MF.read_position_csv(pair)
+				if len(position) > 0:
+					position2 = position[pair] #MF.read_position_csv(pair)
 				if not os.path.exists(pair + '.csv'): 
 					print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Whaiting for Download Data...{txcolors.DEFAULT}')
 					if USE_SIGNALLING_MODULES:
 						while not os.path.exists(pair + '.csv'):
-							time.sleep(1/1000) #Wait for download 
+							time.sleep(0.5) #Wait for download 
 					else:
 						print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Data file not found. Whaiting for Download Data...{txcolors.DEFAULT}')
-                        
+						
 			analysis = MF.get_analysis(d, BOT_TIMEFRAME, pair, position2, 300)
 
 			if not analysis.empty:
 				CLOSE = float(analysis['Close'].iloc[-1]) #round(float(analysis['Close'].iloc[-1]),6)
-                #OPEN_1MIN = round(float(analysis['Open'].iloc[-1]),6) 
-                #CLOSE_ANT = round(float(analysis['Close'].iloc[-2]),6)
+				#OPEN_1MIN = round(float(analysis['Open'].iloc[-1]),6) 
+				#CLOSE_ANT = round(float(analysis['Close'].iloc[-2]),6)
 				time1 = 0
-                #TIME_1M = analysis['time'].iloc[-1]
-                #time1 = int(TIME_1M)/1000
-                #time_1MIN = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S") 
-				buySignal00 = MS.buy(analysis, CLOSE, pair)
-				sellSignal00 = MS.sell(analysis, CLOSE, pair)
+				#TIME_1M = analysis['time'].iloc[-1]
+				#time1 = int(TIME_1M)/1000
+				#time_1MIN = datetime.fromtimestamp(int(time1)).strftime("%d/%m/%y %H:%M:%S") 
+				#buySignal00 = MS.buy(analysis, CLOSE, pair)
+				#sellSignal00 = MS.sell(analysis, CLOSE, pair)
 
-				analysis = {}
-                
+				
+				
 				if buy:
 					bought_at, timeHold, coins_bought = MF.load_json(pair)            
 					if coins_bought < TRADE_SLOTS and bought_at == 0:                
-						if buySignal00:
+						if MS.buy(analysis, CLOSE, pair):
 							signal_coins1.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
-                            #MF.write_log(f'BUY {CLOSE} {position2}', LOG_FILE, False, False)
+							#MF.write_log(f'BUY {CLOSE} {position2}', LOG_FILE, False, False)
 							if USE_SIGNALLING_MODULES:
 								#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Buy signal detected...{txcolors.DEFAULT}')
 								with open(SIGNAL_FILE_BUY,'w+') as f:
 									f.write(pair + '\n') 
-                                #break
-                
+								#break
+				
 				if SELL_ON_SIGNAL_ONLY:
 					bought_at, timeHold, coins_bought = MF.load_json(pair)
-					if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:                       
+					if float(bought_at) != 0 and float(coins_bought) != 0 and float(CLOSE) != 0:
+						sellSignal00 = MS.sell(analysis, CLOSE, pair)
+						analysis = {}
 						if sellSignal00 and float(bought_at) != 0:
 							signal_coins2.append({ 'time': position2, 'symbol': pair, 'price': CLOSE})
 							#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Sell signal detected...{txcolors.DEFAULT}')
-                            #MF.write_log(f'SELL {CLOSE} {bought_at} {position2}', LOG_FILE, False, False)
+							#MF.write_log(f'SELL {CLOSE} {bought_at} {position2}', LOG_FILE, False, False)
 							if USE_SIGNALLING_MODULES:
 								with open(SIGNAL_FILE_SELL,'w+') as f:
 									f.write(pair + '\n')
-                                    #break                      
+									#break     
+		d = {}
 		register_func_name("analyze", locals().items())
 	except Exception as e:
 		MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
@@ -204,19 +207,19 @@ def analyze(d, pairs, buy=True):
 	return signal_coins1, signal_coins2
 
 def timeframe_to_seconds(timeframe):
-    multipliers = {
-        's': 1,        # segundos
-        'm': 60,       # minutos
-        'h': 3600,     # horas
-        'd': 86400,    # días
-        'w': 604800,   # semanas
-    }
-    unit = timeframe[-1]
-    value = int(timeframe[:-1])
-    if unit in multipliers:
-        return value * multipliers[unit]
-    else:
-        return 0
+	multipliers = {
+		's': 1,        # segundos
+		'm': 60,       # minutos
+		'h': 3600,     # horas
+		'd': 86400,    # días
+		'w': 604800,   # semanas
+	}
+	unit = timeframe[-1]
+	value = int(timeframe[:-1])
+	if unit in multipliers:
+		return value * multipliers[unit]
+	else:
+		return 0
 
 def do_work():
 	try:
@@ -226,23 +229,23 @@ def do_work():
 		pairs = {}
 		dataBuy = {}
 		dataSell = {}
-        
+		
 		from Boot import set_correct_mode
 		TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES = set_correct_mode(LANGUAGE, MODE, True)
-        
-        #telnet_thread = threading.Thread(target=start_telnet_server)
-        #telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
-        #telnet_thread.start()
-        
+		
+		#telnet_thread = threading.Thread(target=start_telnet_server)
+		#telnet_thread.daemon = True  # El hilo se detendrá si el programa principal termina
+		#telnet_thread.start()
+		
 		if USE_MOST_VOLUME_COINS == True:
 			TICKERS = 'volatile_volume_' + str(date.today()) + '.txt'
 			for line in open(TICKERS):
 				pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
 		else:
 			pairs = PAIR   		
-            
+			
 		while True:
-            #if not threading.main_thread().is_alive(): exit()
+			#if not threading.main_thread().is_alive(): exit()
 			if os.path.exists("signal.sig"):
 				print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Exit...{txcolors.DEFAULT}') 
 				os.remove("signal.sig")
@@ -250,13 +253,13 @@ def do_work():
 			#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
 			if BACKTESTING_MODE:
 				while os.path.exists('ok.ok'):
-					time.sleep(1/1000) #do_work
+					time.sleep(0.001) #do_work
 				signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
 				with open('ok.ok','w') as f:
 					f.write('1')
 			else:
 				signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-			time.sleep(MICROSECONDS) #do_work         
+			time.sleep(0.001) #do_work         
 			DISABLE_WAI = False
 			if not DISABLE_WAI:
 				if "s" in BOT_TIMEFRAME:
@@ -266,7 +269,7 @@ def do_work():
 					seconds_until_next_minute = timeframe_to_seconds(BOT_TIMEFRAME) - current_time.tm_sec
 					#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Esperando {seconds_until_next_minute} segundos hasta el siguiente analisis...')
 					time.sleep(seconds_until_next_minute)    
-            
+			
 			register_func_name("do_work", locals().items())
 	except Exception as e:
 		MF.write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: do_work(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)

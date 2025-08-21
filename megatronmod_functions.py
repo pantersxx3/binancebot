@@ -146,7 +146,9 @@ def get_analysis(d, tf, p, position1=0, num_records=1000):
 					d['Close'] = d['Close'].astype(float)
 				else:
 					d['Close'] = d['Close'].astype(float)
-				c = d.query('time < @position1').tail(num_records)
+				#c = d.query('time < @position1').tail(num_records)
+				idx = d["time"].searchsorted(position1)
+				c = d.iloc[max(0, idx - num_records):idx]
 				inttime = int(position1)/1000            
 				position2 = c['time'].iloc[0]
 				#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}{BACKTESTING_MODE_TIME_START} - Posicion actual {datetime.fromtimestamp(inttime).strftime("%d/%m/%y %H:%M:%S")} - {position2} - {position1}...{txcolors.DEFAULT}')
@@ -441,6 +443,17 @@ def Ichimoku(DF_Data, TENKA, KIJUN, SENKU):
 	#time_1MIN = ret_time(DF_Data)
 	#save_indicator(locals().items())
 	return spanA_IND, spanB_IND, tenkan_sen_IND, kijun_sen_IND, chikou_span_IND
+
+def Heikinashi(DF_Data):
+	HEIKINASHI_1M_DATA = pd.DataFrame()
+	HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_Close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
+	HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 8)
+	HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 8)
+	HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 8)
+	HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_Close'], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
 	
 def Bollinger_Bands(DF_Data, LENGHT, STD):
 	df = pd.DataFrame()
@@ -495,6 +508,12 @@ def Rsi(DF_Data, LENGHT):
 	#save_indicator(locals().items())
 	return RSI_IND
 
+def Rsi_df(DF_Data, LENGHT):
+	RSI_IND = ta.rsi(DF_Data['Close'], LENGHT)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return RSI_IND
+
 def Wma(DF_Data, LENGHT):
 	WMA_IND = round(ta.wma(DF_Data['Close'], LENGHT).iloc[-1], 8)
 	#time_1MIN = ret_time(DF_Data)
@@ -507,19 +526,14 @@ def Hma(DF_Data, LENGHT):
 	#save_indicator(locals().items())
 	return HMA_IND
 	
-def Heikinashi(DF_Data):
-	HEIKINASHI_1M_DATA = pd.DataFrame()
-	HEIKINASHI_1M_DATA[['ha_open', 'ha_high', 'ha_low', 'ha_Close']] = ta.ha(DF_Data['Open'], DF_Data['High'], DF_Data['Low'], DF_Data['Close'])
-	HEIKINASHI_OPEN_IND = round(HEIKINASHI_1M_DATA['ha_open'], 8)
-	HEIKINASHI_HIGH_IND = round(HEIKINASHI_1M_DATA['ha_high'], 8)
-	HEIKINASHI_LOW_IND = round(HEIKINASHI_1M_DATA['ha_low'], 8)
-	HEIKINASHI_CLOSE_IND = round(HEIKINASHI_1M_DATA['ha_Close'], 8)
-	#time_1MIN = ret_time(DF_Data)
-	#save_indicator(locals().items())
-	return HEIKINASHI_OPEN_IND, HEIKINASHI_HIGH_IND, HEIKINASHI_LOW_IND, HEIKINASHI_CLOSE_IND
-	
 def Macd(DF_Data, FAST, SLOW, SIGNAL):
 	MACD_IND, MACDHIST_IND, MACDSIG_IND = round(ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL).iloc[-1], 8)
+	#time_1MIN = ret_time(DF_Data)
+	#save_indicator(locals().items())
+	return MACD_IND, MACDHIST_IND, MACDSIG_IND
+
+def Macd_df(DF_Data, FAST, SLOW, SIGNAL):
+	MACD_IND, MACDHIST_IND, MACDSIG_IND = ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL)
 	#time_1MIN = ret_time(DF_Data)
 	#save_indicator(locals().items())
 	return MACD_IND, MACDHIST_IND, MACDSIG_IND
@@ -788,6 +802,11 @@ def check_volume(data, window=5, umbral=1.2):
 	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
 	return volumen_actual > umbral * volumen_promedio
 
+def check_volume_df(data, window=5, umbral=1.2):
+	volumen_actual = data['Volume']
+	volumen_promedio = data['Volume'].rolling(window).mean()
+	return volumen_actual > umbral * volumen_promedio
+	
 # def check_volume_rise(data, window=5, umbral_aumento=1.5):
 	# # Esta función es similar a la que ya tienes, pero se enfoca en el aumento.
 	# volumen_actual = data['Volume'].iloc[-1]
