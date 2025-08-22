@@ -141,8 +141,9 @@ global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_to
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
 global BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-global SILENT_MODE, Test_Pos_Now, SpeedBot, POSITION
+global SILENT_MODE, Test_Pos_Now, SpeedBot, POSITION, symbol_cache
 
+symbol_cache = {}
 SAVED_COINS = {}
 parsed_creds = []
 secret_key = ""
@@ -395,8 +396,8 @@ def download_data(coin):
 	try:
 		global client
 		c = pd.DataFrame([])
-		load_credentials(True)
-		create_conection_binance(True)
+		#load_credentials(True)
+		#create_conection_binance(True)
 		print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}{languages_bot.MSG3[LANGUAGE]}...{txcolors.DEFAULT}')
 
 		end = time.mktime(datetime.strptime(BACKTESTING_MODE_TIME_END, "%d/%m/%y %H:%M:%S").timetuple())
@@ -1795,43 +1796,83 @@ def wait_for_price():
 		pass
 	return volatile_coins, len(volatile_coins), last_price #historical_prices[hsp_head]
 	
-def get_info(coin, file):
-	try:
-		info = ""
-		client = Client(access_key, secret_key)
-		info = client.get_symbol_info(coin)
-		with open(file, "a") as f:
-			f.write(str(info) + '\n')
-		client = ""    
-		return info
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_info() exception: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")       
-		pass 
+# def get_info(coin, file):
+	# try:
+		# info = ""
+		# client = Client(access_key, secret_key)
+		# info = client.get_symbol_info(coin)
+		# with open(file, "a") as f:
+			# f.write(str(info) + '\n')
+		# client = ""    
+		# return info
+	# except Exception as e:
+		# write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_info() exception: {e}{txcolors.DEFAULT}')
+		# write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")       
+		# pass 
 	
-def get_symbol_info(coin1):
-	try:
-		global FILE_SYMBOL_INFO, client
-		ret = {}
-		if BACKTESTING_MODE:
-			#for line in open(FILE_SYMBOL_INFO, "r"):
-			with open(FILE_SYMBOL_INFO, "r") as f:
-				lines = f.readlines()
-			for line in lines:
-				if coin1 in line:
-					#print("line=", line)
-					ret = eval(line)
-					break
-			if len(ret) == 0:
-				ret = get_info(coin1, FILE_SYMBOL_INFO)
-		if not BACKTESTING_MODE:
-			ret = client.get_symbol_info(coin1) #get_symbol_info
-	except Exception as e:
-		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_symbol_info() exception: {e}{txcolors.DEFAULT}')
-		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")       
-		pass
-	return ret
+# def get_symbol_info(coin1):
+	# try:
+		# global FILE_SYMBOL_INFO, client
+		# ret = {}
+		# if BACKTESTING_MODE:
+			# #for line in open(FILE_SYMBOL_INFO, "r"):
+			# with open(FILE_SYMBOL_INFO, "r") as f:
+				# lines = f.readlines()
+			# for line in lines:
+				# if coin1 in line:
+					# #print("line=", line)
+					# ret = eval(line)
+					# break
+			# if len(ret) == 0:
+				# ret = get_info(coin1, FILE_SYMBOL_INFO)
+		# if not BACKTESTING_MODE:
+			# ret = client.get_symbol_info(coin1) #get_symbol_info
+	# except Exception as e:
+		# write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}get_symbol_info() exception: {e}{txcolors.DEFAULT}')
+		# write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")       
+		# pass
+	# return ret
 
+def load_symbol_info_cache():
+	global symbol_cache
+	SYMBOL_INFO_FILE = "symbol.info.json"
+	if os.path.exists(SYMBOL_INFO_FILE):
+		with open(SYMBOL_INFO_FILE, "r") as f:
+			symbol_cache = json.load(f)
+	#else:
+		#symbol_cache = {}
+	
+def save_symbol_cache():
+	global symbol_cache
+	SYMBOL_INFO_FILE = "symbol.info.json"
+	with open(SYMBOL_INFO_FILE, "w") as f:
+		json.dump(symbol_cache, f, indent=2)
+
+def get_info(symbol: str):
+	global symbol_cache, client
+	
+	if len(symbol_cache) == 0: load_symbol_info_cache()
+	
+	symbol = symbol.upper()
+
+	if symbol in symbol_cache:
+		return symbol_cache[symbol]
+
+	try:
+		info = client.get_symbol_info(symbol)
+		if info is None:
+			raise ValueError(f"No se encontró info para {symbol}")
+
+		symbol_cache[symbol] = info
+		save_symbol_cache()
+		return info
+
+	except Exception as e:
+		raise RuntimeError(f"Error al obtener info de {symbol}: {e}")
+
+def get_symbol_info(symbol: str):
+	return get_info(symbol)
+	
 def convert_volume():
 	try:
 		'''Converts the volume given in TRADE_TOTAL from "USDT"(or coin selected) to the each coin's volume'''
@@ -1892,7 +1933,7 @@ def simulate_commission(volume, coin):
 		ExistCoin = False
 		if TRADING_FEE == 0.075:
 			if not coin in commissionCoins:
-				client = Client(access_key, secret_key)
+				# client = Client(access_key, secret_key)
 				try:
 					filter = coin.replace(PAIR_WITH, "") + "BNB"
 					symbol1 = client.get_symbol_ticker(symbol=filter)				
@@ -2015,7 +2056,7 @@ def sell_coins(tpsl_override=False, specific_coin_to_sell="", last_price={}):
 		global trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, sell_all_coins, client
 		global session_USDT_EARNED, TUP, TDOWN, TNEUTRAL, USED_COMMISSIONS, TRADE_TOTAL, sell_specific_coin
 		global session_USDT_LOSS, session_USDT_WON, session_USDT_EARNED, SAVED_COINS, coins_bought, SELL_PART
-		global SAVED_COINS, PAIR_WITH
+		global SAVED_COINS, PAIR_WITH, client
 
 		coins_sold = {}
 		if not coins_bought:
@@ -2954,6 +2995,7 @@ def new_or_continue():
 						remove_by_extension("/*.buy")
 						remove_by_extension("/*.sell")
 						remove_by_file_name("positions.json")
+						remove_by_file_name("symbol.info.json")
 
 						print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Session deleted, continuing ...{txcolors.DEFAULT}')
 						break
@@ -3195,36 +3237,35 @@ def create_conection_binance(force=False):
 		global BACKTESTING_MODE, AMERICAN_USER, PROXY_HTTP, PROXY_HTTPS, client, parsed_config, creds_file, parsed_creds
 		global access_key, secret_key, USE_TESNET_IN_ONLINEMODE
 		
-		if force or USE_TESNET_IN_ONLINEMODE or not TEST_MODE:
-			# Authenticate with the client, Ensure API key is good before continuing
-			if AMERICAN_USER:
-				if PROXY_HTTP != '' or PROXY_HTTPS != '': 
-					print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT} Using proxy ...{txcolors.DEFAULT}')
-					proxies = {
-							'http': PROXY_HTTP,
-							'https': PROXY_HTTPS
-					}
-					client = Client(access_key, secret_key, {'proxies': proxies}, tld='us')
-				else:
-					client = Client(access_key, secret_key, tld='us')
+		#if force or USE_TESNET_IN_ONLINEMODE or not TEST_MODE:
+		if AMERICAN_USER:
+			if PROXY_HTTP != '' or PROXY_HTTPS != '': 
+				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT} Using proxy ...{txcolors.DEFAULT}')
+				proxies = {
+						'http': PROXY_HTTP,
+						'https': PROXY_HTTPS
+				}
+				client = Client(access_key, secret_key, {'proxies': proxies}, tld='us')
 			else:
-				if PROXY_HTTP != '' or PROXY_HTTPS != '': 
-					print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT} Using proxy ...{txcolors.DEFAULT}')
-					proxies = {
-							'http': PROXY_HTTP,
-							'https': PROXY_HTTPS
-					}
-					client = Client(access_key, secret_key, {'proxies': proxies})
-				else:
-					client = Client(access_key, secret_key)
+				client = Client(access_key, secret_key, tld='us')
+		else:
+			if PROXY_HTTP != '' or PROXY_HTTPS != '': 
+				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT} Using proxy ...{txcolors.DEFAULT}')
+				proxies = {
+						'http': PROXY_HTTP,
+						'https': PROXY_HTTPS
+				}
+				client = Client(access_key, secret_key, {'proxies': proxies})
+			else:
+				client = Client(access_key, secret_key)
 
-			if USE_TESNET_IN_ONLINEMODE: client.API_URL = 'https://testnet.binance.vision/api'
-			# If the users has a bad / incorrect API key.
-			# this will stop the script from starting, and display a helpful error.
-			api_ready, msg = test_api_key(client, BinanceAPIException)
-			if api_ready is not True:
-				sys.exit(f'{txcolors.BLUE}{msg}{txcolors.DEFAULT}')
-			#print(client.get_account()) 
+		if USE_TESNET_IN_ONLINEMODE: client.API_URL = 'https://testnet.binance.vision/api'
+		# If the users has a bad / incorrect API key.
+		# this will stop the script from starting, and display a helpful error.
+		api_ready, msg = test_api_key(client, BinanceAPIException)
+		if api_ready is not True:
+			sys.exit(f'{txcolors.BLUE}{msg}{txcolors.DEFAULT}')
+		#print(client.get_account()) 
 	except Exception as e:
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW} create_conection_binance(): {e}{txcolors.DEFAULT}')
 		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
@@ -3320,24 +3361,18 @@ if __name__ == '__main__':
 		sell_all_coins = False
 		sell_specific_coin = False
 		
-		load_credentials()
-
-		create_conection_binance()       
-
+		load_credentials(True)
+		create_conection_binance()
 		renew_list()
-
 		update_data_coin()
-
 		new_or_continue()       
-
-		#null = get_historical_price()
 		
-		# try to load all the coins bought by the bot if the file exists and is not empty
+		#null = get_historical_price()
+
 		coins_bought = {}
 
 		file_prefix = prefix_type()
 
-		# path to the saved coins_bought file
 		coins_bought_file_path = file_prefix + COINS_BOUGHT
 
 		# The below mod was stolen and altered from GoGo's fork, a nice addition for keeping a historical history of profit across multiple bot sessions.

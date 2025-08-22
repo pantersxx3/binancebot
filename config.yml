@@ -16,7 +16,7 @@ script_options:
   TRADES_GRAPH: 'graphics.html'
   TRADES_INDICATORS: 'indicator.csv'
   #USE_TRADES_INDICATORS: False
-  FILE_SYMBOL_INFO: 'symbol.info'
+  #FILE_SYMBOL_INFO: 'symbol.info'
   #if it is empty no information will be saved
   #HISTORY_LOG_FILE: '' #'history.html'
   COINS_BOUGHT: 'coins_bought.json'
@@ -26,9 +26,9 @@ script_options:
   DEBUG: True
   SILENT_MODE: True
   #through telnet it is possible to obtain the value of this or that variable in a function
-  REMOTE_INSPECTOR_BOT_PORT: 0 #9998
+  #REMOTE_INSPECTOR_BOT_PORT: 0 #9998
   #if 0 remote server is disabled
-  REMOTE_INSPECTOR_MEGATRONMOD_PORT: 0 #9999
+  #REMOTE_INSPECTOR_MEGATRONMOD_PORT: 0 #9999
   #all binance requests from our bot will be proxied
   PROXY_HTTP: '' #'http://localhost:8090'
   PROXY_HTTPS: ''

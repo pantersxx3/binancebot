@@ -251,14 +251,14 @@ def do_work():
 				os.remove("signal.sig")
 				sys.exit(0)
 			#print(f'{txcolors.SELL_PROFIT}{SIGNAL_NAME}: {txcolors.DEFAULT}Analyzing {len(pairs)} coins...{txcolors.DEFAULT}') 
-			if BACKTESTING_MODE:
-				while os.path.exists('ok.ok'):
-					time.sleep(0.001) #do_work
-				signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-				with open('ok.ok','w') as f:
-					f.write('1')
-			else:
-				signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
+			# if BACKTESTING_MODE:
+				# while os.path.exists('ok.ok'):
+					# time.sleep(0.001) #do_work
+				# signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
+				# with open('ok.ok','w') as f:
+					# f.write('1')
+			# else:
+			signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
 			time.sleep(0.001) #do_work         
 			DISABLE_WAI = False
 			if not DISABLE_WAI:
