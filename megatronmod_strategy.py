@@ -66,7 +66,7 @@ def sell(Data, CLOSE, pair):
 		# B = MF.Bought_at(pair)
 		#sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)and MF.Macd_Ind(Data, 12, 26, 9) > 0.85
 		#sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Ema(Data, 50) > MF.Ema(Data, 200)
-		sellSignal = bool(MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 0.85 and MF.Ema(Data, 50) > MF.Ema(Data, 200)) or MF.dynamic_sl_atr(pair, CLOSE, Data, 2.5)
+		sellSignal = bool(MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 0.85 and MF.Ema(Data, 50) > MF.Ema(Data, 200))
 		#if tipo == 'tendencia_alcista_confirmada':
 		# sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
@@ -106,3 +106,4 @@ def sell(Data, CLOSE, pair):
 		print('Sell Error on line ' + str(exc_tb.tb_lineno))
 		pass
 	return sellSignal
+
