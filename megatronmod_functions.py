@@ -313,7 +313,7 @@ def load_json(p):
 				value3 = value3 + 1                
 			if p in bought_analysis1MIN:
 				value1 = round(float(bought_analysis1MIN[p]['bought_at']),8)
-				value2 = round(float(bought_analysis1MIN[p]['timestamp']),8)
+				value2 = round(float(bought_analysis1MIN[p]['time']),8)
 				bought_analysis1MIN = {}
 	except Exception as e:
 		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: load_json(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
@@ -562,24 +562,23 @@ def Cci(DF_Data, LENGHT):
 	#save_indicator(locals().items())
 	return CCI_IND
 
-def Sl(PAIR, CLOSE):
+def Sl(PAIR, CLOSE, STOPLOSS):
 	try:
-		#r = False
-		bought_at, timeHold, coins_bought = load_json(PAIR)
-		SL = float(bought_at) - ((float(bought_at) * float(STOP_LOSS)) / 100)
-		r = float(CLOSE) < float(SL) and float(SL) != 0
+		r = False
+		bought_at = Bought_at(PAIR) #, timeHold, coins_bought = load_json(PAIR)
+		SL = float(bought_at) - ((float(bought_at) * float(STOPLOSS)) / 100)
+		r = float(CLOSE) < float(SL) and float(SL) != 0.0
 	except Exception as e:
 		exc_type, exc_obj, exc_tb = sys.exc_info()
 		print('Sl Error on line ' + str(exc_tb.tb_lineno))
 		pass    
 	return r
 	
-def Tp(PAIR, CLOSE):
+def Tp(PAIR, CLOSE, TAKEPROFIT):
 	try:
-		global TAKE_PROFIT
 		sellSignalTP = False
-		bought_at, timeHold, coins_bought = load_json(PAIR)
-		TP = float(bought_at) + ((float(bought_at) * float(TAKE_PROFIT)) / 100)
+		bought_at = Bought_at(PAIR) #, timeHold, coins_bought = load_json(PAIR)
+		TP = float(bought_at) + ((float(bought_at) * float(TAKEPROFIT)) / 100)
 		sellSignalTP = (float(CLOSE) > float(TP) and float(TP) != 0.0)
 	except Exception as e:
 		exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -595,7 +594,8 @@ def Bought_timeHold(PAIR):
 	bought_at, timeHold, coins_bought = load_json(PAIR)
 	return timeHold
 	
-def TimeHold(pair, current_timestamp_seconds):
+def TimeHold(pair, current_timestamp):
+	current_timestamp_seconds = current_timestamp/1000
 	TimeHold_seconds = Bought_timeHold(pair)/1000
 	TimeHold_sec = current_timestamp_seconds - TimeHold_seconds
 	TimeHold_min = TimeHold_sec / 60
@@ -652,47 +652,56 @@ def contar_decimales(numero):
 		return len(parte_decimal)
 	else:
 		return 0
-		
-def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
-	try:
-		coinfile = coin + ".st"
-		if Bought_at(coin):
-			#BA, BM, BB = Bollinger_Bands(DF_Data, LENGHT, 2)
-			if os.path.exists(coinfile):
-				if CLOSE > value:
-					os.remove(coinfile)
-					return False
-				
-				if os.path.exists(coin + '.position'):
-					with open(coin + '.position', 'r') as f:
-						last_time = float(f.read().replace(".0", ""))
-				else:
-					return False
-					
-				with open(coinfile, "r") as f:
-					first_time = float(f.read().strip())			
-				time_elapsed = ((last_time - first_time) / 60) / 1000
 
-				if time_elapsed >= time_wait:
-					os.remove(coinfile)
-					return True
-			else:				
-				if CLOSE < value:
-					if os.path.exists(coin + '.position'):
-						with open(coin + '.position', 'r') as f:
-							last_time = float(f.read().replace(".0", ""))
-					else:
-						return False
+def should_sell_due_to_risk(coin, CLOSE, time, sl, th):
+	r = False
+	if Sl(coin, CLOSE, sl):
+		r = True	
+	time_held = TimeHold(coin, time)
+	if time_held > th:
+		r = True		
+	return r
+	
+# def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
+	# try:
+		# coinfile = coin + ".st"
+		# if Bought_at(coin):
+			# #BA, BM, BB = Bollinger_Bands(DF_Data, LENGHT, 2)
+			# if os.path.exists(coinfile):
+				# if CLOSE > value:
+					# os.remove(coinfile)
+					# return False
+				
+				# if os.path.exists(coin + '.position'):
+					# with open(coin + '.position', 'r') as f:
+						# last_time = float(f.read().replace(".0", ""))
+				# else:
+					# return False
+					
+				# with open(coinfile, "r") as f:
+					# first_time = float(f.read().strip())			
+				# time_elapsed = ((last_time - first_time) / 60) / 1000
+
+				# if time_elapsed >= time_wait:
+					# os.remove(coinfile)
+					# return True
+			# else:				
+				# if CLOSE < value:
+					# if os.path.exists(coin + '.position'):
+						# with open(coin + '.position', 'r') as f:
+							# last_time = float(f.read().replace(".0", ""))
+					# else:
+						# return False
 						
-					with open(coinfile, 'w') as f:
-						f.write(str(last_time))
-					return False
-	except Exception as e:
-		exc_type, exc_obj, exc_tb = sys.exc_info()
-		print(e)
-		print('check_bollingerLow_and_holding Error on line ' + str(exc_tb.tb_lineno))
-		pass 
-	return False
+					# with open(coinfile, 'w') as f:
+						# f.write(str(last_time))
+					# return False
+	# except Exception as e:
+		# exc_type, exc_obj, exc_tb = sys.exc_info()
+		# print(e)
+		# print('check_bollingerLow_and_holding Error on line ' + str(exc_tb.tb_lineno))
+		# pass 
+	# return False
 	
 def calculate_spread(min_spread, max_spread, DF_Data):
 	open_price = DF_Data['Open'].iloc[-1]   # precio de compra
@@ -770,16 +779,26 @@ def Calculate_Market_Direction(data, adx_period=14, adx_threshold=20):
 			return 'bajista'		
 	return 'sin_tendencia'
 	
-def Atr(data, atr_period=14):
-	atr = AverageTrueRange(
-		high=data['High'],
-		low=data['Low'],
-		close=data['Close'],
-		window=atr_period
-	).average_true_range()
+def Atr_normalized(data, atr_period=14):
+    atr_value = AverageTrueRange(
+        high=data['High'],
+        low=data['Low'],
+        close=data['Close'], 
+        window=atr_period
+    ).average_true_range().iloc[-1]
+    
+    normalized_atr = atr_value / data['Close'].iloc[-1]
+    return normalized_atr  # ← Ej: 0.015 para 1.5% de volatilidad
 	
-	normalized_atr = atr.iloc[-1] / data['Close'].iloc[-1]
-	return normalized_atr
+def Atr(data, atr_period=14):
+    atr = AverageTrueRange(
+        high=data['High'],
+        low=data['Low'], 
+        close=data['Close'],
+        window=atr_period
+    ).average_true_range()
+    
+    return atr.iloc[-1]  # ← Valor ABSOLUTO, no normalizado
 	
 def check_compression_bollinger(data, bb_window=20, umbral_compresion=0.01):	
 	data = data.copy()
@@ -800,7 +819,7 @@ def check_compression_bollinger(data, bb_window=20, umbral_compresion=0.01):
 def check_volume(data, window=5, umbral=1.2):
 	volumen_actual = data['Volume'].iloc[-1]
 	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
-	return volumen_actual > umbral * volumen_promedio
+	return bool(volumen_actual > umbral * volumen_promedio)
 
 def check_volume_df(data, window=5, umbral=1.2):
 	volumen_actual = data['Volume']
@@ -830,15 +849,37 @@ def check_volume_growth(data, velas=3):
 	# Detecta si el volumen ha subido en las últimas N velas
 	vol = data['Volume'].tail(velas).values
 	return all(vol[i] > vol[i-1] for i in range(1, len(vol)))
+
+def low_volatility(Data, CLOSE):
+	return Atr(Data, 14) < (CLOSE * 0.005)
+	
+def dynamic_sl_atr(coin, current_price, data, atr_multiplier=2.5):
+    bought_at = Bought_at(coin)
+    
+    if bought_at <= 0:
+        return False #, 'not_owned'
+    
+    # Obtener ATR ABSOLUTO (en USDT, no porcentaje)
+    atr_absolute = Atr(data, 14)  # ← Función corregida
+    
+    # Calcular precio de SL
+    sl_price = bought_at - (atr_absolute * atr_multiplier)
+    sl_percentage = ((bought_at - sl_price) / bought_at) * 100
+    
+    # Verificar si activar SL
+    if current_price <= sl_price:
+        return True #, f'sl_atr_{sl_percentage:.1f}%'
+    
+    return False #, None
 	
 def check_consolidation(data, adx_threshold=20, atr_threshold=0.003):
 	adx, _, _ = Adx(data)
-	atr = Atr(data)
+	atr = Atr_normalized(data)
 	return adx < adx_threshold and atr < atr_threshold
 	
 def detect_market_type(data, umbral_alto_volatilidad=0.01):
 	tendencia = Calculate_Market_Direction(data)
-	volatilidad = Atr(data)
+	volatilidad = Atr_normalized(data)
 	consolidacion = check_consolidation(data)
 	volumen_alto = check_volume(data)
 
@@ -852,3 +893,4 @@ def detect_market_type(data, umbral_alto_volatilidad=0.01):
 		return 'volatil'
 	else:
 		return 'rango_lateral'
+

@@ -929,11 +929,11 @@ def print_table_coins_bought():
 					PriceChange_PercT = float(((LastPriceT - BuyPriceT) / BuyPriceT) * 100)
 					
 					if MODE == "BACKTESTING":
-						buy_time = datetime.fromtimestamp(coins_bought[coin]['timestamp'] / 1000)
+						buy_time = datetime.fromtimestamp(coins_bought[coin]['time'] / 1000)
 						current_time = datetime.fromtimestamp(last_price[coin]['time'] / 1000)
 						time_held = current_time - buy_time
 					else:
-						time_held = timedelta(seconds=datetime.now().timestamp() - int(str(coins_bought[coin]['timestamp'])[:10]))
+						time_held = timedelta(seconds=datetime.now().timestamp() - int(str(coins_bought[coin]['time'])[:10]))
 
 					if SELL_ON_SIGNAL_ONLY:
 						my_table.add_row([
@@ -988,11 +988,11 @@ def print_table_coins_bought():
 					# PriceChange_PercT = float(((LastPriceT - BuyPriceT) / BuyPriceT) * 100)
 					
 					# if MODE == "BACKTESTING":
-						# buy_time = datetime.fromtimestamp(coins_bought[coin]['timestamp'] / 1000)
+						# buy_time = datetime.fromtimestamp(coins_bought[coin]['time'] / 1000)
 						# current_time = datetime.fromtimestamp(last_price[coin]['time'] / 1000) 
 						# time_held = current_time - buy_time 
 					# else:
-						# time_held = timedelta(seconds=datetime.now().timestamp() - int(str(coins_bought[coin]['timestamp'])[:10]))
+						# time_held = timedelta(seconds=datetime.now().timestamp() - int(str(coins_bought[coin]['time'])[:10]))
 				
 					# if SELL_ON_SIGNAL_ONLY:
 						# my_table.add_row([f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coin.replace(PAIR_WITH,'')}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{coins_bought[coin]['volume']:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{BuyPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{LastPriceT:.4f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}per signal{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{PriceChange_PercT:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{((float(coins_bought[coin]['volume'])*float(coins_bought[coin]['bought_at']))*PriceChange_PercT)/100:.2f}{txcolors.DEFAULT}", f"{txcolors.GREEN if PriceChange_PercT >= 0. else txcolors.RED}{str(time_held).split('.')[0]}{txcolors.DEFAULT}"])
@@ -2312,7 +2312,7 @@ def extract_order_data(order_details):
 		transactionInfo = {
 			'symbol': order_details['symbol'],
 			'orderId': order_details['orderId'],
-			'timestamp': order_details['transactTime'],
+			'time': order_details['transactTime'],
 			'avgPrice': float(FILL_AVG),
 			'volume': float(FILLS_QTY),
 			'tradeFeeBNB': float(FILLS_FEE),
@@ -2351,51 +2351,89 @@ def check_total_session_profit(coins_bought, last_price):
 		#is_bot_running = False   
 	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	
+# def update_portfolio(orders, last_price, volume):
+	# global coins_bought, client
+	# print("orders: ", orders)
+	# for coin in orders:
+		# try:
+			# coin_step_size = float(next(filter(lambda f: f['filterType'] == 'LOT_SIZE', client.get_symbol_info(orders[coin][0]['symbol'])['filters']))['stepSize']) #update_portfolio
+		# except Exception as ExStepSize:
+			# coin_step_size = .1
+			# pass
+
+		# if not TEST_MODE: #or not BACKTESTING_MODE:
+			# coins_bought[coin] = {
+			   # 'symbol': orders[coin]['symbol'],
+			   # 'orderid': orders[coin]['orderId'],
+			   # 'time': orders[coin]['time'],
+			   # 'bought_at': orders[coin]['avgPrice'],
+			   # 'volume': orders[coin]['volume'],
+			   # 'volume_debug': volume[coin],
+			   # #'buyFeeBNB': orders[coin]['tradeFeeBNB'],
+			   # #'buyFee': orders[coin]['tradeFeeUnit'] * orders[coin]['volume'],
+			   # 'stop_loss': -STOP_LOSS,
+			   # 'take_profit': TAKE_PROFIT,
+			   # 'step_size': float(coin_step_size),
+			   # }
+
+			# #print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+		# else:
+			# coins_bought[coin] = {
+				# 'symbol': orders[coin][0]['symbol'],
+				# 'orderid': orders[coin][0]['orderId'],
+				# 'time': orders[coin][0]['time'],
+				# 'bought_at': last_price[coin]['price'],
+				# 'volume': volume[coin],
+				# 'stop_loss': -STOP_LOSS,
+				# 'take_profit': TAKE_PROFIT,
+				# 'step_size': float(coin_step_size),
+				# }
+
+			# #print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
+
+		# # save the coins in a json file in the same directory
+		# with open(coins_bought_file_path, 'w') as file:
+			# json.dump(coins_bought, file, indent=4)
+	# show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+
 def update_portfolio(orders, last_price, volume):
-	global coins_bought, client
-	'''add every coin bought to our portfolio for tracking/selling later'''
-	for coin in orders:
-		try:
-			coin_step_size = float(next(filter(lambda f: f['filterType'] == 'LOT_SIZE', client.get_symbol_info(orders[coin][0]['symbol'])['filters']))['stepSize']) #update_portfolio
-		except Exception as ExStepSize:
-			coin_step_size = .1
-			pass
+	try:
+		global coins_bought
+		file_prefix = prefix_type()
+		coins_bought_file_path = file_prefix + COINS_BOUGHT
 
-		if not TEST_MODE: #or not BACKTESTING_MODE:
-			coins_bought[coin] = {
-			   'symbol': orders[coin]['symbol'],
-			   'orderid': orders[coin]['orderId'],
-			   'timestamp': orders[coin]['timestamp'],
-			   'bought_at': orders[coin]['avgPrice'],
-			   'volume': orders[coin]['volume'],
-			   'volume_debug': volume[coin],
-			   #'buyFeeBNB': orders[coin]['tradeFeeBNB'],
-			   #'buyFee': orders[coin]['tradeFeeUnit'] * orders[coin]['volume'],
-			   'stop_loss': -STOP_LOSS,
-			   'take_profit': TAKE_PROFIT,
-			   'step_size': float(coin_step_size),
-			   }
+		for coin in orders:
+			order = orders[coin][0] 
+			symbol = order['symbol']
 
-			#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin]["symbol"]} with ID {orders[coin]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
-		else:
+			try:
+				info = get_symbol_info(symbol)
+				lot_size_filter = next(f for f in info['filters'] if f['filterType'] == 'LOT_SIZE')
+				coin_step_size = float(lot_size_filter['stepSize'])
+			except Exception as ExStepSize:
+				#print(f"[WARN] No se pudo obtener stepSize para {symbol}, usando 0.1 (default) - {ExStepSize}")
+				coin_step_size = 0.1
+
 			coins_bought[coin] = {
-				'symbol': orders[coin][0]['symbol'],
-				'orderid': orders[coin][0]['orderId'],
-				'timestamp': orders[coin][0]['time'],
+				'symbol': symbol,
+				'orderid': order['orderId'],
+				'time': order.get('time'),   # en backtest
 				'bought_at': last_price[coin]['price'],
 				'volume': volume[coin],
 				'stop_loss': -STOP_LOSS,
 				'take_profit': TAKE_PROFIT,
-				'step_size': float(coin_step_size),
-				}
+				'step_size': coin_step_size,
+			}
 
-			#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Order for {orders[coin][0]["symbol"]} with ID {orders[coin][0]["orderId"]} placed and saved to file.{txcolors.DEFAULT}')
-
-		# save the coins in a json file in the same directory
 		with open(coins_bought_file_path, 'w') as file:
 			json.dump(coins_bought, file, indent=4)
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 
+		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
+	except Exception as e:
+		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}update_portfolio: {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
+		write_log(f"{languages_bot.MSG2[LANGUAGE]} {sys.exc_info()[-1].tb_lineno}")
+		pass
+	
 def update_bot_stats():
 	try:
 		global TRADE_TOTAL, trade_wins, trade_losses, historic_profit_incfees_perc, historic_profit_incfees_total, session_USDT_EARNED, session_USDT_LOSS, session_USDT_WON, USED_COMMISSIONS
@@ -2425,6 +2463,8 @@ def update_bot_stats():
 def remove_from_portfolio(coins_sold):
 	global coins_bought
 	try:
+		file_prefix = prefix_type()
+		coins_bought_file_path = file_prefix + COINS_BOUGHT
 		if coins_sold is not None:
 			for coin in coins_sold:
 				# code below created by getsec <3
@@ -2951,7 +2991,7 @@ def remove_by_file_name(name):
 def check_holding_time():
 	global coins_bought, MAX_HOLDING_TIME, last_price
 	for coin in list(coins_bought):
-		buy_time = datetime.fromtimestamp(coins_bought[coin]['timestamp'] / 1000)
+		buy_time = datetime.fromtimestamp(coins_bought[coin]['time'] / 1000)
 		current_time = datetime.fromtimestamp(last_price[coin]['time'] / 1000)
 		time_held = current_time - buy_time
 
@@ -3188,7 +3228,8 @@ def menu(banner1=True):
 				stop_signal_threads() #Menu -
 				while not x == "n":
 					#last_price = get_price() #menu
-					print_table_coins_bought()
+					coins_string = print_table_coins_bought()
+					print(coins_string)
 					print(f'{txcolors.YELLOW}\nType in the Symbol you wish to sell. [n] to continue {languages_bot.MSG5[LANGUAGE]}.{txcolors.DEFAULT}')
 					x = input("#: ")
 					if x == "":
@@ -3369,7 +3410,7 @@ if __name__ == '__main__':
 		
 		#null = get_historical_price()
 
-		coins_bought = {}
+		#coins_bought = {}
 
 		file_prefix = prefix_type()
 

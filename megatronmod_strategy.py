@@ -15,12 +15,6 @@ from datetime import datetime
 import sys
 import os
 import random
-global estadisticas
-estadisticas = {}
-estadisticas["tendencia_alcista_confirmada"] = 0
-estadisticas['consolidacion'] = 0
-estadisticas['volatil'] = 0
-estadisticas['rango_lateral'] = 0
   
 def buy(Data, CLOSE, pair):
 	try:
@@ -31,7 +25,8 @@ def buy(Data, CLOSE, pair):
 		buySignal = False
 		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21) and MF.Macd_Ind(Data, 12, 26, 9) < -1.05
 		# buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
-		buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) < -1.25
+		# buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Ema(Data, 50) < MF.Ema(Data, 200)
+		buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) < -1.5 and MF.Ema(Data, 50) < MF.Ema(Data, 200)
 		# if tipo == 'tendencia_bajista_confirmada':
 		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
@@ -70,7 +65,8 @@ def sell(Data, CLOSE, pair):
 		sellSignal = False
 		# B = MF.Bought_at(pair)
 		#sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)and MF.Macd_Ind(Data, 12, 26, 9) > 0.85
-		sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 1.05
+		#sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Ema(Data, 50) > MF.Ema(Data, 200)
+		sellSignal = bool(MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 0.85 and MF.Ema(Data, 50) > MF.Ema(Data, 200)) or MF.dynamic_sl_atr(pair, CLOSE, Data, 2.5)
 		#if tipo == 'tendencia_alcista_confirmada':
 		# sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)
 		# elif tipo == 'consolidacion':
