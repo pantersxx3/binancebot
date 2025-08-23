@@ -237,7 +237,7 @@ if opciones_seleccionadas:
 			max_drawdown = calculate_max_drawdown(cumulative_returns)
 			
 			resultados_archivo = {
-				'archivo': os.path.basename(file),
+				'archivo': os.path.basename(file).replace(".csv",""),
 				'Cantidad de operaciones': len(merged_trades),
 				'Total': round(total_profit, 2),
 				'Perdio': round(perdido, 2),
@@ -332,8 +332,8 @@ else:
 		"PL Ratio", "Sharpe Ratio", "Max Drawdown %",
 		"0 to 1", "1.01 to 2", "2.01 to 3", "3.01 to 4", "4.01 to 5", 
 		"-1 to 0", "-2 to -1.01", "-3 to -2.01", "-4 to -3.01", "-5 to -4.01", 
-		"Mes 1","Mes 2","Mes 3","Mes 4","Mes 5","Mes 6","Mes 7","Mes 8","Mes 9","Mes 10","Mes 11","Mes 12",
-		"Buy Signal", "Sell Signal"
+		"Mes 1","Mes 2","Mes 3","Mes 4","Mes 5","Mes 6","Mes 7","Mes 8","Mes 9","Mes 10","Mes 11","Mes 12"
+		#"Buy Signal", "Sell Signal"
 	])
 
 	for file in archivos_seleccionados:
@@ -447,9 +447,9 @@ else:
 				rango[0], rango[1], rango[2], rango[3], rango[4], rango[5], 
 				rango[6], rango[7], rango[8], rango[9], 
 				meses[1], meses[2], meses[3], meses[4], meses[5], meses[6], 
-				meses[7], meses[8], meses[9], meses[10], meses[11], meses[12],
-				wrap_text(buy_signal, 25),
-				wrap_text(sell_signal, 25)
+				meses[7], meses[8], meses[9], meses[10], meses[11], meses[12]
+				#wrap_text(buy_signal, 25),
+				#wrap_text(sell_signal, 25)
 			])
 		except FileNotFoundError:
 			print(f"Error: El archivo '{file}' no fue encontrado. Ignorando.")
