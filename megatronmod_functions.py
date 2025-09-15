@@ -487,10 +487,18 @@ def Ema(DF_Data, LENGHT):
 	#save_indicator(locals().items())
 	return EMA_IND
 
+def Ema_df(DF_Data, LENGHT):
+	EMA_IND = ta.ema(DF_Data['Close'], length=LENGHT)
+	return EMA_IND
+	
 def Sma(DF_Data, LENGHT):
 	SMA_IND = round(ta.sma(DF_Data['Close'],length=LENGHT).iloc[-1], 8)
 	#time_1MIN = ret_time(DF_Data)
 	#save_indicator(locals().items())    
+	return SMA_IND
+	
+def Sma_df(DF_Data, LENGHT):
+	SMA_IND = ta.sma(DF_Data['Close'],length=LENGHT)   
 	return SMA_IND
 
 def Stochastic(DF_Data, LENGHT, K, D):
@@ -533,9 +541,10 @@ def Macd(DF_Data, FAST, SLOW, SIGNAL):
 	return MACD_IND, MACDHIST_IND, MACDSIG_IND
 
 def Macd_df(DF_Data, FAST, SLOW, SIGNAL):
-	MACD_IND, MACDHIST_IND, MACDSIG_IND = ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL)
-	#time_1MIN = ret_time(DF_Data)
-	#save_indicator(locals().items())
+	macd_df = ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL)
+	MACD_IND = macd_df[f"MACD_{FAST}_{SLOW}_{SIGNAL}"]
+	MACDHIST_IND = macd_df[f"MACDh_{FAST}_{SLOW}_{SIGNAL}"]
+	MACDSIG_IND = macd_df[f"MACDs_{FAST}_{SLOW}_{SIGNAL}"]
 	return MACD_IND, MACDHIST_IND, MACDSIG_IND
 
 def Macd_Ind(DF_Data, FAST, SLOW, SIGNAL):
@@ -555,6 +564,20 @@ def Macd_Sig(DF_Data, FAST, SLOW, SIGNAL):
 	#time_1MIN = ret_time(DF_Data)
 	#save_indicator(locals().items())
 	return MACDSIG_IND
+
+def Macd_Sig_df(DF_Data, FAST, SLOW, SIGNAL):
+	macd_df = ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL)
+	# MACD_IND = macd_df[f"MACD_{FAST}_{SLOW}_{SIGNAL}"]
+	# MACDHIST_IND = macd_df[f"MACDh_{FAST}_{SLOW}_{SIGNAL}"]
+	MACDSIG_IND = macd_df[f"MACDs_{FAST}_{SLOW}_{SIGNAL}"]
+	return MACDSIG_IND
+
+def Macd_Ind_df(DF_Data, FAST, SLOW, SIGNAL):
+	macd_df = ta.macd(DF_Data['Close'],FAST, SLOW, SIGNAL)
+	MACD_IND = macd_df[f"MACD_{FAST}_{SLOW}_{SIGNAL}"]
+		# MACDHIST_IND = macd_df[f"MACDh_{FAST}_{SLOW}_{SIGNAL}"]
+		# MACDSIG_IND = macd_df[f"MACDs_{FAST}_{SLOW}_{SIGNAL}"]
+	return MACD_IND
 	
 def Cci(DF_Data, LENGHT):
 	CCI_IND = round(DF_Data.ta.cci(length=LENGHT).iloc[-1], 8)
@@ -661,7 +684,12 @@ def should_sell_due_to_risk(coin, CLOSE, time, sl, th):
 	if time_held > th:
 		r = True		
 	return r
-	
+
+def Stop_Time(coin, time, s_time):
+	time_held = TimeHold(coin, time)
+	if time_held > s_time:
+		return True
+	return False
 # def Dynamic_StopLoss(coin, DF_Data, CLOSE, LENGHT, time_wait, value):
 	# try:
 		# coinfile = coin + ".st"
@@ -769,6 +797,52 @@ def filter_with_adx(data, adx_umbral=25):
 	adx = adx_indicador.adx().iloc[-1]
 	return adx < adx_umbral
 	
+def Atr(data, atr_period=14):
+	atr = AverageTrueRange(
+		high=data['High'],
+		low=data['Low'], 
+		close=data['Close'],
+		window=atr_period
+	).average_true_range()
+	
+	return atr.iloc[-1]  # ← Valor ABSOLUTO, no normalizado
+
+def Atr_df(data, atr_period=14):
+	atr = AverageTrueRange(
+		high=data['High'],
+		low=data['Low'], 
+		close=data['Close'],
+		window=atr_period
+	).average_true_range()
+	
+	return atr
+	
+def Dynamic_Sl_Atr(coin, current_price, data, atr_multiplier=2.5):
+	bought_at = Bought_at(coin)	
+	if bought_at <= 0:
+		return False	
+	atr_absolute = Atr(data, 14)	
+	sl_price = bought_at - (atr_absolute * atr_multiplier)	
+	if current_price <= sl_price:
+		return True	
+	return False
+	
+def Check_Volume_df(data, window=5, umbral=1.2):
+	volumen_actual = data['Volume']
+	volumen_promedio = data['Volume'].rolling(window).mean()
+	return volumen_actual > umbral * volumen_promedio
+	
+def Check_Volume_Growth(data, velas=3):
+	# Detecta si el volumen ha subido en las últimas N velas
+	vol = data['Volume'].tail(velas).values
+	return all(vol[i] > vol[i-1] for i in range(1, len(vol)))
+
+def Low_Volatility(Data, CLOSE):
+	return Atr(Data, 14) < (CLOSE * 0.005)
+	
+def Low_Volatility_df(Data, CLOSE):
+	return Atr_df(Data, 14) < (CLOSE * 0.005)
+	
 def Calculate_Market_Direction(data, adx_period=14, adx_threshold=20):
 	ADX, DI_positive, DI_negative = Adx(data, adx_period)
 	
@@ -779,118 +853,176 @@ def Calculate_Market_Direction(data, adx_period=14, adx_threshold=20):
 			return 'bajista'		
 	return 'sin_tendencia'
 	
-def Atr_normalized(data, atr_period=14):
-    atr_value = AverageTrueRange(
-        high=data['High'],
-        low=data['Low'],
-        close=data['Close'], 
-        window=atr_period
-    ).average_true_range().iloc[-1]
-    
-    normalized_atr = atr_value / data['Close'].iloc[-1]
-    return normalized_atr  # ← Ej: 0.015 para 1.5% de volatilidad
+def Atr_Normalized(data, atr_period=14):
+	atr_value = AverageTrueRange(
+		high=data['High'],
+		low=data['Low'],
+		close=data['Close'], 
+		window=atr_period
+	).average_true_range().iloc[-1]
 	
-def Atr(data, atr_period=14):
-    atr = AverageTrueRange(
-        high=data['High'],
-        low=data['Low'], 
-        close=data['Close'],
-        window=atr_period
-    ).average_true_range()
-    
-    return atr.iloc[-1]  # ← Valor ABSOLUTO, no normalizado
+	normalized_atr = atr_value / data['Close'].iloc[-1]
+	return normalized_atr  # ← Ej: 0.015 para 1.5% de volatilidad
 	
-def check_compression_bollinger(data, bb_window=20, umbral_compresion=0.01):	
-	data = data.copy()
-	bb = BollingerBands(
-		close=data['Close'],
-		window=bb_window,
-		window_dev=2
-	)
-
-	data['bb_upper'] = bb.bollinger_hband()
-	data['bb_lower'] = bb.bollinger_lband()
-	data['bb_width'] = data['bb_upper'] - data['bb_lower']
-	data['bb_width_pct'] = data['bb_width'] / data['Close']
-	
-	ultima_width = data['bb_width_pct'].iloc[-1]
-	return ultima_width < umbral_compresion
-
-def check_volume(data, window=5, umbral=1.2):
+def Check_Volume(data, window=5, umbral=1.2):
 	volumen_actual = data['Volume'].iloc[-1]
 	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
 	return bool(volumen_actual > umbral * volumen_promedio)
-
-def check_volume_df(data, window=5, umbral=1.2):
-	volumen_actual = data['Volume']
-	volumen_promedio = data['Volume'].rolling(window).mean()
-	return volumen_actual > umbral * volumen_promedio
 	
-# def check_volume_rise(data, window=5, umbral_aumento=1.5):
-	# # Esta función es similar a la que ya tienes, pero se enfoca en el aumento.
-	# volumen_actual = data['Volume'].iloc[-1]
-	# volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
-	# return volumen_actual > umbral_aumento * volumen_promedio
-	
-def check_volume_with_vwap(data, window=5, umbral=1.2):
-	volumen_actual = data['Volume'].iloc[-1]
-	volumen_promedio = data['Volume'].rolling(window).mean().iloc[-1]
-	vwap = VolumeWeightedAveragePrice(
-		high=data['High'],
-		low=data['Low'],
-		close=data['Close'],
-		volume=data['Volume'],
-		window=window
-	).volume_weighted_average_price().iloc[-1]	
-	precio_actual = data['Close'].iloc[-1]
-	return (volumen_actual > umbral * volumen_promedio) and (abs(precio_actual - vwap) / vwap < 0.005)
-
-def check_volume_growth(data, velas=3):
-	# Detecta si el volumen ha subido en las últimas N velas
-	vol = data['Volume'].tail(velas).values
-	return all(vol[i] > vol[i-1] for i in range(1, len(vol)))
-
-def low_volatility(Data, CLOSE):
-	return Atr(Data, 14) < (CLOSE * 0.005)
-	
-def dynamic_sl_atr(coin, current_price, data, atr_multiplier=2.5):
-    bought_at = Bought_at(coin)
-    
-    if bought_at <= 0:
-        return False #, 'not_owned'
-    
-    # Obtener ATR ABSOLUTO (en USDT, no porcentaje)
-    atr_absolute = Atr(data, 14)  # ← Función corregida
-    
-    # Calcular precio de SL
-    sl_price = bought_at - (atr_absolute * atr_multiplier)
-    sl_percentage = ((bought_at - sl_price) / bought_at) * 100
-    
-    # Verificar si activar SL
-    if current_price <= sl_price:
-        return True #, f'sl_atr_{sl_percentage:.1f}%'
-    
-    return False #, None
-	
-def check_consolidation(data, adx_threshold=20, atr_threshold=0.003):
+def Check_Consolidation(data, adx_threshold=20, atr_threshold=0.003):
 	adx, _, _ = Adx(data)
-	atr = Atr_normalized(data)
+	atr = Atr_Normalized(data)
 	return adx < adx_threshold and atr < atr_threshold
 	
-def detect_market_type(data, umbral_alto_volatilidad=0.01):
-	tendencia = Calculate_Market_Direction(data)
-	volatilidad = Atr_normalized(data)
-	consolidacion = check_consolidation(data)
-	volumen_alto = check_volume(data)
-
+def Detect_Market_Type(data, umbral_alto_volatilidad=0.01):
+	tendencia = Calculate_Market_Direction(data, 20, 20)
+	volatilidad = Atr_Normalized(data, 20)
+	consolidacion = Check_Consolidation(data, 20, 0.003)
+	volumen_alto = Check_Volume(data, 20, 1.2)
 	if tendencia == 'alcista' and volumen_alto:
 		return 'tendencia_alcista_confirmada'
 	elif tendencia == 'bajista' and volumen_alto:
 		return 'tendencia_bajista_confirmada'
 	elif consolidacion and not volumen_alto:
-		return 'consolidacion'
+		return 'consolidacion_confirmado'
 	elif volatilidad > umbral_alto_volatilidad:
-		return 'volatil'
+		return 'volatil_confirmado'
 	else:
-		return 'rango_lateral'
+		return 'rango_lateral_confirmado'
 
+def Pivots_Hl_df(df, left=10, right=10):
+	highs = df['High'].to_numpy(dtype=float)
+	lows = df['Low'].to_numpy(dtype=float)
+
+	pivot_highs_idx = []
+	pivot_lows_idx = []
+
+	for i in range(left, len(df) - right):
+		window_high = highs[i-left:i+right+1]
+		window_low = lows[i-left:i+right+1]
+
+		if highs[i] == np.max(window_high):
+			pivot_highs_idx.append(i)
+
+		if lows[i] == np.min(window_low):
+			pivot_lows_idx.append(i)
+
+	# Valores en los índices encontrados
+	pivot_high_prices = highs[pivot_highs_idx] if pivot_highs_idx else []
+	pivot_low_prices = lows[pivot_lows_idx] if pivot_lows_idx else []
+
+	return pivot_high_prices, pivot_low_prices
+	
+def Pivots_Hl(df, left=10, right=10):
+	high_prices, low_prices = Pivots_Hl_df(df, left, right)
+	last_high = high_prices[-1] if len(high_prices) > 0 else None
+	last_low = low_prices[-1] if len(low_prices) > 0 else None
+	return last_high, last_low
+
+def calcular_rangos_dinamicos_macd_rsi(df, rsi_l=14, macd_f=12, macd_l=26, macd_s=9, rsi_pct_buy=90, rsi_pct_sell=10, macd_pct_buy=75, macd_pct_sell=25):
+    df = df.copy()
+    df['RSI'] = Rsi_df(df, rsi_l)
+    df['MACD'] = Macd_Ind_df(df, macd_f, macd_l, macd_s)
+
+    # Convertir a numérico y eliminar NaN
+    macd = pd.to_numeric(df['MACD'], errors='coerce').dropna()
+    rsi = pd.to_numeric(df['RSI'], errors='coerce').dropna()
+
+    # RSI: percentiles dinámicos
+    valor_rsi_sobrecompra = np.percentile(rsi, rsi_pct_buy)
+    valor_rsi_sobreventa = np.percentile(rsi, rsi_pct_sell)
+
+    # MACD: percentiles dinámicos (separados en positivos y negativos)
+    macd_pos = macd[macd > 0]
+    macd_neg = macd[macd < 0]
+
+    valor_macd_buy = np.percentile(macd_pos, macd_pct_buy) if len(macd_pos) > 0 else 0
+    valor_macd_venta = np.percentile(macd_neg, macd_pct_sell) if len(macd_neg) > 0 else 0
+
+    return valor_rsi_sobrecompra, valor_rsi_sobreventa, valor_macd_buy, valor_macd_venta
+
+def guardar_rangos_dinamicos(coin, n_velas, rsi_over, rsi_under, macd_buy, macd_sell):
+	try:
+		FILE = "rangos_dinamicos.json"
+		FILE1 = "rangos_dinamicos_1.json"
+
+		if not os.path.exists(FILE1):
+			data_1 = {}
+			data_1[coin] = []
+			data_1[coin] = {
+				"coin": coin,
+				"rsi_over": rsi_over,
+				"rsi_under": rsi_under,
+				"macd_buy": macd_buy,
+				"macd_sell": macd_sell
+			}
+			with open(FILE1, "w") as f:
+				json.dump(data_1, f, indent=2)
+			data_1 = {}
+			data_1[coin] = []
+			
+		if not os.path.exists(FILE):
+			data = {}
+		else:
+			with open(FILE, "r") as f:
+				data = json.load(f)
+
+		# si la coin no existe, inicializar lista
+		if coin not in data:
+			data[coin] = []
+
+		# agregar nuevo registro
+		data[coin].append({
+			"rsi_over": rsi_over,
+			"rsi_under": rsi_under,
+			"macd_buy": macd_buy,
+			"macd_sell": macd_sell
+		})
+
+		# guardar el archivo actualizado
+		with open(FILE, "w") as f:
+			json.dump(data, f, indent=2)
+
+		# si llegamos a n_velas registros → calcular promedio
+		if len(data[coin]) >= n_velas:
+			rsi_over_avg = round(sum(d["rsi_over"] for d in data[coin]) / len(data[coin]), 2)
+			rsi_under_avg = round(sum(d["rsi_under"] for d in data[coin]) / len(data[coin]), 2)
+			macd_buy_avg = round(sum(d["macd_buy"] for d in data[coin]) / len(data[coin]), 2)
+			macd_sell_avg = round(sum(d["macd_sell"] for d in data[coin]) / len(data[coin]), 2)
+			os.remove(FILE)
+			os.remove(FILE1)
+			data_1 = {}
+			data_1[coin] = {}
+			data_1[coin] = {
+				"rsi_over": rsi_over_avg,
+				"rsi_under": rsi_under_avg,
+				"macd_buy": macd_buy_avg,
+				"macd_sell": macd_sell_avg
+			}
+			with open(FILE1, "w") as f:
+				json.dump(data_1, f, indent=2)
+			#data[coin] = []
+			#with open(FILE, "w") as f:
+				#json.dump(data, f, indent=2)
+		else:
+			data2 = {}
+			with open(FILE1, "r") as f:
+				data2 = json.load(f)
+			return {
+				"rsi_over": float(data2[coin]['rsi_over']),
+				"rsi_under": float(data2[coin]['rsi_under']),
+				"macd_buy": float(data2[coin]['macd_buy']),
+				"macd_sell": float(data2[coin]['macd_sell'])
+			}
+
+		return {
+			"rsi_over": rsi_over_avg,
+			"rsi_under": rsi_under_avg,
+			"macd_buy": macd_buy_avg,
+			"macd_sell": macd_sell_avg
+		}
+
+	except Exception as e:
+		write_log(f'{txcolors.DEFAULT}{SIGNAL_NAME}: {txcolors.SELL_LOSS} - Exception: guardar_rangos_dinamicos(): {e}{txcolors.DEFAULT}', SIGNAL_NAME + '.log', True, False)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		write_log('Error on line ' + str(exc_tb.tb_lineno), SIGNAL_NAME + '.log', True, False)

@@ -237,7 +237,7 @@ if opciones_seleccionadas:
 			max_drawdown = calculate_max_drawdown(cumulative_returns)
 			
 			resultados_archivo = {
-				'archivo': os.path.basename(file).replace(".csv",""),
+				'archivo': os.path.basename(file),
 				'Cantidad de operaciones': len(merged_trades),
 				'Total': round(total_profit, 2),
 				'Perdio': round(perdido, 2),

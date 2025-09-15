@@ -21,6 +21,8 @@ Notes:
 """
 import signal
 
+import uuid
+
 import languages_bot
 from megatronmod import analyze
 
@@ -141,7 +143,7 @@ global FLAG_FILE_WRITE, historic_profit_incfees_perc, historic_profit_incfees_to
 global JSON_REPORT, FILE_SYMBOL_INFO, SAVED_COINS, coins_bought, bot_paused, parsed_config, creds_file, access_key, secret_key
 global DEBUG, ENABLE_FUNCTION_NAME, SHOW_FUNCTION_NAME, SAVE_FUNCTION_NAME, SHOW_VARIABLES_AND_VALUE, SAVE_VARIABLES_AND_VALUE, TEST_MODE
 global BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, REMOTE_INSPECTOR_BOT_PORT, REMOTE_INSPECTOR_MEGATRONMOD_PORT
-global SILENT_MODE, Test_Pos_Now, SpeedBot, POSITION, symbol_cache
+global SILENT_MODE, Test_Pos_Now, SpeedBot, POSITION, symbol_cache, INDEX
 
 symbol_cache = {}
 SAVED_COINS = {}
@@ -1734,10 +1736,32 @@ def buy_external_signals():
 	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	return external_list
 
+def load_index():
+	global INDEX
+	_FILE = "index.json"
+	if os.path.exists(_FILE):
+		with open(_FILE, 'r') as f:
+			INDEX = int(f.readline())
+
+def save_index(index_str):
+	global INDEX
+	INDEX = index_str
+	_FILE = "index.json"
+	with open(_FILE, 'w') as f:
+		f.write(str(INDEX))
+
+			
 def random_without_repeating():
-	show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())      
-	RandOrderId = randint(10000, 99999)		
-	return RandOrderId
+	global INDEX
+	_FILE = "index.json"
+	if os.path.exists(_FILE):
+		load_index()
+	else:
+		save_index("10000")
+		return INDEX
+	INDEX = int(INDEX + 1)
+	save_index(str(INDEX))
+	return INDEX #str(uuid.uuid4()).replace('-', '')[:5].upper()
 
 #use function of the OlorinSledge
 def wait_for_price():
@@ -1775,6 +1799,7 @@ def wait_for_price():
 			for pair in pairs:
 				pair = pair + PAIR_WITH
 				coins1.append(pair)
+			#print("coins1=", coins1)
 			externals1, externals2 = analyze(c_data, coins1, True, POSITION) #wait_for_price
 			last_price = get_price(False, externals1) #wait_for_price
 		
@@ -1839,8 +1864,9 @@ def load_symbol_info_cache():
 	if os.path.exists(SYMBOL_INFO_FILE):
 		with open(SYMBOL_INFO_FILE, "r") as f:
 			symbol_cache = json.load(f)
-	#else:
-		#symbol_cache = {}
+	else:
+		symbol_cache = {}
+	return symbol_cache
 	
 def save_symbol_cache():
 	global symbol_cache
@@ -2244,6 +2270,7 @@ def sell_external_signals():
 		for symbol in symbols:
 			symbol = symbol + PAIR_WITH
 			coins1.append(symbol)
+		#print("coins1=", coins1)
 		signals1, signals2 = analyze(c_data, coins1, False, POSITION) # sell_external_signals()
 		#tp_pausebotmod.analyze(c_data)
 		
@@ -2820,7 +2847,7 @@ def load_credentials(force=False):
 			access_key, secret_key = load_correct_creds(parsed_creds)
 			print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Cargando credenciales de la red BINANCE TESTNET...{txcolors.DEFAULT}')
 			
-		if not TEST_MODE and not USE_TESNET_IN_ONLINEMODE or force:
+		if not USE_TESNET_IN_ONLINEMODE or force:
 			creds_file = args.creds if args.creds else DEFAULT_CREDS_FILE
 			parsed_creds = load_config(creds_file)
 			access_key, secret_key = load_correct_creds(parsed_creds)
@@ -2874,7 +2901,7 @@ def lost_connection(error, origin):
 					if response == True:
 						write_log(f'{txcolors.GREEN}{languages_bot.MSG5[LANGUAGE]}: The connection has been reestablished, continuing...{txcolors.DEFAULT}')
 						lostconnection = False
-						load_signal_threads()
+						load_signal_threads() #lost_connection
 						return
 					else:
 						#print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {origin} Lost connection, waiting 5 seconds until it is restored...{txcolors.DEFAULT}') 
@@ -2953,7 +2980,7 @@ def renew_list(in_init=False):
 					print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}A new Volatily Volume list has been created, {len(list(coins_bought_list))} coin(s) added...{txcolors.DEFAULT}')
 					FLAG_PAUSE = False
 					#renew_list()
-					load_signal_threads()     
+					load_signal_threads()  #renew_list   
 		show_func_name(traceback.extract_stack(None, 2)[0][2], locals().items())
 	except Exception as e:
 		write_log(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}renew_list(): {languages_bot.MSG1[LANGUAGE]}: {e}{txcolors.DEFAULT}')
@@ -3036,6 +3063,9 @@ def new_or_continue():
 						remove_by_extension("/*.sell")
 						remove_by_file_name("positions.json")
 						remove_by_file_name("symbol.info.json")
+						remove_by_file_name("TTP.json")
+						remove_by_file_name("TSL.json")
+						remove_by_file_name("index.json")
 
 						print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Session deleted, continuing ...{txcolors.DEFAULT}')
 						break
@@ -3112,7 +3142,7 @@ def change_key_secretkey():
 				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Key and SecretKey saved.{txcolors.DEFAULT}')
 				load_settings()
 				renew_list()
-				load_signal_threads()
+				load_signal_threads() #menu->mainnet
 				break
 				
 			if net == 'testnet':
@@ -3121,7 +3151,7 @@ def change_key_secretkey():
 				creds['prod']['access_key'] = key
 				creds['prod']['secret_key'] = secretkey
 				save_config(creds_file, creds)
-				load_settings()
+				load_settings() #menu->testnet
 				renew_list()
 				load_signal_threads()
 				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.DEFAULT}Key and SecretKey saved.{txcolors.DEFAULT}')
@@ -3186,12 +3216,12 @@ def menu(banner1=True):
 			if x == "A" or x == "a":
 				load_settings()
 				renew_list()
-				load_signal_threads()
+				load_signal_threads() #menu->reload_config
 				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Reaload Completed{txcolors.DEFAULT}')
 				break
 			elif x == "B" or x == "b":
-				stop_signal_threads() #Menu
-				load_signal_threads()
+				stop_signal_threads() #Menu->reload_module
+				load_signal_threads() #Menu->reload_module
 				print(f'{txcolors.YELLOW}{languages_bot.MSG5[LANGUAGE]}: {txcolors.YELLOW}Modules Realoaded Completed{txcolors.DEFAULT}')
 				break
 			elif x == "C" or x == "c":
@@ -3402,7 +3432,7 @@ if __name__ == '__main__':
 		sell_all_coins = False
 		sell_specific_coin = False
 		
-		load_credentials(True)
+		load_credentials()
 		create_conection_binance()
 		renew_list()
 		update_data_coin()

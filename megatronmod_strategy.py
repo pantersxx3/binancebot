@@ -23,32 +23,23 @@ def buy(Data, CLOSE, pair):
 		# tn = telnetlib.Telnet(HOST, PORT)
 		
 		buySignal = False
+		# H, L = MF.Pivots_Hl(Data)
 		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21) and MF.Macd_Ind(Data, 12, 26, 9) < -1.05
 		# buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
 		# buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Ema(Data, 50) < MF.Ema(Data, 200)
-		buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) < -1.5 and MF.Ema(Data, 50) < MF.Ema(Data, 200)
-		# if tipo == 'tendencia_bajista_confirmada':
+		# buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) < -1.5 and MF.Ema(Data, 50) < MF.Ema(Data, 200)
+		# buySignal = MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
+		valor_rsi_sobrecompra, valor_rsi_sobreventa, valor_macd_buy, valor_macd_venta = MF.calcular_rangos_dinamicos_macd_rsi(Data, 14, 12, 26, 9, 70, 30, 30, 30)
+		#print(valor_rsi_sobrecompra, valor_rsi_sobreventa, valor_macd_buy, valor_macd_venta)
+		values = MF.guardar_rangos_dinamicos(pair, 15, valor_rsi_sobrecompra, valor_rsi_sobreventa, valor_macd_buy, valor_macd_venta)
+		valor_rsi_sobrecompra = values["rsi_over"]
+		#valor_rsi_sobreventa = values["rsi_under"]
+		valor_macd_buy = values["macd_buy"]
+		#valor_macd_venta = values["macd_sell"]
+		buySignal = MF.Rsi(Data, 14) < valor_rsi_sobrecompra and MF.Check_Volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) < valor_macd_buy and MF.Ema(Data, 50) < MF.Ema(Data, 200) and MF.Low_Volatility(Data, CLOSE)
 		# buySignal = MF.Ema(Data, 9) < MF.Ema(Data, 21) and MF.Rsi(Data, 14) < 30 and CLOSE < MF.Ema(Data, 21)
-		# elif tipo == 'consolidacion':
-			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
-			# buySignal = CLOSE < BB
-		# if tipo == 'volatil':
-			# #EMA200 = MF.Ema(Data, 200)
-			# High_break = Data['High'].rolling(20).max().iloc[-1]
-			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
-			# buySignal = CLOSE < Low_break and confirmar_volumen(Data)
-			#MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and
-		# buySignal =  MF.Rsi(Data, 14) < 30 and MF.check_volume(Data)
-			#--------------------------------------------
-			#BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
-			#if CLOSE <= BB and MF.confirmar_volumen(Data):
-				#buySignal = True
-			#--------------------------------------------
-			#if MF.spread_strategy(0.01, 0.07, Data) == 1 and CLOSE <= MF.B(Data) * 0.999:
-				#buySignal = True
-			#--------------------------------------------
-			# buySignal = MF.spread_strategy(0.01, 0.07, Data) == 1 and CLOSE > MF.Ema(Data, 200) and (CLOSE < MF.B(Data) or CLOSE <= round(MF.B(Data) - ((0.1 * MF.B(Data))/100), 5))
-		
+		# buySignal = MF.spread_strategy(0.01, 0.07, Data) == 1 and CLOSE > MF.Ema(Data, 200) and (CLOSE < MF.B(Data) or CLOSE <= round(MF.B(Data) - ((0.1 * MF.B(Data))/100), 5))
+		# buySignal = MF.Rsi(Data, 14) < 50 and L <= CLOSE and MF.Macd_Ind(Data, 12, 26, 9) < -0.95
 	except Exception as e:
 		exc_type, exc_obj, exc_tb = sys.exc_info()
 		print(e)
@@ -59,51 +50,26 @@ def buy(Data, CLOSE, pair):
 	
 def sell(Data, CLOSE, pair):
 	try:
-		# HOST = "localhost"
-		# PORT = 10000
-		# tn = telnetlib.Telnet(HOST, PORT)
 		sellSignal = False
-		# B = MF.Bought_at(pair)
-		#sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)and MF.Macd_Ind(Data, 12, 26, 9) > 0.85
-		#sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Ema(Data, 50) > MF.Ema(Data, 200)
-		sellSignal = bool(MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 0.85 and MF.Ema(Data, 50) > MF.Ema(Data, 200))
-		#if tipo == 'tendencia_alcista_confirmada':
-		# sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)
-		# elif tipo == 'consolidacion':
-			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
-			# sellSignal = CLOSE > BA
-		# elif tipo == 'volatil':
-			# estadisticas['volatil'] = estadisticas['volatil'] + 1
-			# EMA200 = MF.Ema(Data, 200)
-			# High_break = Data['High'].rolling(20).max().iloc[-1]
-			# Low_break = Data['Low'].rolling(20).min().iloc[-1]
-			# sellSignal = CLOSE > High_break and CLOSE > EMA200 and MF.confirmar_volumen(Data)
-			#MF.detectar_tipo_de_mercado(Data) == 'rango_lateral' and 
-		# sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data)
-			#adx = MF.Adx(Data)[0]
-			#if adx < 20 and (CLOSE > BA or CLOSE < BB):
-				#pass
-			#EMA200 = MF.Ema(Data, 200)
-			#spread = MF.spread_strategy(0.01, 0.07, Data)
-			#B = MF.B(Data)
-			#if spread == 2 and CLOSE >= B * 1.001:
-				#sellSignal = True
-			#------------------
-			# BA, BM, BB = MF.Bollinger_Bands(Data, 20, 2)
-			# if CLOSE >= BA and MF.confirmar_volumen(Data):
-				# sellSignal = True
-			#------------------
-			# estadisticas['rango_lateral'] = estadisticas['rango_lateral'] + 1
-			# EMA200 = MF.Ema(Data, 200)
-			# spread = MF.spread_strategy(0.01, 0.07, Data)
-			# CLOSE = Data['Close'].iloc[-1]
-			# B = MF.B(Data)
-			# sellSignal = spread == 2 and CLOSE > EMA200 and (CLOSE > B or CLOSE >= round(B + ((0.1 * B)/100), 5))
-		#print(estadisticas)
+		B = MF.Bought_at(pair)
+		# sellSignal = MF.Ema(Data, 9) > MF.Ema(Data, 21) and MF.Rsi(Data, 14) > 70 and CLOSE > MF.Ema(Data, 21)and MF.Macd_Ind(Data, 12, 26, 9) > 0.85
+		# sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Ema(Data, 50) > MF.Ema(Data, 200)
+		# sellSignal = bool(MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 0.85 and MF.Ema(Data, 50) > MF.Ema(Data, 200)) or MF.Sl(pair, CLOSE, 4) 
+		# sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) or MF.Sl(pair, CLOSE, 4)
+		# sellSignal = MF.Rsi(Data, 14) > 70 and MF.check_volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > 0.85 and MF.Ema(Data, 50) > MF.Ema(Data, 200) and MF.low_volatility(Data, CLOSE) or MF.Sl(pair, CLOSE, 4)
+		valor_rsi_sobrecompra, valor_rsi_sobreventa, valor_macd_buy, valor_macd_venta = MF.calcular_rangos_dinamicos_macd_rsi(Data, 14, 12, 26, 9, 70, 30, 30, 30)
+		#print(valor_rsi_sobrecompra, valor_rsi_sobreventa, valor_macd_buy, valor_macd_venta)
+		values = MF.guardar_rangos_dinamicos(pair, 15, valor_rsi_sobrecompra, valor_rsi_sobreventa, valor_macd_buy, valor_macd_venta)
+		#valor_rsi_sobrecompra = values["rsi_over"]
+		valor_rsi_sobreventa = values["rsi_under"]
+		#valor_macd_buy = values["macd_buy"]
+		valor_macd_venta = values["macd_sell"]
+		sellSignal = MF.Rsi(Data, 14) > valor_rsi_sobreventa and MF.Check_Volume(Data) and MF.Macd_Ind(Data, 12, 26, 9) > valor_macd_venta and MF.Ema(Data, 50) > MF.Ema(Data, 200) and MF.Low_Volatility(Data, CLOSE)
+		# H, L = MF.Pivots_Hl(Data)
+		# sellSignal = MF.Rsi(Data, 14) > 50 and H >= CLOSE and MF.Macd_Ind(Data, 12, 26, 9) > 1 or MF.Sl(pair, CLOSE, 1)
 	except Exception as e:
 		print(e)
 		exc_type, exc_obj, exc_tb = sys.exc_info()
 		print('Sell Error on line ' + str(exc_tb.tb_lineno))
 		pass
 	return sellSignal
-

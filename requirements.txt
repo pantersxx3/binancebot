@@ -10,4 +10,6 @@ prettytable
 plotly
 telnetlib3
 ta
-csv
+pywin32
+pyyaml
+bokeh

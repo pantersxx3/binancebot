@@ -226,7 +226,7 @@ def do_work():
 		global TEST_MODE, BACKTESTING_MODE, USE_TESNET_IN_ONLINEMODE, USE_SIGNALLING_MODULES, MODE, LANGUAGE, BOT_TIMEFRAME
 		signalcoins1 = []
 		signalcoins2 = []
-		pairs = {}
+		pairs = []
 		dataBuy = {}
 		dataSell = {}
 		
@@ -242,7 +242,8 @@ def do_work():
 			for line in open(TICKERS):
 				pairs=[line.strip() + PAIR_WITH for line in open(TICKERS)] 
 		else:
-			pairs = PAIR   		
+			for pair in PAIR:
+				pairs.append(pair + PAIR_WITH)   		
 			
 		while True:
 			#if not threading.main_thread().is_alive(): exit()
@@ -259,9 +260,9 @@ def do_work():
 					# f.write('1')
 			# else:
 			signalcoins1, signalcoins2 = analyze(pd.DataFrame([]), pairs, True)
-			time.sleep(0.001) #do_work         
-			DISABLE_WAI = False
-			if not DISABLE_WAI:
+			#time.sleep(0.001) #do_work         
+			DISABLE_WAIT = False
+			if not DISABLE_WAIT:
 				if "s" in BOT_TIMEFRAME:
 					time.sleep(timeframe_to_seconds(BOT_TIMEFRAME))
 				else:
