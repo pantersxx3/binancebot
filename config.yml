@@ -1,6 +1,11 @@
 # These options apply to how the script will operate.
 script_options:
   LANGUAGE: 'es'
+  MAIN_PATH: './'
+  # Set this to true if you are accessing binance from within the United States of America
+  # Need to change TLD
+  AMERICAN_USER: False
+  BUY_PAUSED: False
   # Switch between testnet and mainnet
   # Setting this to False will use REAL funds, use at your own risk
   #MODES: (ONLINE, ONLINETESNET), (TESTMODE, BACKTESTING)
@@ -9,18 +14,20 @@ script_options:
   BACKTESTING_MODE_TIME_END: "31/12/23 00:00:00" #"01/10/22 00:00:00"  #
   BOT_TIMEFRAME: "1m"
   LOG_TRADES: True
-  JSON_REPORT: 'report.json'
   MICROSECONDS: 0.3
+  SHOW_MAIN_TABLE_EVERY: 0
+  JSON_REPORT: 'report.json'
   LOG_FILE: 'log.txt'
   TRADES_LOG_FILE: 'trades.csv'
   TRADES_GRAPH: 'graphics.html'
   TRADES_INDICATORS: 'indicator.csv'
   #USE_TRADES_INDICATORS: False
-  #FILE_SYMBOL_INFO: 'symbol.info'
   #if it is empty no information will be saved
   #HISTORY_LOG_FILE: '' #'history.html'
+  HISTORY_DATA_COIN: "BNBUSDT_1m.csv"
   COINS_BOUGHT: 'coins_bought.json'
   BOT_STATS: 'bot_stats.json'
+  SYMBOL_INFO_FILE: 'symbol.info.json'
   PRINT_TABLE_COMMISSIONS: False
   USE_VOLATILE_METOD: False
   DEBUG: True
@@ -32,14 +39,10 @@ script_options:
   #all binance requests from our bot will be proxied
   PROXY_HTTP: '' #'http://localhost:8090'
   PROXY_HTTPS: ''
-  # Set this to true if you are accessing binance from within the United States of America
-  # Need to change TLD
-  AMERICAN_USER: False
-  BUY_PAUSED: False
 
 # These options apply to the trading methods the script executes
 trading_options:
-  PAIR: ["BTC"]
+  PAIR: ["BNB"]
   # select your base currency to use for trading (trade for example USDT pairs)
   PAIR_WITH: USDT #FDUSD  
   #When activating this option, as long as the TRADE_SLOTS option is 1, 
@@ -49,7 +52,7 @@ trading_options:
   # Total amount per trade (your base currency balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   # Binance uses a minimum of 10 USDT per trade, add a bit extra to enable selling if the price drops.
   # Recommended: no less than 12 USDT. Suggested: 15 or more.
-  TRADE_TOTAL: 1000
+  TRADE_TOTAL: 50
   # Maximum number of trade 'slots' at any time (your USDT balance must be at least TRADE_SLOTS * TRADE_TOTAL)
   TRADE_SLOTS: 1
   # EX_PAIRS is a list of fiat currencies and margin symbols that I am excluding.
